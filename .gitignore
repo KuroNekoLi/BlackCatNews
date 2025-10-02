@@ -17,3 +17,18 @@ captures
 !*.xcworkspace/contents.xcworkspacedata
 **/xcshareddata/WorkspaceSettings.xcsettings
 node_modules/
+# Kotlin/JS and Kotlin/Wasm build artifacts
+kotlin-js-store/
+*.lock
+yarn.lock
+package-lock.json
+
+# IDE specific
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS specific
+.DS_Store
+Thumbs.db
