@@ -20,6 +20,7 @@ import coil3.network.ktor3.KtorNetworkFetcherFactory
 import coil3.request.crossfade
 import com.linli.blackcatnews.parser.parseHtmlToArticle
 import com.linli.blackcatnews.ui.ArticleView
+import com.linli.blackcatnews.ui.theme.AppTheme
 import com.linli.blackcatnews.utils.fromJsonHtml
 import com.linli.blackcatnews.utils.wrapHtml
 import okio.FileSystem
@@ -50,7 +51,7 @@ fun App() {
             .build()
     }
 
-    MaterialTheme {
+    AppTheme {
         var showContent by remember { mutableStateOf(false) }
 
         // 示例：JSON 格式的 HTML（带有转义字符）
