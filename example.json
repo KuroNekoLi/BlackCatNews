@@ -1,0 +1,47 @@
+{
+  "title": {
+    "text": "中國新科技簽證引起印度關注 - 當地人不滿",
+    "style": null
+  },
+  "blocks": [
+    {
+      "type": "ImageBlock",
+      "src": "https://ichef.bbci.co.uk/news/480/cpsprodpb/1c41/live/3613a190-9e94-11f0-9f70-63cdd409bfce.jpg.webp",
+      "alt": "Getty Images 中國移民檢查站的標誌上寫著'外國人'，箭頭指向外國訪客的通道",
+      "caption": "Getty Images",
+      "style": null,
+      "blockIndex": 0,
+      "originalHtml": "<figure>\n<img src=\"https://ichef.bbci.co.uk/news/480/cpsprodpb/1c41/live/3613a190-9e94-11f0-9f70-63cdd409bfce.jpg.webp\" alt=\"Getty Images 中國移民檢查站的標誌上寫著'外國人'，箭頭指向外國訪客的通道\">\n<figcaption>Getty Images</figcaption>\n</figure>"
+    },
+    {
+      "type": "Paragraph",
+      "text": "當中國在八月首次宣布針對科學和技術領域外國專業人士的新簽證時，幾乎未引起注意。",
+      "style": null,
+      "blockIndex": 1,
+      "originalHtml": "<p>當中國在八月首次宣布針對科學和技術領域外國專業人士的新簽證時，幾乎未引起注意。</p>"
+    },
+    {
+      "type": "Paragraph",
+      "text": "但這個於週三生效的K簽證，上週被一個印度媒體稱為\"中國的H-1B\"後，迅速成為公眾焦點——這是指美國針對技術工人的簽證，上個月被唐納德·特朗普的行政命令針對。印度人在H-1B計劃中占主導地位，近年來佔受益者的70%以上。",
+      "style": null,
+      "blockIndex": 2,
+      "originalHtml": "<p>但這個於週三生效的K簽證，上週被一個印度媒體稱為\"中國的H-1B\"後，迅速成為公眾焦點——這是指美國針對技術工人的簽證，上個月被唐納德·特朗普的行政命令針對。印度人在H-1B計劃中占主導地位，近年來佔受益者的70%以上。</p>"
+    },
+    {
+      "type": "Paragraph",
+      "text": "印度媒體的報導在中國廣泛傳播，引發了公眾對於是否擴大給外國人的福利會增加在疲軟就業市場中的競爭的擔憂——而中國傳統上並不是外國專業人士的主要移民目的地。",
+      "style": null,
+      "blockIndex": 3,
+      "originalHtml": "<p>印度媒體的報導在中國廣泛傳播，引發了公眾對於是否擴大給外國人的福利會增加在疲軟就業市場中的競爭的擔憂——而中國傳統上並不是外國專業人士的主要移民目的地。</p>"
+    },
+    {
+      "type": "Paragraph",
+      "text": "儘管目前尚不清楚該簽證是否真的允許外國人在中國工作，或僅僅是讓他們更容易進入中國，但這並未阻止數萬名中國社交媒體用戶批評該計劃。",
+      "style": null,
+      "blockIndex": 4,
+      "originalHtml": "<p>儘管目前尚不清楚該簽證是否真的允許外國人在中國工作，或僅僅是讓他們更容易進入中國，但這並未阻止數萬名中國社交媒體用戶批評該計劃。</p>"
+    }
+  ],
+  "originalHtml": "<article>...</article>",
+  "baseUri": null
+}
