@@ -27,6 +27,15 @@ data class ArticleDetailRoute(
     val title: String = ""
 )
 
+// 雙語學習文章詳情頁路由
+@Serializable
+data class BilingualArticleDetailRoute(
+    val articleId: String,
+    val fromLang: String = "en", // 原文語言
+    val toLang: String = "zh",   // 目標語言
+    val title: String = ""
+)
+
 // 搜尋結果路由
 @Serializable
 data class SearchResultRoute(

@@ -15,7 +15,9 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.toRoute
 import com.linli.blackcatnews.ui.components.AppBottomNavigation
+import com.linli.blackcatnews.ui.screens.ArticleDetailScreen
 import com.linli.blackcatnews.ui.screens.CategoriesScreen
 import com.linli.blackcatnews.ui.screens.FavoritesScreen
 import com.linli.blackcatnews.ui.screens.HomeScreen
@@ -45,7 +47,11 @@ fun AppNavigation() {
                         onNotificationClick = {
                             // TODO: 顯示通知
                         },
-                        showActions = isHomeRoute(currentRoute)
+                        showActions = isHomeRoute(currentRoute),
+                        showBackButton = isArticleDetailRoute(currentRoute),
+                        onBackClick = {
+                            navController.navigateUp()
+                        }
                     )
                 }
             }
@@ -78,7 +84,24 @@ fun AppNavigation() {
             composable<HomeRoute> {
                 HomeScreen(
                     onNewsItemClick = { newsItem ->
-                        // TODO: 導航到新聞詳情頁
+                        // 導航到文章詳情頁
+                        navController.navigate(
+                            ArticleDetailRoute(
+                                articleId = newsItem.id,
+                                title = newsItem.title
+                            )
+                        )
+                    }
+                )
+            }
+
+            // 文章詳情頁
+            composable<ArticleDetailRoute> { backStackEntry ->
+                val route = backStackEntry.toRoute<ArticleDetailRoute>()
+                ArticleDetailScreen(
+                    articleId = route.articleId,
+                    onBackClick = {
+                        navController.navigateUp()
                     }
                 )
             }
@@ -110,10 +133,19 @@ private fun AppTopBar(
     title: String,
     onSearchClick: () -> Unit,
     onNotificationClick: () -> Unit,
-    showActions: Boolean
+    showActions: Boolean,
+    showBackButton: Boolean = false,
+    onBackClick: () -> Unit = {}
 ) {
     TopAppBar(
         title = { Text(title) },
+        navigationIcon = {
+            if (showBackButton) {
+                IconButton(onClick = onBackClick) {
+                    Text("←", style = MaterialTheme.typography.titleLarge)
+                }
+            }
+        },
         actions = {
             if (showActions) {
                 IconButton(onClick = onSearchClick) {
@@ -139,7 +171,8 @@ private fun shouldShowTopBar(route: String?): Boolean {
         "com.linli.blackcatnews.navigation.HomeRoute",
         "com.linli.blackcatnews.navigation.CategoriesRoute",
         "com.linli.blackcatnews.navigation.FavoritesRoute",
-        "com.linli.blackcatnews.navigation.SettingsRoute"
+        "com.linli.blackcatnews.navigation.SettingsRoute",
+        "com.linli.blackcatnews.navigation.ArticleDetailRoute"
     )
 }
 
@@ -163,6 +196,13 @@ private fun isHomeRoute(route: String?): Boolean {
 }
 
 /**
+ * 判斷是否為文章詳情路由
+ */
+private fun isArticleDetailRoute(route: String?): Boolean {
+    return route == "com.linli.blackcatnews.navigation.ArticleDetailRoute"
+}
+
+/**
  * 根據路由獲取頂部欄標題
  */
 private fun getTopBarTitle(route: String?): String {
@@ -171,6 +211,7 @@ private fun getTopBarTitle(route: String?): String {
         "com.linli.blackcatnews.navigation.CategoriesRoute" -> "分類"
         "com.linli.blackcatnews.navigation.FavoritesRoute" -> "收藏"
         "com.linli.blackcatnews.navigation.SettingsRoute" -> "設定"
+        "com.linli.blackcatnews.navigation.ArticleDetailRoute" -> "文章詳情"
         else -> "黑貓新聞"
     }
 }

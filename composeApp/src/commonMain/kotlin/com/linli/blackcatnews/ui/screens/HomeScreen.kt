@@ -112,17 +112,17 @@ private fun getSampleNewsList(): List<NewsItem> {
     return listOf(
         NewsItem(
             id = "1",
-            title = "科技巨頭發布新一代 AI 助手",
-            summary = "該公司宣布推出全新的人工智能助手，具備更強大的自然語言處理能力...",
+            title = "AI Technology Reshapes Global Economy",
+            summary = "Artificial intelligence is transforming industries worldwide, boosting efficiency and creating new opportunities...",
             imageUrl = "https://picsum.photos/400/300?random=1",
-            source = "科技日報",
+            source = "Tech News",
             publishTime = "2小時前",
             category = NewsCategory.TECH
         ),
         NewsItem(
             id = "2",
-            title = "全球股市今日大幅上漲",
-            summary = "受經濟數據利好影響，全球主要股市今日普遍上漲...",
+            title = "Global Markets Show Strong Recovery",
+            summary = "Stock markets worldwide are experiencing significant gains as economic indicators improve...",
             imageUrl = "https://picsum.photos/400/300?random=2",
             source = "財經週刊",
             publishTime = "3小時前",
@@ -130,8 +130,8 @@ private fun getSampleNewsList(): List<NewsItem> {
         ),
         NewsItem(
             id = "3",
-            title = "氣候變化對全球農業的影響",
-            summary = "最新研究顯示，氣候變化正在對全球農業生產造成重大影響...",
+            title = "Climate Change Impact on Agriculture",
+            summary = "New research reveals how changing weather patterns are affecting crop yields globally...",
             imageUrl = "https://picsum.photos/400/300?random=3",
             source = "環球時報",
             publishTime = "5小時前",
@@ -139,8 +139,8 @@ private fun getSampleNewsList(): List<NewsItem> {
         ),
         NewsItem(
             id = "4",
-            title = "新型健康飲食法受到追捧",
-            summary = "營養專家推薦的新型飲食方法正在社交媒體上廣泛傳播...",
+            title = "New Health Diet Trends Gain Popularity",
+            summary = "Nutrition experts recommend innovative dietary approaches spreading on social media...",
             imageUrl = "https://picsum.photos/400/300?random=4",
             source = "健康生活",
             publishTime = "6小時前",
@@ -148,8 +148,8 @@ private fun getSampleNewsList(): List<NewsItem> {
         ),
         NewsItem(
             id = "5",
-            title = "科學家發現新的系外行星",
-            summary = "天文學家在距離地球100光年外發現了一顆可能適合生命存在的行星...",
+            title = "Scientists Discover New Exoplanet",
+            summary = "Astronomers find potentially habitable planet 100 light-years away from Earth...",
             imageUrl = "https://picsum.photos/400/300?random=5",
             source = "科學週刊",
             publishTime = "8小時前",
