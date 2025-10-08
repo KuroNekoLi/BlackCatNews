@@ -10,6 +10,8 @@ plugins {
     alias(libs.plugins.kotlinCocoapods)
 }
 
+// 暫時移除 Room plugin，等確認版本相容性
+
 kotlin {
     androidTarget {
         compilerOptions {
@@ -39,6 +41,7 @@ kotlin {
             implementation(compose.preview)
             implementation(libs.androidx.activity.compose)
             implementation(libs.ktor.client.okhttp)
+            implementation(libs.koin.android)
         }
         iosMain.dependencies {
             implementation(libs.ktor.client.darwin)
@@ -78,6 +81,7 @@ kotlin {
 
 dependencies {
     debugImplementation(compose.uiTooling)
+    // Room KSP 編譯器 - 官方最佳實踐：每個 target 都要配置
     add("kspAndroid", libs.room.compiler)
     add("kspIosArm64", libs.room.compiler)
     add("kspIosSimulatorArm64", libs.room.compiler)
