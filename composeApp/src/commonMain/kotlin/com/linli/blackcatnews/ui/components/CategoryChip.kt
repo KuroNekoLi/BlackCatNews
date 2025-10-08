@@ -4,7 +4,7 @@ import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import com.linli.blackcatnews.model.NewsCategory
+import com.linli.blackcatnews.domain.model.NewsCategory
 
 /**
  * 分類 Chip 組件

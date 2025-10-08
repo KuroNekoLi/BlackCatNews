@@ -1,18 +1,17 @@
-package com.linli.blackcatnews.components
+package com.linli.blackcatnews.ui.components
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.interop.UIKitView
 import androidx.compose.ui.viewinterop.UIKitInteropProperties
 import androidx.compose.ui.viewinterop.UIKitView
 import kotlinx.cinterop.ExperimentalForeignApi
 import kotlinx.cinterop.readValue
 import platform.CoreGraphics.CGRectZero
 import platform.Foundation.NSURL
+import platform.WebKit.WKPreferences
 import platform.WebKit.WKWebView
 import platform.WebKit.WKWebViewConfiguration
-import platform.WebKit.WKPreferences
 
 /**
  * iOS 平台的 HTML 渲染实现

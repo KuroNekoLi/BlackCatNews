@@ -1,7 +1,7 @@
-package com.linli.blackcatnews.components
+package com.linli.blackcatnews.ui.components
 
-import android.webkit.WebView
 import android.webkit.WebSettings
+import android.webkit.WebView
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.viewinterop.AndroidView

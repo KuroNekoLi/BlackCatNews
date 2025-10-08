@@ -1,4 +1,4 @@
-package com.linli.blackcatnews.model
+package com.linli.blackcatnews.domain.model
 
 /**
  * 新聞條目數據模型

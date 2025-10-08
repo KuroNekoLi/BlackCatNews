@@ -17,8 +17,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import com.linli.blackcatnews.model.NewsCategory
-import com.linli.blackcatnews.model.NewsItem
+import com.linli.blackcatnews.domain.model.NewsCategory
+import com.linli.blackcatnews.domain.model.NewsItem
 import com.linli.blackcatnews.ui.components.CategoryChip
 import com.linli.blackcatnews.ui.components.NewsCard
 

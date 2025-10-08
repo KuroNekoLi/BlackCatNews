@@ -1,5 +1,5 @@
 // File: HtmlParser.kt
-package com.linli.blackcatnews.parser
+package com.linli.blackcatnews.utils
 
 import com.fleeksoft.ksoup.Ksoup
 import com.fleeksoft.ksoup.nodes.Document

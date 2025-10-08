@@ -1,4 +1,4 @@
-package com.linli.blackcatnews.model
+package com.linli.blackcatnews.domain.model
 
 import kotlinx.serialization.Serializable
 

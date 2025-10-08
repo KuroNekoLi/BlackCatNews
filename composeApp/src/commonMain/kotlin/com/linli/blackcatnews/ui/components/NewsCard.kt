@@ -18,7 +18,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
-import com.linli.blackcatnews.model.NewsItem
+import com.linli.blackcatnews.domain.model.NewsItem
 
 /**
  * 新聞卡片組件
