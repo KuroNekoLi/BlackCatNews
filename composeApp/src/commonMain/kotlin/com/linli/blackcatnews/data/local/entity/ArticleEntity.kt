@@ -61,8 +61,8 @@ data class ArticleEntity(
 
     // 本地狀態
     val isFavorite: Boolean = false,
-    val createdAt: Long = System.currentTimeMillis(),
-    val updatedAt: Long = System.currentTimeMillis()
+    val createdAt: Long,
+    val updatedAt: Long
 )
 
 /**
