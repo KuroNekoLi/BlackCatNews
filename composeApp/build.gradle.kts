@@ -7,6 +7,7 @@ plugins {
     alias(libs.plugins.composeCompiler)
     alias(libs.plugins.kotlinx.serialization)
     alias(libs.plugins.ksp)
+    alias(libs.plugins.kotlinCocoapods)
 }
 
 kotlin {
@@ -16,11 +17,18 @@ kotlin {
         }
     }
     
-    listOf(
-        iosArm64(),
-        iosSimulatorArm64()
-    ).forEach { iosTarget ->
-        iosTarget.binaries.framework {
+    // iOS targets
+    iosArm64()
+    iosSimulatorArm64()
+    
+    // CocoaPods 配置 - 自动支持 Debug 和 Release
+    cocoapods {
+        summary = "Black Cat News - AI 雙語新聞學習"
+        homepage = "https://github.com/linli/BlackCatNews"
+        version = "1.0"
+        ios.deploymentTarget = "15.0"
+        
+        framework {
             baseName = "ComposeApp"
             isStatic = true
         }
@@ -55,6 +63,7 @@ kotlin {
             implementation(libs.ktor.client.logging)
             implementation(libs.navigation.compose)
             implementation(libs.kotlinx.serialization.json)
+            implementation(libs.kotlinx.datetime)
             implementation(libs.koin.core)
             implementation(libs.koin.compose)
             implementation(libs.koin.compose.viewmodel)
@@ -69,7 +78,6 @@ kotlin {
 
 dependencies {
     debugImplementation(compose.uiTooling)
-    add("kspCommonMainMetadata", libs.room.compiler)
     add("kspAndroid", libs.room.compiler)
     add("kspIosArm64", libs.room.compiler)
     add("kspIosSimulatorArm64", libs.room.compiler)
@@ -92,25 +100,19 @@ android {
         }
     }
     buildTypes {
-        getByName("release") {
+        debug {
+            applicationIdSuffix = ".debug"
+            versionNameSuffix = "-debug"
+        }
+        release {
+            // 建議真機測試時先關混淆，正式釋出再開
             isMinifyEnabled = false
+            // 正式釋出時務必改為 release 簽章
+            signingConfig = signingConfigs.getByName("debug")
         }
     }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
-    }
-}
-
-tasks.withType<com.google.devtools.ksp.gradle.KspAATask>().configureEach {
-    val taskName = name
-    // 对于 Debug 构建变体
-    if (taskName.contains("Debug")) {
-        dependsOn(tasks.named("generateResourceAccessorsForAndroidDebug"))
-        dependsOn(tasks.named("generateResourceAccessorsForAndroidMain"))
-        dependsOn(tasks.named("generateActualResourceCollectorsForAndroidMain"))
-        dependsOn(tasks.named("generateComposeResClass"))
-        dependsOn(tasks.named("generateResourceAccessorsForCommonMain"))
-        dependsOn(tasks.named("generateExpectResourceCollectorsForCommonMain"))
     }
 }
