@@ -73,6 +73,17 @@ interface ArticleDao {
     fun getArticleById(id: String): Flow<ArticleEntity?>
 
     /**
+     * 取得單篇文章（非 Flow 版本）
+     *
+     * 用於需要同步查詢時（例如刷新數據時保持收藏狀態）
+     *
+     * @param id 文章 ID
+     * @return ArticleEntity? 查詢結果
+     */
+    @Query("SELECT * FROM articles WHERE id = :id")
+    suspend fun getArticleByIdOnce(id: String): ArticleEntity?
+
+    /**
      * 獲取收藏的文章
      *
      * @return Flow<List<ArticleEntity>> 收藏文章列表的數據流

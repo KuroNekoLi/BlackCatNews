@@ -49,9 +49,11 @@ import com.linli.blackcatnews.domain.model.BilingualText
 import com.linli.blackcatnews.domain.model.GlossaryItem
 import com.linli.blackcatnews.domain.model.GrammarPoint
 import com.linli.blackcatnews.domain.model.NewsCategory
+import com.linli.blackcatnews.domain.model.PhraseIdiom
 import com.linli.blackcatnews.domain.model.Quiz
 import com.linli.blackcatnews.domain.model.QuizQuestion
 import com.linli.blackcatnews.domain.model.ReadingMode
+import com.linli.blackcatnews.domain.model.SentencePattern
 import com.linli.blackcatnews.ui.components.BilingualTextView
 import com.linli.blackcatnews.ui.components.GlossaryCard
 import com.linli.blackcatnews.ui.components.GrammarPointCard
@@ -233,7 +235,7 @@ fun QuizPanel(
                     } else {
                         // 顯示分數
                         val correctCount = quiz.indices.count { index ->
-                            userAnswers[index] == quiz[index].correctAnswer
+                            userAnswers[index] == quiz[index].correctAnswerIndex
                         }
                         Card(
                             modifier = Modifier.fillMaxWidth(),
@@ -295,7 +297,7 @@ fun QuizQuestionItem(
         // 選項
         question.options.forEachIndexed { index, option ->
             val isSelected = selectedAnswer == index
-            val isCorrect = index == question.correctAnswer
+            val isCorrect = index == question.correctAnswerIndex
 
             // 確定選項的顏色
             val backgroundColor = when {
@@ -602,39 +604,67 @@ private fun getSampleArticleDetail(): ArticleDetail {
         glossary = listOf(
             GlossaryItem(
                 word = "artificial intelligence",
+                partOfSpeech = "noun",
                 translation = "人工智能",
                 pronunciation = "/ˌɑːrtɪˈfɪʃl ɪnˈtelɪdʒəns/",
-                example = "Artificial intelligence is transforming healthcare."
+                definitionEnglish = "The simulation of human intelligence processes by machines, especially computer systems.",
+                definitionChinese = "由機器（特別是電腦系統）模擬人類智能的過程。",
+                exampleEnglish = "Artificial intelligence is transforming healthcare.",
+                exampleChinese = "人工智慧正在改變醫療產業。"
             ),
             GlossaryItem(
                 word = "automation",
+                partOfSpeech = "noun",
                 translation = "自動化",
                 pronunciation = "/ˌɔːtəˈmeɪʃn/",
-                example = "Automation has increased factory productivity."
+                definitionEnglish = "The use of machines and technology to make processes operate automatically without human intervention.",
+                definitionChinese = "利用機器與科技使流程自動運作，無需人為干預。",
+                exampleEnglish = "Automation has increased factory productivity.",
+                exampleChinese = "自動化提升了工廠的生產力。"
             ),
             GlossaryItem(
                 word = "emerging",
+                partOfSpeech = "adjective",
                 translation = "新興的",
                 pronunciation = "/ɪˈmɜːrdʒɪŋ/",
-                example = "Emerging technologies are reshaping society."
+                definitionEnglish = "Becoming apparent, important, or prominent; newly developing.",
+                definitionChinese = "逐漸顯現、重要或突出的；正在發展中的。",
+                exampleEnglish = "Emerging technologies are reshaping society.",
+                exampleChinese = "新興技術正在重塑社會。"
             )
         ),
         grammarPoints = listOf(
             GrammarPoint(
-                title = "Present Perfect Tense",
-                explanation = "用於描述過去發生但與現在相關的動作",
-                examples = listOf(
-                    "AI has fundamentally altered the landscape.",
-                    "Companies have integrated AI technologies."
-                )
+                rule = "Present Perfect Tense",
+                explanationEnglish = "Used to describe past actions that continue to influence the present.",
+                explanationChinese = "用於描述過去發生但對現在仍有影響的動作。",
+                exampleEnglish = "AI has fundamentally altered the landscape.",
+                exampleChinese = "人工智慧已經從根本上改變了局勢。"
             ),
             GrammarPoint(
-                title = "Passive Voice",
-                explanation = "被動語態用於強調動作本身而非執行者",
-                examples = listOf(
-                    "AI is expected to boost global GDP.",
-                    "Ethical concerns must be addressed."
-                )
+                rule = "Passive Voice",
+                explanationEnglish = "Highlights the action itself rather than the actor performing it.",
+                explanationChinese = "著重於動作本身而非執行者。",
+                exampleEnglish = "AI is expected to boost global GDP.",
+                exampleChinese = "人工智慧被預期將提升全球 GDP。"
+            )
+        ),
+        sentencePatterns = listOf(
+            SentencePattern(
+                patternEnglish = "Subject + claim + that + clause",
+                explanationEnglish = "Used to report a claim or assertion made by someone.",
+                explanationChinese = "用於表達某人提出的主張或陳述。",
+                exampleEnglish = "Researchers claim that AI boosts productivity.",
+                exampleChinese = "研究人員聲稱人工智慧能提升生產力。"
+            )
+        ),
+        phrases = listOf(
+            PhraseIdiom(
+                phraseEnglish = "pay dividends",
+                explanationEnglish = "To bring advantages or useful results.",
+                explanationChinese = "帶來好處或實際成果。",
+                exampleEnglish = "Investing in training pays dividends in the long run.",
+                exampleChinese = "投入訓練最終會帶來長期效益。"
             )
         ),
         quiz = Quiz(
@@ -648,8 +678,9 @@ private fun getSampleArticleDetail(): ArticleDetail {
                         "20%",
                         "25%"
                     ),
-                    correctAnswer = 1,
-                    explanation = "The article states that AI-driven automation is expected to boost global GDP by approximately 14% by 2030."
+                    correctAnswerIndex = 1,
+                    explanation = "The article states that AI-driven automation is expected to boost global GDP by approximately 14% by 2030.",
+                    correctAnswerKey = "B"
                 ),
                 QuizQuestion(
                     id = "q2",
@@ -660,8 +691,9 @@ private fun getSampleArticleDetail(): ArticleDetail {
                         "Responsible development",
                         "Global competition"
                     ),
-                    correctAnswer = 2,
-                    explanation = "Experts emphasize the importance of responsible AI development."
+                    correctAnswerIndex = 2,
+                    explanation = "Experts emphasize the importance of responsible AI development.",
+                    correctAnswerKey = "C"
                 ),
                 QuizQuestion(
                     id = "q3",
@@ -672,8 +704,9 @@ private fun getSampleArticleDetail(): ArticleDetail {
                         "Increased salaries",
                         "Innovative products"
                     ),
-                    correctAnswer = 2,
-                    explanation = "The article mentions efficiency, cost reduction, and innovation, but not increased salaries."
+                    correctAnswerIndex = 2,
+                    explanation = "The article mentions efficiency, cost reduction, and innovation, but not increased salaries.",
+                    correctAnswerKey = "C"
                 ),
                 QuizQuestion(
                     id = "q4",
@@ -684,8 +717,9 @@ private fun getSampleArticleDetail(): ArticleDetail {
                         "Ensuring equitable access",
                         "Building infrastructure"
                     ),
-                    correctAnswer = 2,
-                    explanation = "The article states that ensuring equitable access remains a critical challenge for policymakers."
+                    correctAnswerIndex = 2,
+                    explanation = "The article states that ensuring equitable access remains a critical challenge for policymakers.",
+                    correctAnswerKey = "C"
                 ),
                 QuizQuestion(
                     id = "q5",
@@ -696,8 +730,9 @@ private fun getSampleArticleDetail(): ArticleDetail {
                         "Complicating them",
                         "Delaying them"
                     ),
-                    correctAnswer = 1,
-                    explanation = "The article mentions that AI is improving operational processes."
+                    correctAnswerIndex = 1,
+                    explanation = "The article mentions that AI is improving operational processes.",
+                    correctAnswerKey = "B"
                 )
             )
         )

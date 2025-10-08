@@ -1,65 +1,88 @@
 package com.linli.blackcatnews.data.mapper
 
 import com.linli.blackcatnews.data.local.entity.ArticleEntity
-import com.linli.blackcatnews.data.remote.dto.*
-import com.linli.blackcatnews.domain.model.*
+import com.linli.blackcatnews.data.local.entity.ComprehensionQuestionEntity
+import com.linli.blackcatnews.data.local.entity.GrammarItemEntity
+import com.linli.blackcatnews.data.local.entity.PhraseIdiomEntity
+import com.linli.blackcatnews.data.local.entity.SentencePatternEntity
+import com.linli.blackcatnews.data.local.entity.VocabularyItemEntity
+import com.linli.blackcatnews.data.remote.dto.AiArticleDto
+import com.linli.blackcatnews.data.remote.dto.ComprehensionQuestionDto
+import com.linli.blackcatnews.data.remote.dto.GrammarItemDto
+import com.linli.blackcatnews.data.remote.dto.PhraseIdiomDto
+import com.linli.blackcatnews.data.remote.dto.SentencePatternDto
+import com.linli.blackcatnews.data.remote.dto.VocabularyItemDto
+import com.linli.blackcatnews.domain.model.ArticleDetail
+import com.linli.blackcatnews.domain.model.BilingualContent
+import com.linli.blackcatnews.domain.model.BilingualParagraph
+import com.linli.blackcatnews.domain.model.BilingualText
+import com.linli.blackcatnews.domain.model.GlossaryItem
+import com.linli.blackcatnews.domain.model.GrammarPoint
+import com.linli.blackcatnews.domain.model.NewsCategory
+import com.linli.blackcatnews.domain.model.NewsItem
+import com.linli.blackcatnews.domain.model.PhraseIdiom
+import com.linli.blackcatnews.domain.model.Quiz
+import com.linli.blackcatnews.domain.model.QuizQuestion
+import com.linli.blackcatnews.domain.model.SentencePattern
 import kotlinx.datetime.Clock
+import kotlinx.serialization.decodeFromString
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
 
 /**
- * 文章數據映射器
+ * 文章資料映射器
  *
- * 負責在不同層之間進行數據轉換：
- * - DTO (Data Transfer Object) → Entity (Database)
- * - Entity (Database) → Domain (Business Logic)
- * - DTO → Domain（用於快速展示）
- *
- * 遵循單向數據流和分層架構原則
+ * 負責處理不同層之間的資料轉換：
+ * - DTO ↔ Entity（遠端 ↔ 本地資料庫）
+ * - Entity ↔ Domain（本地資料庫 ↔ 領域模型）
  */
 object ArticleMapper {
 
+    private val jsonFormatter: Json = Json {
+        ignoreUnknownKeys = true
+        encodeDefaults = true
+    }
+
     /**
-     * 將 API 響應 DTO 轉換為數據庫 Entity
-     *
-     * @param dto API 響應的數據傳輸對象
-     * @param isFavorite 是否為收藏（默認 false）
-     * @return ArticleEntity 數據庫實體
+     * 將遠端 DTO 轉換為 Room Entity，並保留既有收藏與建立時間
      */
-    fun dtoToEntity(dto: AiArticleDto, isFavorite: Boolean = false): ArticleEntity {
-        val currentTime = kotlinx.datetime.Clock.System.now().toEpochMilliseconds()
+    fun dtoToEntity(dto: AiArticleDto, existing: ArticleEntity? = null): ArticleEntity {
+        val now = Clock.System.now().toEpochMilliseconds()
+        val createdAt = existing?.createdAt ?: now
+        val summaryText = dto.summaryEnglish?.takeIf { it.isNotBlank() }
+            ?: dto.cleanedTextEnglish.lineSequence().firstOrNull()?.take(200)?.trim().orEmpty()
+
         return ArticleEntity(
-            id = dto.id,
+            id = dto.id.toString(),
             title = dto.title,
-            summary = dto.summary,
-            content = dto.content,
-            imageUrl = dto.imageUrl,
-            source = dto.source,
-            publishTime = dto.publishTime,
+            titleZh = dto.titleZh,
+            summary = summaryText,
+            summaryZh = dto.summaryChinese,
+            contentHtml = dto.optimizedHtml ?: dto.contentHtml,
+            cleanedText = dto.cleanedTextEnglish,
+            cleanedTextZh = dto.cleanedTextChinese,
+            imageUrl = extractHeroImage(dto.contentHtml),
+            sourceName = dto.sourceName,
+            publishTime = dto.publishedAt,
             section = dto.section,
-            url = dto.url,
+            url = dto.originalUrl,
             language = dto.language,
-
-            // 雙語內容
-            translatedTitle = dto.translatedTitle,
-            translatedSummary = dto.translatedSummary,
-            translatedContent = dto.translatedContent,
-
-            // 學習功能 - 暫時存為 null，後續可以實現 JSON 序列化
-            glossary = mapGlossaryToJson(dto.glossary),
-            grammarPoints = mapGrammarPointsToJson(dto.grammarPoints),
-            quiz = mapQuizToJson(dto.quiz),
-
-            // 元數據
-            isFavorite = isFavorite,
-            createdAt = currentTime,
-            updatedAt = currentTime
+            learningVocabulary = dto.explanation?.vocabulary?.map { it.toEntity() } ?: emptyList(),
+            learningGrammar = dto.explanation?.grammar?.map { it.toEntity() } ?: emptyList(),
+            learningSentencePatterns = dto.explanation?.sentencePatterns?.map { it.toEntity() }
+                ?: emptyList(),
+            learningPhrases = dto.explanation?.phrasesIdioms?.map { it.toEntity() } ?: emptyList(),
+            learningQuiz = dto.explanation?.comprehensionMcq?.mapIndexed { index, dtoQuestion ->
+                dtoQuestion.toEntity(index)
+            } ?: emptyList(),
+            isFavorite = existing?.isFavorite ?: false,
+            createdAt = createdAt,
+            updatedAt = now
         )
     }
 
     /**
-     * 將數據庫 Entity 轉換為領域層 NewsItem（列表項）
-     *
-     * @param entity 數據庫實體
-     * @return NewsItem 領域模型
+     * 將 Entity 轉換為領域層列表項目
      */
     fun entityToNewsItem(entity: ArticleEntity): NewsItem {
         return NewsItem(
@@ -67,102 +90,66 @@ object ArticleMapper {
             title = entity.title,
             summary = entity.summary,
             imageUrl = entity.imageUrl,
-            source = entity.source,
+            source = entity.sourceName,
             publishTime = entity.publishTime,
             category = mapSectionToCategory(entity.section)
         )
     }
 
     /**
-     * 將數據庫 Entity 轉換為領域層 ArticleDetail（詳情）
-     *
-     * @param entity 數據庫實體
-     * @return ArticleDetail 領域模型
+     * 將 Entity 轉換為領域層文章詳情
      */
     fun entityToArticleDetail(entity: ArticleEntity): ArticleDetail {
-        // 構建雙語內容（段落級別）
-        val paragraphs = splitContentToParagraphs(
-            englishContent = entity.content,
-            chineseContent = entity.translatedContent
-        )
-
         return ArticleDetail(
             id = entity.id,
             title = BilingualText(
                 english = entity.title,
-                chinese = entity.translatedTitle ?: entity.title
+                chinese = entity.titleZh ?: entity.title
             ),
             summary = BilingualText(
                 english = entity.summary,
-                chinese = entity.translatedSummary ?: entity.summary
+                chinese = entity.summaryZh ?: entity.summary
             ),
-            content = BilingualContent(paragraphs = paragraphs),
+            content = BilingualContent(
+                paragraphs = splitContentToParagraphs(
+                    englishContent = entity.cleanedText,
+                    chineseContent = entity.cleanedTextZh
+                )
+            ),
             imageUrl = entity.imageUrl,
-            source = entity.source,
+            source = entity.sourceName,
             publishTime = entity.publishTime,
             category = mapSectionToCategory(entity.section),
-            glossary = parseJsonToGlossary(entity.glossary),
-            grammarPoints = parseJsonToGrammarPoints(entity.grammarPoints),
-            quiz = parseJsonToQuiz(entity.quiz)
+            glossary = entity.learningVocabulary.map { it.toDomain() },
+            grammarPoints = entity.learningGrammar.map { it.toDomain() },
+            sentencePatterns = entity.learningSentencePatterns.map { it.toDomain() },
+            phrases = entity.learningPhrases.map { it.toDomain() },
+            quiz = entity.learningQuiz.takeIf { it.isNotEmpty() }?.let { questions ->
+                Quiz(questions.map { it.toDomain() })
+            }
         )
     }
 
     /**
-     * 將 DTO 直接轉換為 Domain NewsItem（用於快速展示）
-     *
-     * @param dto API 響應的數據傳輸對象
-     * @return NewsItem 領域模型
+     * DTO 直接轉換為列表展示使用
      */
     fun dtoToNewsItem(dto: AiArticleDto): NewsItem {
+        val summaryText = dto.summaryEnglish?.takeIf { it.isNotBlank() }
+            ?: dto.cleanedTextEnglish.lineSequence().firstOrNull()?.take(200)?.trim().orEmpty()
+
         return NewsItem(
-            id = dto.id,
+            id = dto.id.toString(),
             title = dto.title,
-            summary = dto.summary,
-            imageUrl = dto.imageUrl,
-            source = dto.source,
-            publishTime = dto.publishTime,
+            summary = summaryText,
+            imageUrl = extractHeroImage(dto.contentHtml),
+            source = dto.sourceName,
+            publishTime = dto.publishedAt,
             category = mapSectionToCategory(dto.section)
         )
     }
 
-    /**
-     * 將 DTO 直接轉換為 Domain ArticleDetail
-     *
-     * @param dto API 響應的數據傳輸對象
-     * @return ArticleDetail 領域模型
-     */
-    fun dtoToArticleDetail(dto: AiArticleDto): ArticleDetail {
-        val paragraphs = splitContentToParagraphs(
-            englishContent = dto.content,
-            chineseContent = dto.translatedContent
-        )
+    // region 私有輔助邏輯
 
-        return ArticleDetail(
-            id = dto.id,
-            title = BilingualText(
-                english = dto.title,
-                chinese = dto.translatedTitle ?: dto.title
-            ),
-            summary = BilingualText(
-                english = dto.summary,
-                chinese = dto.translatedSummary ?: dto.summary
-            ),
-            content = BilingualContent(paragraphs = paragraphs),
-            imageUrl = dto.imageUrl,
-            source = dto.source,
-            publishTime = dto.publishTime,
-            category = mapSectionToCategory(dto.section),
-            glossary = dto.glossary?.map { it.toDomain() } ?: emptyList(),
-            grammarPoints = dto.grammarPoints?.map { it.toDomain() } ?: emptyList(),
-            quiz = dto.quiz?.toDomain()
-        )
-    }
-
-    // ==================== 私有輔助方法 ====================
-
-    /**
-     * 將 section 字符串映射為 NewsCategory 枚舉
-     */
     private fun mapSectionToCategory(section: String): NewsCategory {
         return when (section.lowercase()) {
             "world" -> NewsCategory.WORLD
@@ -176,121 +163,159 @@ object ArticleMapper {
         }
     }
 
-    /**
-     * 將英文和中文內容分割為段落
-     */
     private fun splitContentToParagraphs(
         englishContent: String?,
         chineseContent: String?
     ): List<BilingualParagraph> {
         if (englishContent.isNullOrBlank()) return emptyList()
 
-        val englishParagraphs = englishContent.split("\n\n").filter { it.isNotBlank() }
-        val chineseParagraphs =
-            chineseContent?.split("\n\n")?.filter { it.isNotBlank() } ?: emptyList()
+        val englishSegments = englishContent
+            .split(Regex("\n{2,}"))
+            .mapNotNull { it.trim().takeIf(String::isNotEmpty) }
+        val chineseSegments = chineseContent
+            ?.split(Regex("\n{2,}"))
+            ?.mapNotNull { it.trim().takeIf(String::isNotEmpty) }
+            ?: emptyList()
 
-        return englishParagraphs.mapIndexed { index, english ->
+        return englishSegments.mapIndexed { index, englishParagraph ->
             BilingualParagraph(
-                english = english.trim(),
-                chinese = chineseParagraphs.getOrNull(index)?.trim() ?: "",
+                english = englishParagraph,
+                chinese = chineseSegments.getOrNull(index) ?: englishParagraph,
                 order = index
             )
         }
     }
 
-    /**
-     * 將 Glossary 列表轉換為 JSON 字符串（簡化版）
-     */
-    private fun mapGlossaryToJson(glossary: List<GlossaryItemDto>?): String? {
-        if (glossary.isNullOrEmpty()) return null
-        // TODO: 使用 kotlinx.serialization
-        return glossary.joinToString(",") { item ->
-            """{"word":"${item.word}","translation":"${item.translation}","pronunciation":"${item.pronunciation}","example":"${item.example}"}"""
-        }
+    private fun extractHeroImage(contentHtml: String): String? {
+        // 簡易解析，尋找第一個 img src
+        val regex = Regex("<img[^>]*src=\"([^\"]+)\"")
+        val match = regex.find(contentHtml)
+        return match?.groups?.get(1)?.value
     }
 
-    /**
-     * 將 GrammarPoints 列表轉換為 JSON 字符串（簡化版）
-     */
-    private fun mapGrammarPointsToJson(grammarPoints: List<GrammarPointDto>?): String? {
-        if (grammarPoints.isNullOrEmpty()) return null
-        // TODO: 使用 kotlinx.serialization
-        return null
+    private fun VocabularyItemDto.toEntity(): VocabularyItemEntity {
+        return VocabularyItemEntity(
+            partOfSpeech = partOfSpeech,
+            wordEnglish = wordEnglish,
+            wordChinese = wordChinese,
+            definitionEnglish = definitionEnglish,
+            definitionChinese = definitionChinese,
+            exampleEnglish = exampleEnglish,
+            exampleChinese = exampleChinese,
+            pronunciation = null
+        )
     }
 
-    /**
-     * 將 Quiz 轉換為 JSON 字符串（簡化版）
-     */
-    private fun mapQuizToJson(quiz: QuizDto?): String? {
-        if (quiz == null) return null
-        // TODO: 使用 kotlinx.serialization
-        return null
+    private fun GrammarItemDto.toEntity(): GrammarItemEntity {
+        return GrammarItemEntity(
+            ruleEnglish = ruleEnglish,
+            explanationEnglish = explanationEnglish,
+            explanationChinese = explanationChinese,
+            exampleEnglish = exampleEnglish,
+            exampleChinese = exampleChinese
+        )
     }
 
-    /**
-     * 從 JSON 字符串解析 Glossary 列表
-     */
-    private fun parseJsonToGlossary(json: String?): List<GlossaryItem> {
-        if (json.isNullOrBlank()) return emptyList()
-        // TODO: 實現 JSON 解析
-        return emptyList()
+    private fun SentencePatternDto.toEntity(): SentencePatternEntity {
+        return SentencePatternEntity(
+            patternEnglish = patternEnglish,
+            explanationEnglish = explanationEnglish,
+            explanationChinese = explanationChinese,
+            exampleEnglish = exampleEnglish,
+            exampleChinese = exampleChinese
+        )
     }
 
-    /**
-     * 從 JSON 字符串解析 GrammarPoints 列表
-     */
-    private fun parseJsonToGrammarPoints(json: String?): List<GrammarPoint> {
-        if (json.isNullOrBlank()) return emptyList()
-        // TODO: 實現 JSON 解析
-        return emptyList()
+    private fun PhraseIdiomDto.toEntity(): PhraseIdiomEntity {
+        return PhraseIdiomEntity(
+            phraseEnglish = phraseEnglish,
+            explanationEnglish = explanationEnglish,
+            explanationChinese = explanationChinese,
+            exampleEnglish = exampleEnglish,
+            exampleChinese = exampleChinese
+        )
     }
 
-    /**
-     * 從 JSON 字符串解析 Quiz
-     */
-    private fun parseJsonToQuiz(json: String?): Quiz? {
-        if (json.isNullOrBlank()) return null
-        // TODO: 實現 JSON 解析
-        return null
+    private fun ComprehensionQuestionDto.toEntity(index: Int): ComprehensionQuestionEntity {
+        return ComprehensionQuestionEntity(
+            id = (index + 1).toString(),
+            questionEnglish = questionEnglish,
+            questionChinese = questionChinese,
+            options = options.toSortedMap().values.toList(),
+            correctAnswerIndex = answerKeyLetterToIndex(),
+            correctAnswerKey = answerKey,
+            explanationEnglish = explanationEnglish,
+            explanationChinese = explanationChinese
+        )
     }
 
-    // ==================== DTO 到 Domain 擴展函數 ====================
+    private fun VocabularyItemEntity.toDomain(): GlossaryItem {
+        return GlossaryItem(
+            word = wordEnglish,
+            partOfSpeech = partOfSpeech,
+            translation = wordChinese ?: definitionChinese ?: wordEnglish,
+            pronunciation = pronunciation,
+            definitionEnglish = definitionEnglish,
+            definitionChinese = definitionChinese,
+            exampleEnglish = exampleEnglish,
+            exampleChinese = exampleChinese,
+            audioUrl = null
+        )
+    }
 
-    /**
-     * 將 GlossaryItemDto 轉換為 Domain 模型
-     */
-    private fun GlossaryItemDto.toDomain() = GlossaryItem(
-        word = word,
-        translation = translation,
-        pronunciation = pronunciation,
-        example = example,
-        audioUrl = audioUrl
-    )
+    private fun GrammarItemEntity.toDomain(): GrammarPoint {
+        return GrammarPoint(
+            rule = ruleEnglish,
+            explanationEnglish = explanationEnglish,
+            explanationChinese = explanationChinese,
+            exampleEnglish = exampleEnglish,
+            exampleChinese = exampleChinese
+        )
+    }
 
-    /**
-     * 將 GrammarPointDto 轉換為 Domain 模型
-     */
-    private fun GrammarPointDto.toDomain() = GrammarPoint(
-        title = title,
-        explanation = explanation,
-        examples = examples
-    )
+    private fun SentencePatternEntity.toDomain(): SentencePattern {
+        return SentencePattern(
+            patternEnglish = patternEnglish,
+            explanationEnglish = explanationEnglish,
+            explanationChinese = explanationChinese,
+            exampleEnglish = exampleEnglish,
+            exampleChinese = exampleChinese
+        )
+    }
 
-    /**
-     * 將 QuizDto 轉換為 Domain 模型
-     */
-    private fun QuizDto.toDomain() = Quiz(
-        questions = questions.map { it.toDomain() }
-    )
+    private fun PhraseIdiomEntity.toDomain(): PhraseIdiom {
+        return PhraseIdiom(
+            phraseEnglish = phraseEnglish,
+            explanationEnglish = explanationEnglish,
+            explanationChinese = explanationChinese,
+            exampleEnglish = exampleEnglish,
+            exampleChinese = exampleChinese
+        )
+    }
 
-    /**
-     * 將 QuizQuestionDto 轉換為 Domain 模型
-     */
-    private fun QuizQuestionDto.toDomain() = QuizQuestion(
-        id = id,
-        question = question,
-        options = options,
-        correctAnswer = correctAnswer,
-        explanation = explanation
-    )
+    private fun ComprehensionQuestionEntity.toDomain(): QuizQuestion {
+        return QuizQuestion(
+            id = id,
+            question = questionEnglish,
+            options = options,
+            correctAnswerIndex = correctAnswerIndex,
+            correctAnswerKey = correctAnswerKey,
+            explanation = explanationChinese ?: explanationEnglish.orEmpty()
+        )
+    }
+
+    private fun Map<String, String>.toSortedMap(): Map<String, String> {
+        return entries.sortedBy { it.key }.associate { it.key to it.value }
+    }
+
+    private fun ComprehensionQuestionDto.answerKeyLetterToIndex(): Int {
+        val normalized = answerKey.trim().uppercase()
+        return normalized.firstOrNull()?.let { letter -> letter - 'A' } ?: -1
+    }
+
+    fun serializeVocabulary(items: List<VocabularyItemDto>?): String? = null
+    fun serializeGrammar(items: List<GrammarItemDto>?): String? = null
+    fun serializeSentencePatterns(items: List<SentencePatternDto>?): String? = null
+    fun serializePhrases(items: List<PhraseIdiomDto>?): String? = null
+    fun serializeQuiz(items: List<ComprehensionQuestionDto>?): String? = null
 }

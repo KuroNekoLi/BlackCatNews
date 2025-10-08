@@ -8,159 +8,198 @@ import kotlinx.serialization.Serializable
  *
  * 對應 API: GET /api/ai-articles/random
  * 用於接收從後端返回的文章數據
- *
- * @property id 文章唯一識別碼
- * @property title 文章標題
- * @property summary 文章摘要
- * @property content 文章完整內容
- * @property imageUrl 文章封面圖片 URL
- * @property source 新聞來源（例如: BBC, CNN）
- * @property publishTime 發布時間
- * @property section 新聞分類（news, world, technology）
- * @property url 文章原始連結
- * @property language 文章語言（預設為英文）
- * @property translatedTitle 翻譯後的標題（繁體中文）
- * @property translatedSummary 翻譯後的摘要（繁體中文）
- * @property translatedContent 翻譯後的內容（繁體中文）
- * @property glossary 重點單字列表
- * @property grammarPoints 文法要點列表
- * @property quiz 閱讀測驗
- *
- * @see com.linli.blackcatnews.domain.model.Article
  */
 @Serializable
 data class AiArticleDto(
     @SerialName("id")
-    val id: String,
+    val id: Long,
 
-    @SerialName("title")
-    val title: String,
-
-    @SerialName("summary")
-    val summary: String,
-
-    @SerialName("content")
-    val content: String,
-
-    @SerialName("imageUrl")
-    val imageUrl: String? = null,
-
-    @SerialName("source")
-    val source: String,
-
-    @SerialName("publishTime")
-    val publishTime: String,
+    @SerialName("sourceName")
+    val sourceName: String,
 
     @SerialName("section")
     val section: String,
 
-    @SerialName("url")
-    val url: String,
+    @SerialName("title")
+    val title: String,
+
+    @SerialName("title_zh")
+    val titleZh: String? = null,
+
+    @SerialName("summary_en")
+    val summaryEnglish: String? = null,
+
+    @SerialName("summary_zh")
+    val summaryChinese: String? = null,
+
+    @SerialName("publishedAt")
+    val publishedAt: String,
+
+    @SerialName("originalUrl")
+    val originalUrl: String,
+
+    @SerialName("contentHtml")
+    val contentHtml: String,
+
+    @SerialName("cleaned_text")
+    val cleanedTextEnglish: String,
+
+    @SerialName("cleaned_text_zh")
+    val cleanedTextChinese: String? = null,
+
+    @SerialName("optimized_html")
+    val optimizedHtml: String? = null,
+
+    @SerialName("optimized_zh_html")
+    val optimizedZhHtml: String? = null,
 
     @SerialName("language")
     val language: String = "en",
 
-    // 雙語功能
-    @SerialName("translatedTitle")
-    val translatedTitle: String? = null,
+    @SerialName("explanation")
+    val explanation: ExplanationDto? = null
+)
 
-    @SerialName("translatedSummary")
-    val translatedSummary: String? = null,
+/**
+ * 學習輔助資料 DTO
+ */
+@Serializable
+data class ExplanationDto(
+    @SerialName("vocabulary")
+    val vocabulary: List<VocabularyItemDto>? = null,
 
-    @SerialName("translatedContent")
-    val translatedContent: String? = null,
+    @SerialName("grammar")
+    val grammar: List<GrammarItemDto>? = null,
 
-    // 學習功能
-    @SerialName("glossary")
-    val glossary: List<GlossaryItemDto>? = null,
+    @SerialName("sentence_patterns")
+    val sentencePatterns: List<SentencePatternDto>? = null,
 
-    @SerialName("grammarPoints")
-    val grammarPoints: List<GrammarPointDto>? = null,
+    @SerialName("phrases_idioms")
+    val phrasesIdioms: List<PhraseIdiomDto>? = null,
 
-    @SerialName("quiz")
-    val quiz: QuizDto? = null
+    @SerialName("comprehension_mcq")
+    val comprehensionMcq: List<ComprehensionQuestionDto>? = null
 )
 
 /**
  * 重點單字 DTO
- *
- * @property word 單字
- * @property translation 翻譯
- * @property pronunciation 發音（音標）
- * @property example 例句
- * @property audioUrl 發音音頻 URL
  */
 @Serializable
-data class GlossaryItemDto(
-    @SerialName("word")
-    val word: String,
+data class VocabularyItemDto(
+    @SerialName("pos")
+    val partOfSpeech: String? = null,
 
-    @SerialName("translation")
-    val translation: String,
+    @SerialName("word_en")
+    val wordEnglish: String,
 
-    @SerialName("pronunciation")
-    val pronunciation: String,
+    @SerialName("word_zh")
+    val wordChinese: String? = null,
 
-    @SerialName("example")
-    val example: String,
+    @SerialName("definition_en")
+    val definitionEnglish: String,
 
-    @SerialName("audioUrl")
-    val audioUrl: String? = null
+    @SerialName("definition_zh")
+    val definitionChinese: String? = null,
+
+    @SerialName("example_en")
+    val exampleEnglish: String,
+
+    @SerialName("example_zh")
+    val exampleChinese: String? = null
 )
 
 /**
- * 文法要點 DTO
- *
- * @property title 文法標題
- * @property explanation 文法解釋
- * @property examples 例句列表
+ * 文法說明 DTO
  */
 @Serializable
-data class GrammarPointDto(
-    @SerialName("title")
-    val title: String,
+data class GrammarItemDto(
+    @SerialName("rule_en")
+    val ruleEnglish: String,
 
-    @SerialName("explanation")
-    val explanation: String,
+    @SerialName("rule_zh")
+    val ruleChinese: String? = null,
 
-    @SerialName("examples")
-    val examples: List<String>
+    @SerialName("explanation_en")
+    val explanationEnglish: String,
+
+    @SerialName("explanation_zh")
+    val explanationChinese: String,
+
+    @SerialName("example_en")
+    val exampleEnglish: String,
+
+    @SerialName("example_zh")
+    val exampleChinese: String
 )
 
 /**
- * 閱讀測驗 DTO
- *
- * @property questions 問題列表
+ * 句型說明 DTO
  */
 @Serializable
-data class QuizDto(
-    @SerialName("questions")
-    val questions: List<QuizQuestionDto>
+data class SentencePatternDto(
+    @SerialName("pattern_en")
+    val patternEnglish: String,
+
+    @SerialName("pattern_zh")
+    val patternChinese: String? = null,
+
+    @SerialName("explanation_en")
+    val explanationEnglish: String,
+
+    @SerialName("explanation_zh")
+    val explanationChinese: String,
+
+    @SerialName("example_en")
+    val exampleEnglish: String,
+
+    @SerialName("example_zh")
+    val exampleChinese: String
 )
 
 /**
- * 測驗問題 DTO
- *
- * @property id 問題 ID
- * @property question 問題文本
- * @property options 選項列表
- * @property correctAnswer 正確答案的索引
- * @property explanation 解釋
+ * 片語／習語 DTO
  */
 @Serializable
-data class QuizQuestionDto(
-    @SerialName("id")
-    val id: String,
+data class PhraseIdiomDto(
+    @SerialName("phrase_en")
+    val phraseEnglish: String,
 
-    @SerialName("question")
-    val question: String,
+    @SerialName("phrase_zh")
+    val phraseChinese: String? = null,
+
+    @SerialName("explanation_en")
+    val explanationEnglish: String,
+
+    @SerialName("explanation_zh")
+    val explanationChinese: String,
+
+    @SerialName("example_en")
+    val exampleEnglish: String,
+
+    @SerialName("example_zh")
+    val exampleChinese: String
+)
+
+/**
+ * 閱讀測驗題目 DTO
+ */
+@Serializable
+data class ComprehensionQuestionDto(
+    @SerialName("question_en")
+    val questionEnglish: String,
+
+    @SerialName("question_zh")
+    val questionChinese: String? = null,
 
     @SerialName("options")
-    val options: List<String>,
+    val options: Map<String, String>,
 
-    @SerialName("correctAnswer")
-    val correctAnswer: Int,
+    @SerialName("answer")
+    val answerKey: String,
 
-    @SerialName("explanation")
-    val explanation: String
+    @SerialName("explanation_en")
+    val explanationEnglish: String? = null,
+
+    @SerialName("explanation_zh")
+    val explanationChinese: String? = null
 )

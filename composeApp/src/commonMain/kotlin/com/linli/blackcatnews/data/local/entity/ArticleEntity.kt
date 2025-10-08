@@ -4,6 +4,8 @@ import androidx.room.Entity
 import androidx.room.PrimaryKey
 import androidx.room.TypeConverter
 import androidx.room.TypeConverters
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 
@@ -15,20 +17,23 @@ import kotlinx.serialization.json.Json
  *
  * @property id 文章唯一標識符（主鍵）
  * @property title 文章標題
- * @property summary 文章摘要
- * @property content 文章完整內容
+ * @property titleZh 中文翻譯標題
+ * @property summary 文章摘要（英文）
+ * @property summaryZh 文章摘要（中文，可能為空）
+ * @property contentHtml 原始或優化後的 HTML 內容
+ * @property cleanedText 英文淨化內容
+ * @property cleanedTextZh 中文翻譯內容（可能為空）
  * @property imageUrl 文章封面圖片 URL
- * @property source 新聞來源
+ * @property sourceName 新聞來源
  * @property publishTime 發布時間
  * @property section 新聞分類
  * @property url 文章原始連結
  * @property language 文章語言
- * @property translatedTitle 翻譯後的標題
- * @property translatedSummary 翻譯後的摘要
- * @property translatedContent 翻譯後的內容
- * @property glossary 重點單字列表（JSON 字符串）
- * @property grammarPoints 文法要點列表（JSON 字符串）
- * @property quiz 閱讀測驗（JSON 字符串）
+ * @property learningVocabulary 學習詞彙列表
+ * @property learningGrammar 學習文法列表
+ * @property learningSentencePatterns 學習句型列表
+ * @property learningPhrases 學習片語／習語列表
+ * @property learningQuiz 閱讀測驗題目列表
  * @property isFavorite 是否收藏
  * @property createdAt 創建時間戳
  * @property updatedAt 更新時間戳
@@ -40,24 +45,25 @@ data class ArticleEntity(
     val id: String,
 
     val title: String,
+    val titleZh: String? = null,
     val summary: String,
-    val content: String,
-    val imageUrl: String?,
-    val source: String,
+    val summaryZh: String? = null,
+    val contentHtml: String,
+    val cleanedText: String,
+    val cleanedTextZh: String? = null,
+    val imageUrl: String? = null,
+    val sourceName: String,
     val publishTime: String,
     val section: String,
     val url: String,
     val language: String = "en",
 
-    // 雙語功能
-    val translatedTitle: String? = null,
-    val translatedSummary: String? = null,
-    val translatedContent: String? = null,
-
     // 學習功能（存儲為 JSON 字符串）
-    val glossary: String? = null,
-    val grammarPoints: String? = null,
-    val quiz: String? = null,
+    val learningVocabulary: List<VocabularyItemEntity> = emptyList(),
+    val learningGrammar: List<GrammarItemEntity> = emptyList(),
+    val learningSentencePatterns: List<SentencePatternEntity> = emptyList(),
+    val learningPhrases: List<PhraseIdiomEntity> = emptyList(),
+    val learningQuiz: List<ComprehensionQuestionEntity> = emptyList(),
 
     // 本地狀態
     val isFavorite: Boolean = false,
@@ -77,19 +83,104 @@ class Converters {
         isLenient = true
     }
 
-    /**
-     * 將字符串列表轉換為 JSON 字符串
-     */
     @TypeConverter
-    fun fromStringList(value: List<String>?): String? {
+    fun fromVocabularyList(value: List<VocabularyItemEntity>?): String? {
         return value?.let { json.encodeToString(it) }
     }
 
-    /**
-     * 將 JSON 字符串轉換為字符串列表
-     */
     @TypeConverter
-    fun toStringList(value: String?): List<String>? {
-        return value?.let { json.decodeFromString(it) }
+    fun toVocabularyList(value: String?): List<VocabularyItemEntity> {
+        return value?.let { json.decodeFromString(it) } ?: emptyList()
+    }
+
+    @TypeConverter
+    fun fromGrammarList(value: List<GrammarItemEntity>?): String? {
+        return value?.let { json.encodeToString(it) }
+    }
+
+    @TypeConverter
+    fun toGrammarList(value: String?): List<GrammarItemEntity> {
+        return value?.let { json.decodeFromString(it) } ?: emptyList()
+    }
+
+    @TypeConverter
+    fun fromSentencePatternList(value: List<SentencePatternEntity>?): String? {
+        return value?.let { json.encodeToString(it) }
+    }
+
+    @TypeConverter
+    fun toSentencePatternList(value: String?): List<SentencePatternEntity> {
+        return value?.let { json.decodeFromString(it) } ?: emptyList()
+    }
+
+    @TypeConverter
+    fun fromPhraseList(value: List<PhraseIdiomEntity>?): String? {
+        return value?.let { json.encodeToString(it) }
+    }
+
+    @TypeConverter
+    fun toPhraseList(value: String?): List<PhraseIdiomEntity> {
+        return value?.let { json.decodeFromString(it) } ?: emptyList()
+    }
+
+    @TypeConverter
+    fun fromQuizList(value: List<ComprehensionQuestionEntity>?): String? {
+        return value?.let { json.encodeToString(it) }
+    }
+
+    @TypeConverter
+    fun toQuizList(value: String?): List<ComprehensionQuestionEntity> {
+        return value?.let { json.decodeFromString(it) } ?: emptyList()
     }
 }
+
+@Serializable
+data class VocabularyItemEntity(
+    val partOfSpeech: String? = null,
+    val wordEnglish: String,
+    val wordChinese: String? = null,
+    val definitionEnglish: String,
+    val definitionChinese: String? = null,
+    val exampleEnglish: String,
+    val exampleChinese: String? = null,
+    val pronunciation: String? = null
+)
+
+@Serializable
+data class GrammarItemEntity(
+    val ruleEnglish: String,
+    val explanationEnglish: String,
+    val explanationChinese: String,
+    val exampleEnglish: String,
+    val exampleChinese: String
+)
+
+@Serializable
+data class SentencePatternEntity(
+    val patternEnglish: String,
+    val explanationEnglish: String,
+    val explanationChinese: String,
+    val exampleEnglish: String,
+    val exampleChinese: String
+)
+
+@Serializable
+data class PhraseIdiomEntity(
+    val phraseEnglish: String,
+    val explanationEnglish: String,
+    val explanationChinese: String,
+    val exampleEnglish: String,
+    val exampleChinese: String
+)
+
+@Serializable
+data class ComprehensionQuestionEntity(
+    val id: String,
+    val questionEnglish: String,
+    val questionChinese: String? = null,
+    val options: List<String>,
+    val correctAnswerIndex: Int,
+    val correctAnswerKey: String,
+    val explanationEnglish: String? = null,
+    val explanationChinese: String? = null
+)

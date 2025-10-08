@@ -19,6 +19,8 @@ data class ArticleDetail(
     // 學習輔助功能
     val glossary: List<GlossaryItem> = emptyList(),
     val grammarPoints: List<GrammarPoint> = emptyList(),
+    val sentencePatterns: List<SentencePattern> = emptyList(),
+    val phrases: List<PhraseIdiom> = emptyList(),
     val quiz: Quiz? = null
 )
 
@@ -52,9 +54,13 @@ data class BilingualParagraph(
 @Serializable
 data class GlossaryItem(
     val word: String,
+    val partOfSpeech: String?,
     val translation: String,
-    val pronunciation: String,
-    val example: String,
+    val pronunciation: String?,
+    val definitionEnglish: String,
+    val definitionChinese: String?,
+    val exampleEnglish: String,
+    val exampleChinese: String?,
     val audioUrl: String? = null
 )
 
@@ -63,9 +69,35 @@ data class GlossaryItem(
  */
 @Serializable
 data class GrammarPoint(
-    val title: String,
-    val explanation: String,
-    val examples: List<String>
+    val rule: String,
+    val explanationEnglish: String,
+    val explanationChinese: String,
+    val exampleEnglish: String,
+    val exampleChinese: String
+)
+
+/**
+ * 句子模式
+ */
+@Serializable
+data class SentencePattern(
+    val patternEnglish: String,
+    val explanationEnglish: String,
+    val explanationChinese: String,
+    val exampleEnglish: String,
+    val exampleChinese: String
+)
+
+/**
+ * 片語／習語
+ */
+@Serializable
+data class PhraseIdiom(
+    val phraseEnglish: String,
+    val explanationEnglish: String,
+    val explanationChinese: String,
+    val exampleEnglish: String,
+    val exampleChinese: String
 )
 
 /**
@@ -81,7 +113,8 @@ data class QuizQuestion(
     val id: String,
     val question: String,
     val options: List<String>,
-    val correctAnswer: Int, // 正確答案的索引
+    val correctAnswerIndex: Int,
+    val correctAnswerKey: String,
     val explanation: String
 )
 

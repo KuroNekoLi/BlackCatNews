@@ -133,11 +133,13 @@ fun GlossaryCard(
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.primary
                     )
-                    Text(
-                        text = item.pronunciation,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+                    item.pronunciation?.let { pronunciationText ->
+                        Text(
+                            text = pronunciationText,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
                 }
                 // 播放發音按鈕
                 if (item.audioUrl != null) {
@@ -151,7 +153,14 @@ fun GlossaryCard(
 
             // 中文翻譯
             Text(
-                text = "💡 ${item.translation}",
+                text = buildString {
+                    append("💡 ")
+                    append(item.translation)
+                    item.partOfSpeech?.let { pos ->
+                        append("  ·  ")
+                        append(pos.uppercase())
+                    }
+                },
                 style = MaterialTheme.typography.bodyLarge,
                 color = MaterialTheme.colorScheme.secondary
             )
@@ -164,7 +173,14 @@ fun GlossaryCard(
                 shape = MaterialTheme.shapes.medium
             ) {
                 Text(
-                    text = "📖 ${item.example}",
+                    text = buildString {
+                        append("📖 ")
+                        appendLine(item.exampleEnglish)
+                        item.exampleChinese?.let { chinese ->
+                            appendLine()
+                            append(chinese)
+                        }
+                    }.trim(),
                     style = MaterialTheme.typography.bodyMedium,
                     modifier = Modifier.padding(12.dp)
                 )
@@ -189,7 +205,7 @@ fun GrammarPointCard(
             modifier = Modifier.padding(16.dp)
         ) {
             Text(
-                text = point.title,
+                text = point.rule,
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.primary
@@ -198,29 +214,45 @@ fun GrammarPointCard(
             Spacer(modifier = Modifier.height(8.dp))
 
             Text(
-                text = point.explanation,
-                style = MaterialTheme.typography.bodyMedium
+                text = point.explanationEnglish,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurface
             )
 
-            if (point.examples.isNotEmpty()) {
-                Spacer(modifier = Modifier.height(12.dp))
-                Text(
-                    text = "📝 例句：",
-                    style = MaterialTheme.typography.labelMedium,
-                    fontWeight = FontWeight.Bold
-                )
-                point.examples.forEach { example ->
+            Spacer(modifier = Modifier.height(8.dp))
+
+            Text(
+                text = point.explanationChinese,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            Text(
+                text = "📝 範例",
+                style = MaterialTheme.typography.labelMedium,
+                fontWeight = FontWeight.Bold
+            )
+
+            Spacer(modifier = Modifier.height(4.dp))
+
+            Surface(
+                color = MaterialTheme.colorScheme.surfaceVariant,
+                shape = MaterialTheme.shapes.small
+            ) {
+                Column(modifier = Modifier.padding(8.dp)) {
+                    Text(
+                        text = "• ${point.exampleEnglish}",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
                     Spacer(modifier = Modifier.height(4.dp))
-                    Surface(
-                        color = MaterialTheme.colorScheme.surfaceVariant,
-                        shape = MaterialTheme.shapes.small
-                    ) {
-                        Text(
-                            text = "• $example",
-                            style = MaterialTheme.typography.bodySmall,
-                            modifier = Modifier.padding(8.dp)
-                        )
-                    }
+                    Text(
+                        text = "• ${point.exampleChinese}",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                 }
             }
         }
@@ -255,7 +287,7 @@ fun QuizQuestionCard(
 
             question.options.forEachIndexed { index, option ->
                 val isSelected = selectedAnswer == index
-                val isCorrect = index == question.correctAnswer
+                val isCorrect = index == question.correctAnswerIndex
                 val shouldHighlight = showAnswer && (isSelected || isCorrect)
 
                 val backgroundColor = when {
