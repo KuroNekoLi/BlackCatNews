@@ -17,6 +17,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.text.font.FontWeight
 import coil3.compose.AsyncImage
 import com.linli.blackcatnews.domain.model.NewsItem
 
@@ -28,7 +29,8 @@ import com.linli.blackcatnews.domain.model.NewsItem
 fun NewsCard(
     newsItem: NewsItem,
     onClick: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    prefersChinese: Boolean = false
 ) {
     Card(
         modifier = modifier
@@ -64,20 +66,34 @@ fun NewsCard(
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 // 標題
+                val titleToShow = if (prefersChinese) {
+                    newsItem.titleZh?.takeIf { it.isNotBlank() } ?: newsItem.title
+                } else {
+                    newsItem.title
+                }
                 Text(
-                    text = newsItem.title,
+                    text = titleToShow,
                     style = MaterialTheme.typography.titleMedium,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis
                 )
 
                 // 摘要
+                val summaryToShow = if (prefersChinese) {
+                    newsItem.summaryZh?.takeIf { it.isNotBlank() } ?: newsItem.summary
+                } else {
+                    newsItem.summary
+                }
+                val summaryLabel = if (prefersChinese) "摘要" else "Summary"
                 Text(
-                    text = newsItem.summary,
+                    text = summaryLabel,
+                    style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                Text(
+                    text = summaryToShow,
                     style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 3,
-                    overflow = TextOverflow.Ellipsis
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
 
                 // 來源和時間

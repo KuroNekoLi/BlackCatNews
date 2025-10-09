@@ -6,13 +6,23 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
+import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -26,6 +36,11 @@ import com.linli.blackcatnews.presentation.state.HomeUiEvent
 import com.linli.blackcatnews.presentation.viewmodel.HomeViewModel
 import com.linli.blackcatnews.ui.components.CategoryChip
 import com.linli.blackcatnews.ui.components.NewsCard
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.AssistChip
+import androidx.compose.material3.AssistChipDefaults
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 
 /**
  * 首頁屏幕
@@ -41,6 +56,7 @@ fun HomeScreen(
     val uiState by viewModel.uiState.collectAsState()
     val selectedCategory = uiState.selectedCategory
     val articles = uiState.articles
+    val prefersChinese = uiState.prefersChinese
     val shouldShowUnsupportedCategoryMessage =
         !uiState.isRefreshing && articles.isEmpty() && selectedCategory !in supportedCategories
 
@@ -82,6 +98,15 @@ fun HomeScreen(
             modifier = Modifier.fillMaxWidth()
         )
 
+        // 語言切換
+        LanguageToggleRow(
+            useChinese = prefersChinese,
+            onToggle = { viewModel.onEvent(HomeUiEvent.ToggleLanguage(it)) },
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 8.dp)
+        )
+
         // 新聞列表
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
@@ -91,7 +116,8 @@ fun HomeScreen(
             items(articles, key = { it.id }) { newsItem ->
                 NewsCard(
                     newsItem = newsItem,
-                    onClick = { onNewsItemClick(newsItem) }
+                    onClick = { onNewsItemClick(newsItem) },
+                    prefersChinese = prefersChinese
                 )
             }
         }
@@ -154,3 +180,79 @@ private val supportedCategories = setOf(
     NewsCategory.WORLD,
     NewsCategory.TECH
 )
+
+@Composable
+private fun LanguageToggleRow(
+    useChinese: Boolean,
+    onToggle: (Boolean) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Surface(
+        modifier = modifier,
+        shape = RoundedCornerShape(16.dp),
+        tonalElevation = 2.dp,
+        color = MaterialTheme.colorScheme.surfaceVariant
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 12.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text(
+                    text = "內容顯示語言",
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                Text(
+                    text = if (useChinese) "目前顯示：中文" else "Currently showing: English",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                LanguageChip(
+                    text = "English",
+                    selected = !useChinese,
+                    onClick = { onToggle(false) }
+                )
+                LanguageChip(
+                    text = "中文",
+                    selected = useChinese,
+                    onClick = { onToggle(true) }
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun LanguageChip(
+    text: String,
+    selected: Boolean,
+    onClick: () -> Unit
+) {
+    AssistChip(
+        onClick = onClick,
+        label = {
+            Text(
+                text = text,
+                style = MaterialTheme.typography.labelMedium
+            )
+        },
+        colors = AssistChipDefaults.assistChipColors(
+            containerColor = if (selected) {
+                MaterialTheme.colorScheme.primaryContainer
+            } else {
+                MaterialTheme.colorScheme.surface
+            },
+            labelColor = if (selected) {
+                MaterialTheme.colorScheme.onPrimaryContainer
+            } else {
+                MaterialTheme.colorScheme.onSurface
+            }
+        )
+    )
+}

@@ -26,6 +26,8 @@ import org.koin.compose.viewmodel.koinViewModel
 import org.koin.core.parameter.parametersOf
 import com.linli.blackcatnews.presentation.viewmodel.ArticleDetailViewModel
 import com.linli.blackcatnews.presentation.viewmodel.HomeViewModel
+import com.linli.blackcatnews.presentation.viewmodel.SettingsViewModel
+import org.koin.compose.koinInject
 
 /**
  * 主導航結構
@@ -126,7 +128,7 @@ fun AppNavigation() {
 
             // 設定頁面
             composable<SettingsRoute> {
-                SettingsScreen()
+                SettingsScreen(viewModel = koinInject())
             }
         }
     }

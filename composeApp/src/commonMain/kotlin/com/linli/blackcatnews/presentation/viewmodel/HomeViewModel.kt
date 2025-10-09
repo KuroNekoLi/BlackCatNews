@@ -2,6 +2,7 @@ package com.linli.blackcatnews.presentation.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.linli.blackcatnews.data.preferences.UserPreferencesRepository
 import com.linli.blackcatnews.domain.model.ArticleSection
 import com.linli.blackcatnews.domain.model.NewsCategory
 import com.linli.blackcatnews.domain.repository.Result
@@ -22,7 +23,8 @@ import kotlinx.coroutines.launch
 
 class HomeViewModel(
     private val getArticlesBySectionUseCase: GetArticlesBySectionUseCase,
-    private val refreshArticlesUseCase: RefreshArticlesUseCase
+    private val refreshArticlesUseCase: RefreshArticlesUseCase,
+    private val preferencesRepository: UserPreferencesRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(HomeUiState(isRefreshing = true))
@@ -34,6 +36,7 @@ class HomeViewModel(
     private var articlesJob: Job? = null
 
     init {
+        observePreferences()
         observeArticles(
             category = NewsCategory.LATEST,
             forceRefresh = false,
@@ -45,6 +48,8 @@ class HomeViewModel(
         when (event) {
             HomeUiEvent.Refresh -> refresh()
             is HomeUiEvent.SelectCategory -> handleCategorySelected(event.category)
+            is HomeUiEvent.ToggleLanguage -> updateLanguagePreference(event.useChinese)
+            HomeUiEvent.LoadPreferences -> observePreferences()
             is HomeUiEvent.OpenArticle -> Unit
         }
     }
@@ -148,6 +153,21 @@ class HomeViewModel(
             forceRefresh = false,
             shouldClearExistingArticles = isSelectingNewCategory
         )
+    }
+
+    private fun updateLanguagePreference(useChinese: Boolean) {
+        _uiState.value = _uiState.value.copy(prefersChinese = useChinese)
+        viewModelScope.launch {
+            preferencesRepository.setPrefersChinese(useChinese)
+        }
+    }
+
+    private fun observePreferences() {
+        viewModelScope.launch {
+            preferencesRepository.prefersChinese().collect { prefersChinese ->
+                _uiState.value = _uiState.value.copy(prefersChinese = prefersChinese)
+            }
+        }
     }
 
     private fun mapCategoryToSection(category: NewsCategory): ArticleSection? {

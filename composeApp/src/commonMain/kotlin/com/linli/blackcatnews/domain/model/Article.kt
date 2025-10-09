@@ -7,7 +7,9 @@ package com.linli.blackcatnews.domain.model
 data class NewsItem(
     val id: String,
     val title: String,
+    val titleZh: String?,
     val summary: String,
+    val summaryZh: String?,
     val imageUrl: String?,
     val source: String,
     val publishTime: String,

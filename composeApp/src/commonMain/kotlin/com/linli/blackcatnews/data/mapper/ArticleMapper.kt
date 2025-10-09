@@ -89,7 +89,9 @@ object ArticleMapper {
         return NewsItem(
             id = entity.id,
             title = entity.title,
+            titleZh = entity.titleZh,
             summary = entity.summary,
+            summaryZh = entity.summaryZh,
             imageUrl = entity.imageUrl,
             source = entity.sourceName,
             publishTime = entity.publishTime,
@@ -163,7 +165,9 @@ object ArticleMapper {
         return NewsItem(
             id = dto.id.toString(),
             title = dto.title.decodeHtmlEntities(),
+            titleZh = dto.titleZh?.decodeHtmlEntities(),
             summary = summaryText.decodeHtmlEntities(),
+            summaryZh = dto.summaryChinese?.decodeHtmlEntities(),
             imageUrl = extractHeroImage(dto.contentHtml),
             source = dto.sourceName,
             publishTime = dto.publishedAt,
@@ -379,6 +383,7 @@ object ArticleMapper {
                     chinese = chineseText,
                     order = index,
                     originalHtml = englishBlock.originalHtml
+                    // Placeholder for future: summary for list items if desired
                 )
             }
 

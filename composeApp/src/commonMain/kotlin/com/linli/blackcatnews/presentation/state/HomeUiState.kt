@@ -10,13 +10,16 @@ data class HomeUiState(
     val isRefreshing: Boolean = false,
     val articles: List<NewsItem> = emptyList(),
     val errorMessage: String? = null,
-    val selectedCategory: NewsCategory = NewsCategory.LATEST
+    val selectedCategory: NewsCategory = NewsCategory.LATEST,
+    val prefersChinese: Boolean = false
 )
 
 sealed interface HomeUiEvent {
     data object Refresh : HomeUiEvent
     data class SelectCategory(val category: NewsCategory) : HomeUiEvent
+    data class ToggleLanguage(val useChinese: Boolean) : HomeUiEvent
     data class OpenArticle(val articleId: String) : HomeUiEvent
+    data object LoadPreferences : HomeUiEvent
 }
 
 /**

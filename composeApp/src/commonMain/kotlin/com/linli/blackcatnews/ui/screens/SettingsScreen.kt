@@ -1,11 +1,18 @@
 package com.linli.blackcatnews.ui.screens
 
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.Alignment
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
+import com.linli.blackcatnews.presentation.viewmodel.SettingsViewModel
 
 /**
  * 設定屏幕
@@ -14,12 +21,49 @@ import androidx.compose.ui.Modifier
  */
 @Composable
 fun SettingsScreen(
+    viewModel: SettingsViewModel,
     modifier: Modifier = Modifier
 ) {
-    Box(
-        modifier = modifier.fillMaxSize(),
-        contentAlignment = Alignment.Center
+    val uiState by viewModel.uiState.collectAsState()
+    Column(
+        modifier = modifier
+            .padding(24.dp),
+        verticalArrangement = Arrangement.spacedBy(24.dp)
     ) {
-        Text("設定頁面 - 開發中")
+        Text(
+            text = "語言偏好",
+            style = MaterialTheme.typography.titleMedium
+        )
+        RowSettingItem(
+            title = "優先顯示中文內容",
+            description = "控制首頁與新聞列表的語言顯示方式",
+            isChecked = uiState.prefersChinese,
+            onToggle = { viewModel.setLanguagePreference(it) }
+        )
+    }
+}
+
+@Composable
+private fun RowSettingItem(
+    title: String,
+    description: String,
+    isChecked: Boolean,
+    onToggle: (Boolean) -> Unit
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Text(text = title, style = MaterialTheme.typography.bodyLarge)
+        Text(
+            text = description,
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Switch(
+            checked = isChecked,
+            onCheckedChange = onToggle,
+            colors = SwitchDefaults.colors(
+                checkedThumbColor = MaterialTheme.colorScheme.primary,
+                uncheckedThumbColor = MaterialTheme.colorScheme.outlineVariant
+            )
+        )
     }
 }
