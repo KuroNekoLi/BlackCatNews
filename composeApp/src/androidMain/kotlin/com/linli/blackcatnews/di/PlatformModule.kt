@@ -12,4 +12,5 @@ val androidPlatformModule = module {
         val context: Context = androidContext()
         getDatabaseBuilder(context)
     }
+    single { androidContext().resources }
 }

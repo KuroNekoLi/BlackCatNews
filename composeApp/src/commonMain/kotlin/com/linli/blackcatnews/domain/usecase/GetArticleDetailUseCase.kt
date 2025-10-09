@@ -56,9 +56,7 @@ class GetArticleDetailUseCase(
      * ```
      */
     operator fun invoke(articleId: String): Flow<Result<ArticleDetail>> {
-        // 驗證參數
         require(articleId.isNotBlank()) { "文章 ID 不能為空" }
-
         return repository.getArticleDetail(articleId)
     }
 }

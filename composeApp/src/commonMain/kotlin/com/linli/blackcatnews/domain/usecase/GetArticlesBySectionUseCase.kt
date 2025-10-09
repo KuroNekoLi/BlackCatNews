@@ -57,7 +57,7 @@ class GetArticlesBySectionUseCase(
      */
     operator fun invoke(
         section: ArticleSection,
-        count: Int = 10,
+        count: Int = 5,
         forceRefresh: Boolean = false
     ): Flow<Result<List<NewsItem>>> {
         // 驗證參數

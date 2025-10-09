@@ -15,6 +15,7 @@ import com.linli.blackcatnews.data.remote.dto.VocabularyItemDto
 import com.linli.blackcatnews.domain.model.ArticleDetail
 import com.linli.blackcatnews.domain.model.BilingualContent
 import com.linli.blackcatnews.domain.model.BilingualParagraph
+import com.linli.blackcatnews.domain.model.BilingualParagraphType
 import com.linli.blackcatnews.domain.model.BilingualText
 import com.linli.blackcatnews.domain.model.GlossaryItem
 import com.linli.blackcatnews.domain.model.GrammarPoint
@@ -24,10 +25,12 @@ import com.linli.blackcatnews.domain.model.PhraseIdiom
 import com.linli.blackcatnews.domain.model.Quiz
 import com.linli.blackcatnews.domain.model.QuizQuestion
 import com.linli.blackcatnews.domain.model.SentencePattern
+import com.linli.blackcatnews.model.ArticleData
+import com.linli.blackcatnews.model.Block
+import com.linli.blackcatnews.model.Title
+import com.linli.blackcatnews.utils.decodeHtmlEntities
+import com.linli.blackcatnews.utils.parseHtmlToArticle
 import kotlinx.datetime.Clock
-import kotlinx.serialization.decodeFromString
-import kotlinx.serialization.encodeToString
-import kotlinx.serialization.json.Json
 
 /**
  * 文章資料映射器
@@ -38,11 +41,6 @@ import kotlinx.serialization.json.Json
  */
 object ArticleMapper {
 
-    private val jsonFormatter: Json = Json {
-        ignoreUnknownKeys = true
-        encodeDefaults = true
-    }
-
     /**
      * 將遠端 DTO 轉換為 Room Entity，並保留既有收藏與建立時間
      */
@@ -52,15 +50,18 @@ object ArticleMapper {
         val summaryText = dto.summaryEnglish?.takeIf { it.isNotBlank() }
             ?: dto.cleanedTextEnglish.lineSequence().firstOrNull()?.take(200)?.trim().orEmpty()
 
+        val normalizedChineseContent = dto.optimizedZhHtml?.takeIf { it.isNotBlank() }
+            ?: dto.cleanedTextChinese
+
         return ArticleEntity(
             id = dto.id.toString(),
-            title = dto.title,
-            titleZh = dto.titleZh,
-            summary = summaryText,
-            summaryZh = dto.summaryChinese,
+            title = dto.title.decodeHtmlEntities(),
+            titleZh = dto.titleZh?.decodeHtmlEntities(),
+            summary = summaryText.decodeHtmlEntities(),
+            summaryZh = dto.summaryChinese?.decodeHtmlEntities(),
             contentHtml = dto.optimizedHtml ?: dto.contentHtml,
             cleanedText = dto.cleanedTextEnglish,
-            cleanedTextZh = dto.cleanedTextChinese,
+            cleanedTextZh = normalizedChineseContent,
             imageUrl = extractHeroImage(dto.contentHtml),
             sourceName = dto.sourceName,
             publishTime = dto.publishedAt,
@@ -100,21 +101,43 @@ object ArticleMapper {
      * 將 Entity 轉換為領域層文章詳情
      */
     fun entityToArticleDetail(entity: ArticleEntity): ArticleDetail {
+        val englishHtml = entity.contentHtml
+        val chineseHtml = entity.cleanedTextZh?.takeIf { it.contains("<p") }
+        val englishArticleData = parseHtmlToArticle(englishHtml)
+        val chineseArticleData = chineseHtml?.let { parseHtmlToArticle(it) }
+        val fallbackChineseSegments = if (chineseArticleData == null) {
+            createFallbackChineseSegments(entity.cleanedTextZh)
+        } else {
+            emptyList()
+        }
+        val maxBlocks = maxOf(
+            englishArticleData.blocks.size,
+            chineseArticleData?.blocks?.size ?: 0
+        )
+        val paragraphs = buildList {
+            for (order in 0 until maxBlocks) {
+                val englishBlock = englishArticleData.blocks.getOrNull(order)
+                val chineseBlock = chineseArticleData?.blocks?.getOrNull(order)
+                createBilingualParagraph(
+                    englishBlock = englishBlock,
+                    chineseBlock = chineseBlock,
+                    fallbackChineseSegments = fallbackChineseSegments,
+                    fallbackIndex = order
+                )?.let(::add)
+            }
+        }
         return ArticleDetail(
             id = entity.id,
             title = BilingualText(
-                english = entity.title,
-                chinese = entity.titleZh ?: entity.title
+                english = entity.title.decodeHtmlEntities(),
+                chinese = (entity.titleZh ?: entity.title).decodeHtmlEntities()
             ),
             summary = BilingualText(
-                english = entity.summary,
-                chinese = entity.summaryZh ?: entity.summary
+                english = entity.summary.decodeHtmlEntities(),
+                chinese = (entity.summaryZh ?: entity.summary).decodeHtmlEntities()
             ),
             content = BilingualContent(
-                paragraphs = splitContentToParagraphs(
-                    englishContent = entity.cleanedText,
-                    chineseContent = entity.cleanedTextZh
-                )
+                paragraphs = paragraphs
             ),
             imageUrl = entity.imageUrl,
             source = entity.sourceName,
@@ -139,8 +162,8 @@ object ArticleMapper {
 
         return NewsItem(
             id = dto.id.toString(),
-            title = dto.title,
-            summary = summaryText,
+            title = dto.title.decodeHtmlEntities(),
+            summary = summaryText.decodeHtmlEntities(),
             imageUrl = extractHeroImage(dto.contentHtml),
             source = dto.sourceName,
             publishTime = dto.publishedAt,
@@ -160,29 +183,6 @@ object ArticleMapper {
             "health" -> NewsCategory.HEALTH
             "science" -> NewsCategory.SCIENCE
             else -> NewsCategory.LATEST
-        }
-    }
-
-    private fun splitContentToParagraphs(
-        englishContent: String?,
-        chineseContent: String?
-    ): List<BilingualParagraph> {
-        if (englishContent.isNullOrBlank()) return emptyList()
-
-        val englishSegments = englishContent
-            .split(Regex("\n{2,}"))
-            .mapNotNull { it.trim().takeIf(String::isNotEmpty) }
-        val chineseSegments = chineseContent
-            ?.split(Regex("\n{2,}"))
-            ?.mapNotNull { it.trim().takeIf(String::isNotEmpty) }
-            ?: emptyList()
-
-        return englishSegments.mapIndexed { index, englishParagraph ->
-            BilingualParagraph(
-                english = englishParagraph,
-                chinese = chineseSegments.getOrNull(index) ?: englishParagraph,
-                order = index
-            )
         }
     }
 
@@ -318,4 +318,185 @@ object ArticleMapper {
     fun serializeSentencePatterns(items: List<SentencePatternDto>?): String? = null
     fun serializePhrases(items: List<PhraseIdiomDto>?): String? = null
     fun serializeQuiz(items: List<ComprehensionQuestionDto>?): String? = null
+
+    private fun createFallbackChineseSegments(cleanedTextZh: String?): List<String> {
+        if (cleanedTextZh.isNullOrBlank()) return emptyList()
+
+        return if (cleanedTextZh.contains("<p")) {
+            val regex = Regex("<p[^>]*>(.*?)</p>", RegexOption.IGNORE_CASE)
+            val matches = regex.findAll(cleanedTextZh)
+            matches.mapNotNull { matchResult ->
+                val paragraphContent = matchResult.groups[1]?.value
+                paragraphContent
+                    ?.replace(Regex("<[^>]+>"), "")
+                    ?.decodeHtmlEntities()
+                    ?.trim()
+                    ?.takeIf { it.isNotEmpty() }
+            }.toList()
+        } else {
+            cleanedTextZh.split(Regex("\n{2,}"))
+                .mapNotNull { it.trim().takeIf(String::isNotEmpty) }
+        }
+    }
+
+    private fun createBilingualParagraph(
+        englishBlock: Block?,
+        chineseBlock: Block?,
+        fallbackChineseSegments: List<String>,
+        fallbackIndex: Int
+    ): BilingualParagraph? {
+        return when {
+            englishBlock != null -> mapEnglishBlock(
+                englishBlock = englishBlock,
+                chineseBlock = chineseBlock,
+                fallbackChineseSegments = fallbackChineseSegments,
+                index = fallbackIndex
+            )
+
+            chineseBlock != null -> mapChineseOnlyBlock(
+                chineseBlock = chineseBlock,
+                fallbackChineseSegments = fallbackChineseSegments,
+                index = fallbackIndex
+            )
+
+            else -> null
+        }
+    }
+
+    private fun mapEnglishBlock(
+        englishBlock: Block,
+        chineseBlock: Block?,
+        fallbackChineseSegments: List<String>,
+        index: Int
+    ): BilingualParagraph? {
+        return when (englishBlock) {
+            is Block.Paragraph -> {
+                val chineseText = (chineseBlock as? Block.Paragraph)?.text?.decodeHtmlEntities()
+                    ?: fallbackChineseSegments.getOrNull(index)
+                BilingualParagraph(
+                    type = BilingualParagraphType.TEXT,
+                    english = englishBlock.text.decodeHtmlEntities(),
+                    chinese = chineseText,
+                    order = index,
+                    originalHtml = englishBlock.originalHtml
+                )
+            }
+
+            is Block.Heading -> {
+                val chineseText = (chineseBlock as? Block.Heading)?.text?.decodeHtmlEntities()
+                    ?: fallbackChineseSegments.getOrNull(index)
+                BilingualParagraph(
+                    type = BilingualParagraphType.HEADING,
+                    english = englishBlock.text.decodeHtmlEntities(),
+                    chinese = chineseText,
+                    order = index,
+                    headingLevel = englishBlock.level,
+                    originalHtml = englishBlock.originalHtml
+                )
+            }
+
+            is Block.ImageBlock -> {
+                BilingualParagraph(
+                    type = BilingualParagraphType.IMAGE,
+                    order = index,
+                    imageUrl = englishBlock.src,
+                    imageAlt = englishBlock.alt?.decodeHtmlEntities(),
+                    imageCaption = englishBlock.caption?.decodeHtmlEntities(),
+                    originalHtml = englishBlock.originalHtml
+                )
+            }
+
+            is Block.UnorderedList -> {
+                val chineseItems = (chineseBlock as? Block.UnorderedList)?.items?.map {
+                    it.decodeHtmlEntities()
+                } ?: emptyList()
+                BilingualParagraph(
+                    type = BilingualParagraphType.UNORDERED_LIST,
+                    order = index,
+                    listItems = englishBlock.items.map { it.decodeHtmlEntities() },
+                    listItemsChinese = chineseItems,
+                    originalHtml = englishBlock.originalHtml
+                )
+            }
+
+            is Block.OrderedList -> {
+                val chineseItems = (chineseBlock as? Block.OrderedList)?.items?.map {
+                    it.decodeHtmlEntities()
+                } ?: emptyList()
+                BilingualParagraph(
+                    type = BilingualParagraphType.ORDERED_LIST,
+                    order = index,
+                    listItems = englishBlock.items.map { it.decodeHtmlEntities() },
+                    listItemsChinese = chineseItems,
+                    originalHtml = englishBlock.originalHtml
+                )
+            }
+
+            is Block.HtmlFallback -> BilingualParagraph(
+                type = BilingualParagraphType.HTML_FALLBACK,
+                order = index,
+                originalHtml = englishBlock.html
+            )
+
+            else -> null
+        }
+    }
+
+    private fun mapChineseOnlyBlock(
+        chineseBlock: Block,
+        fallbackChineseSegments: List<String>,
+        index: Int
+    ): BilingualParagraph? {
+        return when (chineseBlock) {
+            is Block.Paragraph -> BilingualParagraph(
+                type = BilingualParagraphType.TEXT,
+                english = fallbackChineseSegments.getOrNull(index),
+                chinese = chineseBlock.text.decodeHtmlEntities(),
+                order = index,
+                originalHtml = chineseBlock.originalHtml
+            )
+
+            is Block.Heading -> BilingualParagraph(
+                type = BilingualParagraphType.HEADING,
+                english = fallbackChineseSegments.getOrNull(index),
+                chinese = chineseBlock.text.decodeHtmlEntities(),
+                order = index,
+                headingLevel = chineseBlock.level,
+                originalHtml = chineseBlock.originalHtml
+            )
+
+            is Block.ImageBlock -> BilingualParagraph(
+                type = BilingualParagraphType.IMAGE,
+                order = index,
+                imageUrl = chineseBlock.src,
+                imageAlt = chineseBlock.alt?.decodeHtmlEntities(),
+                imageCaption = chineseBlock.caption?.decodeHtmlEntities(),
+                originalHtml = chineseBlock.originalHtml
+            )
+
+            is Block.UnorderedList -> BilingualParagraph(
+                type = BilingualParagraphType.UNORDERED_LIST,
+                order = index,
+                listItems = emptyList(),
+                listItemsChinese = chineseBlock.items.map { it.decodeHtmlEntities() },
+                originalHtml = chineseBlock.originalHtml
+            )
+
+            is Block.OrderedList -> BilingualParagraph(
+                type = BilingualParagraphType.ORDERED_LIST,
+                order = index,
+                listItems = emptyList(),
+                listItemsChinese = chineseBlock.items.map { it.decodeHtmlEntities() },
+                originalHtml = chineseBlock.originalHtml
+            )
+
+            is Block.HtmlFallback -> BilingualParagraph(
+                type = BilingualParagraphType.HTML_FALLBACK,
+                order = index,
+                originalHtml = chineseBlock.html
+            )
+
+            else -> null
+        }
+    }
 }

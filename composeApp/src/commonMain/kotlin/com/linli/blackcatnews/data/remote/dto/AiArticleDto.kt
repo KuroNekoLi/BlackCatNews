@@ -203,3 +203,39 @@ data class ComprehensionQuestionDto(
     @SerialName("explanation_zh")
     val explanationChinese: String? = null
 )
+
+/**
+ * AI 文章列表 API 外層響應
+ */
+@Serializable
+data class AiArticlesResponseDto(
+    @SerialName("message")
+    val message: String? = null,
+
+    @SerialName("requestedCount")
+    val requestedCount: Int? = null,
+
+    @SerialName("actualCount")
+    val actualCount: Int? = null,
+
+    @SerialName("totalAvailable")
+    val totalAvailable: Int? = null,
+
+    @SerialName("filters")
+    val filters: FiltersDto? = null,
+
+    @SerialName("articles")
+    val articles: List<AiArticleDto> = emptyList()
+)
+
+/**
+ * AI 文章列表 API 擴充過濾條件
+ */
+@Serializable
+data class FiltersDto(
+    @SerialName("source")
+    val source: String? = null,
+
+    @SerialName("section")
+    val section: String? = null
+)

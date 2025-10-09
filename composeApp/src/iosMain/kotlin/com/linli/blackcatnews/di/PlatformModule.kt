@@ -17,6 +17,6 @@ val iosPlatformModule = module {
 fun initKoin(vararg extraModules: Module) {
     stopKoin()
     startKoin {
-        modules(listOf(databaseModule, iosPlatformModule) + extraModules)
+        modules(listOf(appModule, iosPlatformModule) + extraModules)
     }
 }

@@ -11,6 +11,7 @@ import com.linli.blackcatnews.domain.repository.ArticleRepository
 import com.linli.blackcatnews.domain.repository.Result
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.map
@@ -33,7 +34,7 @@ import kotlinx.datetime.Clock
 class ArticleRepositoryImpl(
     private val newsApiService: NewsApiService,
     private val articleDao: ArticleDao,
-    private val ioDispatcher: CoroutineDispatcher
+    private val ioDispatcher: CoroutineDispatcher = Dispatchers.Default
 ) : ArticleRepository {
 
     override fun getRandomArticles(

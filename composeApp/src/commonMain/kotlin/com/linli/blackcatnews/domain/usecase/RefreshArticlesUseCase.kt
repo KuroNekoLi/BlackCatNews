@@ -66,7 +66,7 @@ class RefreshArticlesUseCase(
      */
     suspend operator fun invoke(
         section: ArticleSection? = null,
-        count: Int = 10
+        count: Int = 5
     ): Result<Unit> {
         // 驗證參數
         require(count in 1..20) { "文章數量必須在 1-20 之間" }

@@ -1,6 +1,7 @@
 package com.linli.blackcatnews.ui.screens
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
@@ -8,17 +9,21 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.linli.blackcatnews.domain.model.NewsCategory
 import com.linli.blackcatnews.domain.model.NewsItem
+import com.linli.blackcatnews.presentation.state.HomeUiEvent
+import com.linli.blackcatnews.presentation.viewmodel.HomeViewModel
 import com.linli.blackcatnews.ui.components.CategoryChip
 import com.linli.blackcatnews.ui.components.NewsCard
 
@@ -29,22 +34,39 @@ import com.linli.blackcatnews.ui.components.NewsCard
  */
 @Composable
 fun HomeScreen(
+    viewModel: HomeViewModel,
     onNewsItemClick: (NewsItem) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    // 當前選中的分類
-    var selectedCategory by remember { mutableStateOf(NewsCategory.LATEST) }
+    val uiState by viewModel.uiState.collectAsState()
+    val selectedCategory = uiState.selectedCategory
+    val articles = uiState.articles
+    val shouldShowUnsupportedCategoryMessage =
+        !uiState.isRefreshing && articles.isEmpty() && selectedCategory !in supportedCategories
 
-    // 模擬新聞數據
-    val newsList = remember { getSampleNewsList() }
-
-    // 根據分類過濾新聞
-    val filteredNews = remember(selectedCategory) {
-        if (selectedCategory == NewsCategory.LATEST) {
-            newsList
-        } else {
-            newsList.filter { it.category == selectedCategory }
+    if (uiState.isRefreshing && uiState.articles.isEmpty()) {
+        Box(
+            modifier = modifier.fillMaxSize(),
+            contentAlignment = Alignment.Center
+        ) {
+            CircularProgressIndicator()
         }
+        return
+    }
+
+    if (!uiState.isRefreshing && uiState.errorMessage != null && uiState.articles.isEmpty()) {
+        Box(
+            modifier = modifier.fillMaxSize(),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                text = uiState.errorMessage ?: "",
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.error,
+                textAlign = TextAlign.Center
+            )
+        }
+        return
     }
 
     Column(
@@ -54,7 +76,9 @@ fun HomeScreen(
         CategoryChipsRow(
             categories = NewsCategory.entries,
             selectedCategory = selectedCategory,
-            onCategorySelected = { selectedCategory = it },
+            onCategorySelected = {
+                viewModel.onEvent(HomeUiEvent.SelectCategory(it))
+            },
             modifier = Modifier.fillMaxWidth()
         )
 
@@ -64,10 +88,25 @@ fun HomeScreen(
             contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            items(filteredNews, key = { it.id }) { newsItem ->
+            items(articles, key = { it.id }) { newsItem ->
                 NewsCard(
                     newsItem = newsItem,
                     onClick = { onNewsItemClick(newsItem) }
+                )
+            }
+        }
+
+        if (shouldShowUnsupportedCategoryMessage) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize(),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = "此分類尚未提供內容",
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onBackground,
+                    textAlign = TextAlign.Center
                 )
             }
         }
@@ -108,52 +147,10 @@ private fun CategoryChipsRow(
 /**
  * 生成模擬新聞數據
  */
-private fun getSampleNewsList(): List<NewsItem> {
-    return listOf(
-        NewsItem(
-            id = "1",
-            title = "AI Technology Reshapes Global Economy",
-            summary = "Artificial intelligence is transforming industries worldwide, boosting efficiency and creating new opportunities...",
-            imageUrl = "https://picsum.photos/400/300?random=1",
-            source = "Tech News",
-            publishTime = "2小時前",
-            category = NewsCategory.TECH
-        ),
-        NewsItem(
-            id = "2",
-            title = "Global Markets Show Strong Recovery",
-            summary = "Stock markets worldwide are experiencing significant gains as economic indicators improve...",
-            imageUrl = "https://picsum.photos/400/300?random=2",
-            source = "財經週刊",
-            publishTime = "3小時前",
-            category = NewsCategory.BUSINESS
-        ),
-        NewsItem(
-            id = "3",
-            title = "Climate Change Impact on Agriculture",
-            summary = "New research reveals how changing weather patterns are affecting crop yields globally...",
-            imageUrl = "https://picsum.photos/400/300?random=3",
-            source = "環球時報",
-            publishTime = "5小時前",
-            category = NewsCategory.WORLD
-        ),
-        NewsItem(
-            id = "4",
-            title = "New Health Diet Trends Gain Popularity",
-            summary = "Nutrition experts recommend innovative dietary approaches spreading on social media...",
-            imageUrl = "https://picsum.photos/400/300?random=4",
-            source = "健康生活",
-            publishTime = "6小時前",
-            category = NewsCategory.HEALTH
-        ),
-        NewsItem(
-            id = "5",
-            title = "Scientists Discover New Exoplanet",
-            summary = "Astronomers find potentially habitable planet 100 light-years away from Earth...",
-            imageUrl = "https://picsum.photos/400/300?random=5",
-            source = "科學週刊",
-            publishTime = "8小時前",
-            category = NewsCategory.SCIENCE
-        )
-    )
-}
+private fun getSampleNewsList(): List<NewsItem> = emptyList()
+
+private val supportedCategories = setOf(
+    NewsCategory.LATEST,
+    NewsCategory.WORLD,
+    NewsCategory.TECH
+)

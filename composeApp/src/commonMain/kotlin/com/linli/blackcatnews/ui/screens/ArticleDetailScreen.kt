@@ -32,6 +32,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
@@ -45,6 +46,7 @@ import androidx.compose.ui.unit.dp
 import com.linli.blackcatnews.domain.model.ArticleDetail
 import com.linli.blackcatnews.domain.model.BilingualContent
 import com.linli.blackcatnews.domain.model.BilingualParagraph
+import com.linli.blackcatnews.domain.model.BilingualParagraphType
 import com.linli.blackcatnews.domain.model.BilingualText
 import com.linli.blackcatnews.domain.model.GlossaryItem
 import com.linli.blackcatnews.domain.model.GrammarPoint
@@ -57,6 +59,8 @@ import com.linli.blackcatnews.domain.model.SentencePattern
 import com.linli.blackcatnews.ui.components.BilingualTextView
 import com.linli.blackcatnews.ui.components.GlossaryCard
 import com.linli.blackcatnews.ui.components.GrammarPointCard
+import com.linli.blackcatnews.presentation.state.ArticleDetailUiEvent
+import com.linli.blackcatnews.presentation.viewmodel.ArticleDetailViewModel
 
 /**
  * 文章詳情頁面
@@ -66,23 +70,15 @@ import com.linli.blackcatnews.ui.components.GrammarPointCard
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ArticleDetailScreen(
-    articleId: String,
+    viewModel: ArticleDetailViewModel,
     onBackClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    // 模擬從 ViewModel 或 Repository 獲取數據
-    val article = remember { getSampleArticleDetail() }
-
-    // 閱讀模式狀態
+    val uiState by viewModel.uiState.collectAsState()
+    val article = uiState.article ?: return
     var readingMode by remember { mutableStateOf(ReadingMode.ENGLISH_ONLY) }
-
-    // 測驗展開狀態
     var isQuizExpanded by remember { mutableStateOf(false) }
-
-    // 用戶的答案選擇 (題目索引 -> 選項索引)
     val userAnswers = remember { mutableStateMapOf<Int, Int>() }
-
-    // 是否已提交答案
     var isQuizSubmitted by remember { mutableStateOf(false) }
 
     Box(modifier = modifier.fillMaxSize()) {
@@ -581,19 +577,43 @@ private fun getSampleArticleDetail(): ArticleDetail {
         content = BilingualContent(
             paragraphs = listOf(
                 BilingualParagraph(
+                    type = BilingualParagraphType.TEXT,
                     english = "The rapid advancement of artificial intelligence has fundamentally altered the landscape of modern business. Companies across various sectors are integrating AI technologies to enhance efficiency, reduce costs, and create innovative products.",
                     chinese = "人工智能的快速發展從根本上改變了現代商業的格局。各行各業的公司都在整合人工智能技術，以提高效率、降低成本並創造創新產品。",
                     order = 0
                 ),
                 BilingualParagraph(
-                    english = "According to recent studies, AI-driven automation is expected to boost global GDP by approximately 14% by 2030. This transformative technology is not only improving operational processes but also opening new opportunities for job creation in emerging fields.",
-                    chinese = "根據最近的研究，預計到2030年，人工智能驅動的自動化將使全球GDP增長約14%。這項變革性技術不僅改善了運營流程，還為新興領域的就業創造帶來了新機遇。",
-                    order = 1
+                    type = BilingualParagraphType.IMAGE,
+                    order = 1,
+                    imageUrl = "https://images.example.com/ai-revolution.jpg",
+                    imageAlt = "Business team analyzing AI data dashboard",
+                    imageCaption = "AI 數據面板協助企業快速調整決策。"
                 ),
                 BilingualParagraph(
+                    type = BilingualParagraphType.TEXT,
+                    english = "According to recent studies, AI-driven automation is expected to boost global GDP by approximately 14% by 2030. This transformative technology is not only improving operational processes but also opening new opportunities for job creation in emerging fields.",
+                    chinese = "根據最近的研究，預計到2030年，人工智能驅動的自動化將使全球GDP增長約14%。這項變革性技術不僅改善了運營流程，還為新興領域的就業創造帶來了新機遇。",
+                    order = 2
+                ),
+                BilingualParagraph(
+                    type = BilingualParagraphType.UNORDERED_LIST,
+                    order = 3,
+                    listItems = listOf(
+                        "Automation improves productivity",
+                        "Operational expenses decrease",
+                        "Cross-industry innovation emerges"
+                    ),
+                    listItemsChinese = listOf(
+                        "自動化提升生產效率",
+                        "營運成本明顯降低",
+                        "跨領域創新產品大量湧現"
+                    )
+                ),
+                BilingualParagraph(
+                    type = BilingualParagraphType.TEXT,
                     english = "However, experts emphasize the importance of responsible AI development. As these technologies become more prevalent, addressing ethical concerns and ensuring equitable access remain critical challenges for policymakers and industry leaders alike.",
                     chinese = "然而，專家強調負責任的人工智能發展的重要性。隨著這些技術變得更加普及，解決倫理問題和確保公平獲取仍然是政策制定者和行業領導者面臨的關鍵挑戰。",
-                    order = 2
+                    order = 4
                 )
             )
         ),

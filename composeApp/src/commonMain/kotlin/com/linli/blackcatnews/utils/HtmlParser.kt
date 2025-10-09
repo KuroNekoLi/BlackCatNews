@@ -5,7 +5,9 @@ import com.fleeksoft.ksoup.Ksoup
 import com.fleeksoft.ksoup.nodes.Document
 import com.fleeksoft.ksoup.nodes.Element
 import com.fleeksoft.ksoup.nodes.TextNode
-import com.linli.blackcatnews.model.*
+import com.linli.blackcatnews.model.ArticleData
+import com.linli.blackcatnews.model.Block
+import com.linli.blackcatnews.model.Title
 
 /**
  * 解析 HTML 並轉換為 ArticleData
@@ -119,37 +121,12 @@ private fun parseElement(element: Element, startIndex: Int): List<Block> {
                 )
             )
 
-            "p" -> {
-                val text = element.text().trim()
-                if (text.isNotEmpty()) {
-                    listOf(
-                        Block.Paragraph(
-                            text = text,
-                            blockIndex = startIndex,
-                            originalHtml = element.outerHtml()
-                        )
-                    )
-                } else {
-                    emptyList()
-                }
-            }
-
+            "p" -> parseParagraph(element, startIndex)
             "figure" -> parseFigure(element, startIndex)
             "img" -> listOf(parseImage(element, startIndex))
             "ul" -> listOf(parseUnorderedList(element, startIndex))
             "ol" -> listOf(parseOrderedList(element, startIndex))
-            "div", "section", "article" -> {
-                // 展平容器，遞迴解析子元素
-                val blocks = mutableListOf<Block>()
-                var currentIndex = startIndex
-                for (child in element.children()) {
-                    val childBlocks = parseElement(child, currentIndex)
-                    blocks.addAll(childBlocks)
-                    currentIndex += childBlocks.size
-                }
-                blocks
-            }
-
+            "div", "section", "article" -> parseContainer(element, startIndex)
             "iframe", "video", "form", "script" -> {
                 // 不支援的複雜元素，使用 fallback
                 listOf(
@@ -287,4 +264,81 @@ private fun parseOrderedList(ol: Element, blockIndex: Int): Block.OrderedList {
         blockIndex = blockIndex,
         originalHtml = ol.outerHtml()
     )
+}
+
+private fun parseParagraph(paragraph: Element, blockIndex: Int): List<Block> {
+    val textNodes = paragraph.textNodes()
+    val children = paragraph.children()
+    val blocks = mutableListOf<Block>()
+
+    if (children.isEmpty()) {
+        val text = paragraph.text().trim()
+        if (text.isNotEmpty()) {
+            blocks += Block.Paragraph(
+                text = text,
+                blockIndex = blockIndex,
+                originalHtml = paragraph.outerHtml()
+            )
+        }
+        return blocks
+    }
+
+    // Mix of text and child nodes such as images
+    var currentIndex = blockIndex
+    val childIterator = paragraph.childNodes()
+
+    for (node in childIterator) {
+        when (node) {
+            is TextNode -> {
+                val content = node.text().trim()
+                if (content.isNotEmpty()) {
+                    blocks += Block.Paragraph(
+                        text = content,
+                        blockIndex = currentIndex,
+                        originalHtml = node.outerHtml()
+                    )
+                    currentIndex += 1
+                }
+            }
+
+            is Element -> {
+                val parsedChildBlocks = parseElement(node, currentIndex)
+                blocks += parsedChildBlocks
+                currentIndex += parsedChildBlocks.size
+            }
+
+            else -> Unit
+        }
+    }
+
+    return blocks
+}
+
+private fun parseContainer(element: Element, startIndex: Int): List<Block> {
+    val blocks = mutableListOf<Block>()
+    var currentIndex = startIndex
+    for (child in element.childNodes()) {
+        when (child) {
+            is TextNode -> {
+                val content = child.text().trim()
+                if (content.isNotEmpty()) {
+                    blocks += Block.Paragraph(
+                        text = content,
+                        blockIndex = currentIndex,
+                        originalHtml = child.outerHtml()
+                    )
+                    currentIndex += 1
+                }
+            }
+
+            is Element -> {
+                val childBlocks = parseElement(child, currentIndex)
+                blocks.addAll(childBlocks)
+                currentIndex += childBlocks.size
+            }
+
+            else -> Unit
+        }
+    }
+    return blocks
 }

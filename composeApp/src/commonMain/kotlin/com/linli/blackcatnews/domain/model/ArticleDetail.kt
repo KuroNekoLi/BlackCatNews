@@ -43,10 +43,28 @@ data class BilingualContent(
 
 @Serializable
 data class BilingualParagraph(
-    val english: String,
-    val chinese: String,
-    val order: Int = 0
+    val type: BilingualParagraphType = BilingualParagraphType.TEXT,
+    val english: String? = null,
+    val chinese: String? = null,
+    val order: Int = 0,
+    val headingLevel: Int? = null,
+    val listItems: List<String> = emptyList(),
+    val listItemsChinese: List<String> = emptyList(),
+    val imageUrl: String? = null,
+    val imageAlt: String? = null,
+    val imageCaption: String? = null,
+    val originalHtml: String? = null
 )
+
+@Serializable
+enum class BilingualParagraphType {
+    TEXT,
+    HEADING,
+    IMAGE,
+    UNORDERED_LIST,
+    ORDERED_LIST,
+    HTML_FALLBACK
+}
 
 /**
  * 重點單字條目

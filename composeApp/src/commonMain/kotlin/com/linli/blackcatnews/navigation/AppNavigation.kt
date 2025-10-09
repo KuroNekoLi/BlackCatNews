@@ -22,6 +22,10 @@ import com.linli.blackcatnews.ui.screens.CategoriesScreen
 import com.linli.blackcatnews.ui.screens.FavoritesScreen
 import com.linli.blackcatnews.ui.screens.HomeScreen
 import com.linli.blackcatnews.ui.screens.SettingsScreen
+import org.koin.compose.viewmodel.koinViewModel
+import org.koin.core.parameter.parametersOf
+import com.linli.blackcatnews.presentation.viewmodel.ArticleDetailViewModel
+import com.linli.blackcatnews.presentation.viewmodel.HomeViewModel
 
 /**
  * 主導航結構
@@ -82,7 +86,9 @@ fun AppNavigation() {
         ) {
             // 首頁 - 不再需要內部的 Scaffold
             composable<HomeRoute> {
+                val viewModel: HomeViewModel = koinViewModel()
                 HomeScreen(
+                    viewModel = viewModel,
                     onNewsItemClick = { newsItem ->
                         // 導航到文章詳情頁
                         navController.navigate(
@@ -98,8 +104,10 @@ fun AppNavigation() {
             // 文章詳情頁
             composable<ArticleDetailRoute> { backStackEntry ->
                 val route = backStackEntry.toRoute<ArticleDetailRoute>()
+                val viewModel: ArticleDetailViewModel =
+                    koinViewModel { parametersOf(route.articleId) }
                 ArticleDetailScreen(
-                    articleId = route.articleId,
+                    viewModel = viewModel,
                     onBackClick = {
                         navController.navigateUp()
                     }

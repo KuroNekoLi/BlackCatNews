@@ -1,6 +1,7 @@
 package com.linli.blackcatnews.data.remote.api
 
 import com.linli.blackcatnews.data.remote.dto.AiArticleDto
+import com.linli.blackcatnews.data.remote.dto.AiArticlesResponseDto
 import io.ktor.client.*
 import io.ktor.client.call.*
 import io.ktor.client.request.*
@@ -41,11 +42,13 @@ class NewsApiService(
         section: String? = null,
         source: String? = null
     ): List<AiArticleDto> {
-        return httpClient.get("$BASE_URL$RANDOM_ARTICLES_ENDPOINT") {
+        val response: AiArticlesResponseDto = httpClient.get("$BASE_URL$RANDOM_ARTICLES_ENDPOINT") {
             parameter("count", count)
             section?.let { parameter("section", it) }
             source?.let { parameter("source", it) }
         }.body()
+
+        return response.articles
     }
 
     /**

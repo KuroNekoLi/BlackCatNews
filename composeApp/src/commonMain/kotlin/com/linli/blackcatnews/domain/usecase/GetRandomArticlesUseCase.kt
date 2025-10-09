@@ -69,7 +69,7 @@ class GetRandomArticlesUseCase(
      * ```
      */
     operator fun invoke(
-        count: Int = 10,
+        count: Int = 5,
         section: ArticleSection? = null,
         forceRefresh: Boolean = false
     ): Flow<Result<List<NewsItem>>> {
