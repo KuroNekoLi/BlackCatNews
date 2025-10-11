@@ -32,3 +32,7 @@ package-lock.json
 # OS specific
 .DS_Store
 Thumbs.db
+
+# iOS CocoaPods
+iosApp/Podfile.lock
+iosApp/Pods/

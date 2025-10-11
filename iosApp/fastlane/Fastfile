@@ -1,0 +1,53 @@
+default_platform(:ios)
+
+platform :ios do
+  api_key = if ENV["ASC_PRIVATE_KEY_PATH"]
+    app_store_connect_api_key(
+      key_id: ENV.fetch("ASC_KEY_ID"),
+      issuer_id: ENV.fetch("ASC_ISSUER_ID"),
+      key_filepath: ENV.fetch("ASC_PRIVATE_KEY_PATH"),
+      in_house: false
+    )
+  else
+    app_store_connect_api_key(
+      key_id: ENV.fetch("ASC_KEY_ID"),
+      issuer_id: ENV.fetch("ASC_ISSUER_ID"),
+      key_content: ENV.fetch("ASC_PRIVATE_KEY"),
+      is_key_content_base64: ENV["ASC_PRIVATE_KEY_BASE64"] == "true",
+      in_house: false
+    )
+  end
+
+  desc "Build ipa for App Store distribution"
+  lane :build do
+    gym(
+      workspace: "iosApp.xcworkspace",
+      scheme: "iosApp",
+      configuration: "Release",
+      export_method: "app-store",
+      clean: true,
+      include_bitcode: false
+    )
+  end
+
+  desc "Upload the latest build to TestFlight"
+  lane :beta do
+    build
+    pilot(
+      api_key: api_key,
+      skip_submission: true,
+      skip_waiting_for_build_processing: false
+    )
+  end
+
+  desc "Deliver the build to App Store Connect (metadata handled manually)"
+  lane :release do
+    build
+    deliver(
+      api_key: api_key,
+      submit_for_review: false,
+      automatic_release: false,
+      force: true
+    )
+  end
+end

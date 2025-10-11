@@ -1,0 +1,83 @@
+
+name: iOS CI/CD (Fastlane)
+
+on:
+  push:
+    branches:
+      - main
+    tags:
+      - ios-v*
+  workflow_dispatch:
+    inputs:
+      lane:
+        description: "Fastlane lane to run"
+        required: false
+        default: beta
+
+jobs:
+  ios:
+    runs-on: macos-14
+
+    env:
+      ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+      ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+      ASC_PRIVATE_KEY: ${{ secrets.ASC_PRIVATE_KEY }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Cache Ruby gems
+        uses: actions/cache@v4
+        with:
+          path: iosApp/vendor/bundle
+          key: ${{ runner.os }}-gems-${{ hashFiles('iosApp/fastlane/Gemfile.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-gems-
+
+      - name: Install Bundler dependencies
+        working-directory: iosApp
+        run: |
+          gem install bundler --no-document
+          bundle config set path 'vendor/bundle'
+          bundle install
+
+      - name: Cache CocoaPods
+        uses: actions/cache@v4
+        with:
+          path: |
+            iosApp/Pods
+            ~/.cocoapods
+          key: ${{ runner.os }}-pods-${{ hashFiles('iosApp/Podfile.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-pods-
+
+      - name: Install CocoaPods
+        working-directory: iosApp
+        run: |
+          sudo gem install cocoapods --no-document
+          pod repo update
+          pod install
+
+      - name: Gradle sync shared module
+        run: ./gradlew :shared:assemble
+
+      - name: Select latest Xcode
+        run: sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
+
+      - name: Build and upload via Fastlane
+        working-directory: iosApp
+        run: bundle exec fastlane ${{ github.event.inputs.lane || (startsWith(github.ref, 'refs/tags/ios-v') && 'release' || 'beta') }}
+
+      - name: Upload ipa artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ios-ipa
+          path: iosApp/*.ipa
