@@ -82,20 +82,53 @@ jobs:
           echo "track=${TRACK}" >> $GITHUB_OUTPUT
           echo "📦 目標軌道: ${TRACK}"
 
-      - name: Build AAB (release)
+      - name: Determine version code
+        id: version
         run: |
-          # 計算版本號（run_number + 100，避免與手動版本衝突）
-          VERSION_CODE=$((100 + ${{ github.run_number }}))
-          VERSION_NAME="1.0.${{ github.run_number }}"
-          echo "📦 版本號：versionCode=${VERSION_CODE}, versionName=${VERSION_NAME}"
-          export VERSION_CODE
-          export VERSION_NAME
+          # 計算基礎版本號（run_number + 100）
+          BASE_VERSION_CODE=$((100 + ${{ github.run_number }}))
+          VERSION_NAME="1.0.$BASE_VERSION_CODE"
+          
+          echo "version_code=$BASE_VERSION_CODE" >> $GITHUB_OUTPUT
+          echo "version_name=$VERSION_NAME" >> $GITHUB_OUTPUT
+          echo "📦 初始版本號：versionCode=$BASE_VERSION_CODE, versionName=$VERSION_NAME"
+
+      - name: Build AAB (release)
+        env:
+          VERSION_CODE: ${{ steps.version.outputs.version_code }}
+          VERSION_NAME: ${{ steps.version.outputs.version_name }}
+        run: |
+          echo "📦 建置版本：versionCode=$VERSION_CODE, versionName=$VERSION_NAME"
           ./gradlew :composeApp:bundleRelease --stacktrace
 
       - name: Publish to Play Console
+        id: publish
+        continue-on-error: true
         run: |
           TRACK=${{ steps.track.outputs.track }}
           echo "🚀 上傳到軌道: ${TRACK}"
+          ./gradlew :composeApp:publishReleaseBundle --track ${TRACK} --stacktrace
+
+      - name: Retry with incremented version (if failed)
+        if: steps.publish.outcome == 'failure'
+        run: |
+          echo "⚠️  上傳失敗，可能是版本號衝突"
+          echo "🔄 重新建置並遞增版本號..."
+          
+          # 遞增版本號
+          NEW_VERSION_CODE=$(($(echo "${{ steps.version.outputs.version_code }}") + 1))
+          NEW_VERSION_NAME="1.0.$NEW_VERSION_CODE"
+          
+          echo "📦 新版本號：versionCode=$NEW_VERSION_CODE, versionName=$NEW_VERSION_NAME"
+          
+          # 重新建置
+          export VERSION_CODE=$NEW_VERSION_CODE
+          export VERSION_NAME=$NEW_VERSION_NAME
+          ./gradlew :composeApp:bundleRelease --stacktrace
+          
+          # 重新上傳
+          TRACK=${{ steps.track.outputs.track }}
+          echo "🚀 重新上傳到軌道: ${TRACK}"
           ./gradlew :composeApp:publishReleaseBundle --track ${TRACK} --stacktrace
 
       - name: Upload AAB artifact
