@@ -1,0 +1,99 @@
+name: Android Play Deploy (GPP)
+
+on:
+  push:
+    branches: [ main ]          # 自動上傳到 internal（內部測試）
+    tags:
+      - 'android-alpha-v*'      # 封閉測試（如 android-alpha-v1.0.0）
+      - 'android-beta-v*'       # 公開測試（如 android-beta-v1.0.0）
+      - 'android-v*'            # 正式版（如 android-v1.0.0）
+      - 'v*.*.*'                # 版本號 tag 也可觸發
+  workflow_dispatch: # 手動觸發：可選擇任意軌道
+    inputs:
+      track:
+        description: "Play Console 軌道"
+        type: choice
+        options:
+          - internal
+          - alpha
+          - beta
+          - production
+        default: internal
+        required: true
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    
+    env:
+      # Release 簽章環境變數
+      UPLOAD_KEYSTORE: ${{ github.workspace }}/upload-keystore.jks
+      UPLOAD_KEYSTORE_PASSWORD: ${{ secrets.UPLOAD_KEYSTORE_PASSWORD }}
+      UPLOAD_KEY_ALIAS: ${{ secrets.UPLOAD_KEY_ALIAS }}
+      UPLOAD_KEY_PASSWORD: ${{ secrets.UPLOAD_KEY_PASSWORD }}
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Gradle cache
+        uses: gradle/actions/setup-gradle@v3
+
+      - name: Restore Upload Keystore
+        run: |
+          echo "${{ secrets.UPLOAD_KEYSTORE_BASE64 }}" | base64 --decode > upload-keystore.jks
+          echo "✅ Keystore 已還原"
+
+      - name: Write Play credentials
+        run: |
+          echo "${{ secrets.PLAY_CREDENTIALS_JSON_B64 }}" | base64 --decode > play-credentials.json
+          echo "✅ Play credentials 已還原"
+
+      - name: Determine track
+        id: track
+        run: |
+          if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+            # 手動觸發：使用使用者選擇的軌道
+            TRACK="${{ github.event.inputs.track }}"
+          elif [ "${{ github.ref_type }}" == "tag" ]; then
+            # Tag 觸發：根據 tag 名稱決定軌道
+            TAG_NAME="${{ github.ref_name }}"
+            if [[ "$TAG_NAME" == android-alpha-v* ]]; then
+              TRACK="alpha"      # 封閉測試
+            elif [[ "$TAG_NAME" == android-beta-v* ]]; then
+              TRACK="beta"       # 公開測試
+            elif [[ "$TAG_NAME" == android-v* ]]; then
+              TRACK="production" # 正式版
+            elif [[ "$TAG_NAME" == v*.*.* ]]; then
+              TRACK="beta"       # 版本號 tag 預設公開測試
+            else
+              TRACK="internal"   # 預設
+            fi
+          else
+            # Push to main：內部測試
+            TRACK="internal"
+          fi
+          echo "track=${TRACK}" >> $GITHUB_OUTPUT
+          echo "📦 目標軌道: ${TRACK}"
+
+      - name: Build AAB (release)
+        run: ./gradlew :composeApp:bundleRelease --stacktrace
+
+      - name: Publish to Play Console
+        run: |
+          TRACK=${{ steps.track.outputs.track }}
+          echo "🚀 上傳到軌道: ${TRACK}"
+          ./gradlew :composeApp:publishReleaseBundle --track ${TRACK} --stacktrace
+
+      - name: Upload AAB artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-release-aab-${{ steps.track.outputs.track }}
+          path: composeApp/build/outputs/bundle/release/composeApp-release.aab

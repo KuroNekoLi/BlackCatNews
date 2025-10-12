@@ -1,4 +1,5 @@
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+import com.github.triplet.gradle.play.PlayPublisherExtension
 
 plugins {
     alias(libs.plugins.kotlinMultiplatform)
@@ -8,6 +9,8 @@ plugins {
     alias(libs.plugins.kotlinx.serialization)
     alias(libs.plugins.ksp)
     alias(libs.plugins.kotlinCocoapods)
+    // Google Play Publisher plugin（用於自動化上傳至 Play Console）
+    id("com.github.triplet.play") version "3.12.1"
 }
 
 // 暫時移除 Room plugin，等確認版本相容性
@@ -91,11 +94,34 @@ android {
     namespace = "com.linli.blackcatnews"
     compileSdk = libs.versions.android.compileSdk.get().toInt()
 
+    // Release 簽章設定（從環境變數讀取）
+    signingConfigs {
+        create("release") {
+            val keystorePath = System.getenv("UPLOAD_KEYSTORE")
+            val keystorePassword = System.getenv("UPLOAD_KEYSTORE_PASSWORD")
+            val keyAlias = System.getenv("UPLOAD_KEY_ALIAS")
+            val keyPassword = System.getenv("UPLOAD_KEY_PASSWORD")
+
+            if (keystorePath.isNullOrBlank() ||
+                keystorePassword.isNullOrBlank() ||
+                keyAlias.isNullOrBlank() ||
+                keyPassword.isNullOrBlank()
+            ) {
+                throw GradleException("請先設定 UPLOAD_KEYSTORE、UPLOAD_KEYSTORE_PASSWORD、UPLOAD_KEY_ALIAS、UPLOAD_KEY_PASSWORD 環境變數")
+            }
+
+            storeFile = file(keystorePath)
+            storePassword = keystorePassword
+            this.keyAlias = keyAlias
+            this.keyPassword = keyPassword
+        }
+    }
+
     defaultConfig {
         applicationId = "com.linli.blackcatnews"
         minSdk = libs.versions.android.minSdk.get().toInt()
         targetSdk = libs.versions.android.targetSdk.get().toInt()
-        versionCode = 1
+        versionCode = 2
         versionName = "1.0"
     }
     packaging {
@@ -111,12 +137,24 @@ android {
         release {
             // 建議真機測試時先關混淆，正式釋出再開
             isMinifyEnabled = false
-            // 正式釋出時務必改為 release 簽章
-            signingConfig = signingConfigs.getByName("debug")
+            // 使用 release 簽章
+            signingConfig = signingConfigs.getByName("release")
         }
     }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
     }
+}
+
+// Gradle Play Publisher 設定改以 gradle.properties 參數提供
+// 可在 CI 以 -Pplay.track=internal/production 等方式覆寫
+play {
+    // 預設讀取專案根目錄的憑證檔
+    serviceAccountCredentials.set(file("${project.rootDir}/play-credentials.json"))
+    defaultToAppBundles.set(true)
+    // 允許透過 -Pplay.track 或環境變數覆寫軌道
+    track.set(
+        project.findProperty("play.track")?.toString() ?: System.getenv("PLAY_TRACK") ?: "internal"
+    )
 }

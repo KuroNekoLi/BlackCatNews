@@ -132,6 +132,146 @@ ruby verify_api.rb
 
 若看到 `HTTP 401`，表示 API 權限/開通仍有問題；請依「初步結論與下一步」處理。
 
+## Android 自動化發佈（Google Play Console）
+
+### 概述
+
+- 使用 **Gradle Play Publisher (GPP)** 外掛自動上傳 AAB 到 Google Play Console
+- 支援多軌道發布：`internal`（內測）、`alpha`、`beta`（公測）、`production`（正式版）
+- GitHub Actions 自動化：推送 `main` → `internal`、打 tag → `beta`，正式發布時推送 tag 並自動上傳到
+  `production` 軌道
+
+### 專案設定
+
+1. **Gradle Play Publisher 外掛**（已配置於 `composeApp/build.gradle.kts`）
+   ```kotlin
+   plugins {
+       id("com.github.triplet.play") version "3.12.1"
+   }
+   
+   play {
+       serviceAccountCredentials.set(file("${project.rootDir}/play-credentials.json"))
+       defaultToAppBundles.set(true)
+       track.set(project.findProperty("play.track")?.toString() ?: System.getenv("PLAY_TRACK") ?: "internal")
+   }
+   ```
+
+2. **Release 簽章設定**（從環境變數讀取）
+   ```kotlin
+   android {
+       signingConfigs {
+           create("release") {
+               storeFile = file(System.getenv("UPLOAD_KEYSTORE"))
+               storePassword = System.getenv("UPLOAD_KEYSTORE_PASSWORD")
+               keyAlias = System.getenv("UPLOAD_KEY_ALIAS")
+               keyPassword = System.getenv("UPLOAD_KEY_PASSWORD")
+           }
+       }
+       buildTypes {
+           getByName("release") {
+               signingConfig = signingConfigs.getByName("release")
+           }
+       }
+   }
+   ```
+
+3. **版本管理**
+    - `versionCode`：每次上傳必須遞增（目前為 2）
+    - `versionName`：語意化版本號（如 1.0、1.1）
+
+### GitHub Actions 觸發策略
+
+| 觸發方式                                              | 目標軌道         | 使用場景         |
+|---------------------------------------------------|--------------|--------------|
+| `git push origin main`                            | `internal`   | 開發測試、內部驗證    |
+| `git tag android-alpha-v1.0.0 && git push --tags` | `alpha`      | 封閉測試（特定測試人員） |
+| `git tag android-beta-v1.0.0 && git push --tags`  | `beta`       | 公開測試（大規模驗證）  |
+| `git tag android-v1.0.0 && git push --tags`       | `production` | 正式發布         |
+| 手動觸發（Actions UI）                                  | 自選           | 緊急修復、特殊發布    |
+
+### 必要的 GitHub Secrets
+
+在 **Settings → Secrets and variables → Actions** 新增：
+
+| Secret Name                 | 說明                           | 取得方式                                           |
+|-----------------------------|------------------------------|------------------------------------------------|
+| `PLAY_CREDENTIALS_JSON_B64` | Service Account JSON（base64） | `base64 -i service-account.json \| tr -d '\n'` |
+| `UPLOAD_KEYSTORE_BASE64`    | Upload keystore（base64）      | `base64 -i my_keystore.jks \| tr -d '\n'`      |
+| `UPLOAD_KEYSTORE_PASSWORD`  | Keystore 密碼                  | 純文字                                            |
+| `UPLOAD_KEY_ALIAS`          | Key alias                    | 純文字                                            |
+| `UPLOAD_KEY_PASSWORD`       | Key 密碼                       | 純文字                                            |
+
+### 本地測試
+
+1. **設定環境變數**
+   ```bash
+   export UPLOAD_KEYSTORE=/path/to/my_keystore.jks
+   export UPLOAD_KEYSTORE_PASSWORD='your_password'
+   export UPLOAD_KEY_ALIAS='your_alias'
+   export UPLOAD_KEY_PASSWORD='your_password'
+   ```
+
+2. **建置並上傳到 internal 軌道**
+   ```bash
+   ./gradlew :composeApp:bundleRelease
+   ./gradlew :composeApp:publishReleaseBundle --track internal
+   ```
+
+3. **上傳到其他軌道**
+   ```bash
+   ./gradlew :composeApp:publishReleaseBundle --track beta
+   ./gradlew :composeApp:publishReleaseBundle --track production
+   ```
+
+### 工作流程範例
+
+**日常開發**：
+
+```bash
+# 1. 開發功能並測試
+# 2. 提交並推送到 main
+git add .
+git commit -m "feat: 新增某功能"
+git push origin main
+# → GitHub Actions 自動上傳到 internal 軌道
+```
+
+**準備公測**：
+
+```bash
+# 1. 確保 versionCode 已遞增
+# 2. 打 tag 並推送
+git tag android-beta-v1.0.1
+git push --tags
+# → GitHub Actions 自動上傳到 beta 軌道
+```
+
+**正式發布**：
+
+```bash
+# 1. 確保 versionCode 已遞增並經過 beta 測試
+# 2. 打正式版 tag 並推送
+git tag android-v1.0.1
+git push --tags
+# → GitHub Actions 自動上傳到 production 軌道
+# 
+# 或手動觸發（備用方式）：
+# 前往 GitHub → Actions → Android Play Deploy (GPP)
+# → Run workflow → 選擇 'production' 軌道
+```
+
+### 注意事項
+
+- **首次上傳**：必須先在 Play Console 手動建立 App 並完成一次手動上傳
+- **versionCode 管理**：每次上傳前記得在 `build.gradle.kts` 遞增 `versionCode`
+- **簽章一致性**：Upload keystore 必須與 Play Console 註冊的 Upload key SHA1 一致
+- **Service Account 權限**：在 Play Console → Users and permissions 授予 **Release manager** 角色
+
+### 參考資源
+
+- [Gradle Play Publisher 官方文件](https://github.com/Triple-T/gradle-play-publisher)
+- [Google Play Console 發布流程](https://support.google.com/googleplay/android-developer/answer/9859152)
+
 Learn more about [Kotlin Multiplatform](https://www.jetbrains.com/help/kotlin-multiplatform-dev/get-started.html),
 [Compose Multiplatform](https://github.com/JetBrains/compose-multiplatform/#compose-multiplatform),
 [Kotlin/Wasm](https://kotl.in/wasm/)…
