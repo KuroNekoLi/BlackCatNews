@@ -176,8 +176,9 @@ ruby verify_api.rb
    ```
 
 3. **版本管理**
-    - `versionCode`：每次上傳必須遞增（目前為 2）
-    - `versionName`：語意化版本號（如 1.0、1.1）
+    - `versionCode`：CI 自動遞增（使用 `github.run_number + 100`），本機預設為 2
+    - `versionName`：CI 自動產生（如 `1.0.123`），本機預設為 `1.0`
+    - 本機測試時使用預設值，推送到 GitHub 後自動遞增，無需手動修改
 
 ### GitHub Actions 觸發策略
 
@@ -263,7 +264,6 @@ git push --tags
 ### 注意事項
 
 - **首次上傳**：必須先在 Play Console 手動建立 App 並完成一次手動上傳
-- **versionCode 管理**：每次上傳前記得在 `build.gradle.kts` 遞增 `versionCode`
 - **簽章一致性**：Upload keystore 必須與 Play Console 註冊的 Upload key SHA1 一致
 - **Service Account 權限**：在 Play Console → Users and permissions 授予 **Release manager** 角色
 
