@@ -83,10 +83,14 @@ jobs:
           echo "📦 目標軌道: ${TRACK}"
 
       - name: Build AAB (release)
-        env:
-          VERSION_CODE: ${{ github.run_number + 100 }}
-          VERSION_NAME: "1.0.${{ github.run_number }}"
-        run: ./gradlew :composeApp:bundleRelease --stacktrace
+        run: |
+          # 計算版本號（run_number + 100，避免與手動版本衝突）
+          VERSION_CODE=$((100 + ${{ github.run_number }}))
+          VERSION_NAME="1.0.${{ github.run_number }}"
+          echo "📦 版本號：versionCode=${VERSION_CODE}, versionName=${VERSION_NAME}"
+          export VERSION_CODE
+          export VERSION_NAME
+          ./gradlew :composeApp:bundleRelease --stacktrace
 
       - name: Publish to Play Console
         run: |
