@@ -1,13 +1,15 @@
 name: Android Play Deploy (GPP)
 
 on:
-  # 移除 push to main 自動發布，改為只在打 tag 時發布
   push:
+    branches: [ main ]          # 只有 main 才自動上傳到 internal
     tags:
-      - 'android-internal-v*'   # 內部測試（如 android-internal-v1.0.0）
       - 'android-alpha-v*'      # 封閉測試（如 android-alpha-v1.0.0）
       - 'android-beta-v*'       # 公開測試（如 android-beta-v1.0.0）
       - 'android-v*'            # 正式版（如 android-v1.0.0）
+      - 'v*.*.*'                # 版本號 tag 也可觸發
+  pull_request:
+    branches: [ main ]          # PR 到 main 時只建置驗證，不上傳
   workflow_dispatch: # 手動觸發：可選擇任意軌道
     inputs:
       track:
@@ -51,6 +53,7 @@ jobs:
           echo "✅ Keystore 已還原"
 
       - name: Write Play credentials
+        if: github.event_name != 'pull_request'  # PR 時不需要憑證
         run: |
           echo "${{ secrets.PLAY_CREDENTIALS_JSON_B64 }}" | base64 --decode > play-credentials.json
           echo "✅ Play credentials 已還原"
@@ -64,19 +67,19 @@ jobs:
           elif [ "${{ github.ref_type }}" == "tag" ]; then
             # Tag 觸發：根據 tag 名稱決定軌道
             TAG_NAME="${{ github.ref_name }}"
-            if [[ "$TAG_NAME" == android-internal-v* ]]; then
-              TRACK="internal"   # 內部測試
-            elif [[ "$TAG_NAME" == android-alpha-v* ]]; then
+            if [[ "$TAG_NAME" == android-alpha-v* ]]; then
               TRACK="alpha"      # 封閉測試
             elif [[ "$TAG_NAME" == android-beta-v* ]]; then
               TRACK="beta"       # 公開測試
             elif [[ "$TAG_NAME" == android-v* ]]; then
               TRACK="production" # 正式版
+            elif [[ "$TAG_NAME" == v*.*.* ]]; then
+              TRACK="beta"       # 版本號 tag 預設公開測試
             else
               TRACK="internal"   # 預設
             fi
           else
-            # 預設：內部測試（不應該走到這裡）
+            # Push to main：內部測試
             TRACK="internal"
           fi
           echo "track=${TRACK}" >> $GITHUB_OUTPUT
@@ -102,6 +105,7 @@ jobs:
           ./gradlew :composeApp:bundleRelease --stacktrace
 
       - name: Publish to Play Console
+        if: github.event_name != 'pull_request'  # PR 時不上傳，只建置驗證
         id: publish
         continue-on-error: true
         run: |
@@ -110,7 +114,7 @@ jobs:
           ./gradlew :composeApp:publishReleaseBundle --track ${TRACK} --stacktrace
 
       - name: Retry with incremented version (if failed)
-        if: steps.publish.outcome == 'failure'
+        if: github.event_name != 'pull_request' && steps.publish.outcome == 'failure'
         run: |
           echo "⚠️  上傳失敗，可能是版本號衝突"
           echo "🔄 重新建置並遞增版本號..."

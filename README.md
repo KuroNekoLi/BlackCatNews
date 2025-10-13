@@ -108,31 +108,87 @@ in your IDE’s toolbar or open the [/iosApp](./iosApp) directory in Xcode and r
       ID、Key ID 與錯誤範例聯絡 Apple Developer Support
     - 在 API 問題解決前，可用 Xcode Organizer/Transporter（Apple ID + App 專用密碼）暫時上傳 TestFlight
 
-### 工作流程範例
+### 本地執行範例
 
-**日常開發**：
+1) 使用 Fastlane 上傳（需先成功 Archive 一次）
 
 ```bash
-# 在 main 或 feature 分支開發，不會觸發發布
-git add .
-git commit -m "feat: 新增某功能"
-git push origin main  # ← 不會觸發發布，可以安心開發
+cd iosApp
+export ASC_KEY_ID=<你的 Key ID>
+export ASC_ISSUER_ID=<你的 Issuer ID>
+export ASC_PRIVATE_KEY_PATH=<你的 .p8 絕對路徑>
+BUNDLE_GEMFILE=fastlane/Gemfile bundle exec fastlane beta
 ```
 
-**內部測試**：
+2) 驗證 API 金鑰（直接呼叫 Apple API）
 
 ```bash
-# 需要測試時才打 tag
-git tag android-internal-v1.0.0
-git push --tags
+cd iosApp
+export ASC_KEY_ID=<你的 Key ID>
+export ASC_ISSUER_ID=<你的 Issuer ID>
+export ASC_PRIVATE_KEY_PATH=<你的 .p8 絕對路徑>
+ruby verify_api.rb
+```
+
+若看到 `HTTP 401`，表示 API 權限/開通仍有問題；請依「初步結論與下一步」處理。
+
+## Android 自動化發佈（Google Play Console）
+
+### 概述
+
+- 使用 **Gradle Play Publisher (GPP)** 外掛自動上傳 AAB 到 Google Play Console
+- 支援多軌道發布：`internal`（內測）、`alpha`（封閉測試）、`beta`（公測）、`production`（正式版）
+- GitHub Actions 自動化：只在 main 分支和特定 tag 觸發，develop 分支不會觸發發布
+
+### 分支策略
+
+```
+develop (開發分支)
+  ↓ 日常 commit（不觸發 CI/CD）
+  ↓ PR/merge
+main (穩定分支)
+  ↓ 自動發布到 internal 軌道
+  ↓ 打 tag
+android-beta-v* → 公開測試（beta 軌道）
+android-v* → 正式發布（production 軌道）
+```
+
+### 工作流程範例
+
+**日常開發**（在 develop 分支）：
+
+```bash
+# 1. 切換到 develop 分支
+git checkout develop
+
+# 2. 開發功能並測試
+git add .
+git commit -m "feat: 新增某功能"
+git push origin develop
+# → 不會觸發任何 CI/CD，可以自由開發
+```
+
+**準備發布到內部測試**（merge 到 main）：
+
+```bash
+# 1. 開 PR：develop → main
+gh pr create --base main --head develop --title "Release: v1.0.X"
+
+# 2. PR 自動觸發建置驗證（只建置，不上傳）
+# → 確保代碼可以正常打包
+
+# 3. Merge PR 後自動發布
+git checkout main
+git pull
 # → GitHub Actions 自動上傳到 internal 軌道
 ```
 
 **準備公測**：
 
 ```bash
-# 1. 確保功能完整且經過內部測試
-# 2. 打 beta tag
+# 1. 確保已 merge 到 main 並在 internal 測試通過
+# 2. 打 beta tag 並推送
+git checkout main
 git tag android-beta-v1.0.1
 git push --tags
 # → GitHub Actions 自動上傳到 beta 軌道
@@ -141,8 +197,9 @@ git push --tags
 **正式發布**：
 
 ```bash
-# 1. 確保經過 beta 測試無誤
-# 2. 打正式版 tag
+# 1. 確保 beta 測試通過
+# 2. 打正式版 tag 並推送
+git checkout main
 git tag android-v1.0.1
 git push --tags
 # → GitHub Actions 自動上傳到 production 軌道
@@ -151,15 +208,6 @@ git push --tags
 # 前往 GitHub → Actions → Android Play Deploy (GPP)
 # → Run workflow → 選擇 'production' 軌道
 ```
-
-### Android 自動化發佈（Google Play Console）
-
-### 概述
-
-- 使用 **Gradle Play Publisher (GPP)** 外掛自動上傳 AAB 到 Google Play Console
-- 支援多軌道發布：`internal`（內測）、`alpha`、`beta`（公測）、`production`（正式版）
-- GitHub Actions 自動化：推送 `main` → `internal`、打 tag → `beta`，正式發布時推送 tag 並自動上傳到
-  `production` 軌道
 
 ### 專案設定
 
@@ -202,15 +250,15 @@ git push --tags
 
 ### GitHub Actions 觸發策略
 
-| 觸發方式                                                 | 目標軌道         | 使用場景         |
-|------------------------------------------------------|--------------|--------------|
-| `git tag android-internal-v1.0.0 && git push --tags` | `internal`   | 內部測試、QA 驗證   |
-| `git tag android-alpha-v1.0.0 && git push --tags`    | `alpha`      | 封閉測試（特定測試人員） |
-| `git tag android-beta-v1.0.0 && git push --tags`     | `beta`       | 公開測試（大規模驗證）  |
-| `git tag android-v1.0.0 && git push --tags`          | `production` | 正式發布         |
-| 手動觸發（Actions UI）                                     | 自選           | 緊急修復、特殊發布    |
-
-**注意**：為避免每次 push 都觸發發布，本專案僅在**打 tag 時**才會自動發布到 Play Console。
+| 觸發方式                                              | 目標軌道         | 使用場景            |
+|---------------------------------------------------|--------------|-----------------|
+| `develop` 分支 commit                               | 不觸發          | 日常開發（不會建置/上傳）   |
+| PR: `develop` → `main`                            | 不上傳          | 只建置驗證（確保可以正常打包） |
+| `git push origin main`                            | `internal`   | 合併後自動發布到內部測試    |
+| `git tag android-alpha-v1.0.0 && git push --tags` | `alpha`      | 封閉測試（特定測試人員）    |
+| `git tag android-beta-v1.0.0 && git push --tags`  | `beta`       | 公開測試（大規模驗證）     |
+| `git tag android-v1.0.0 && git push --tags`       | `production` | 正式發布            |
+| 手動觸發（Actions UI）                                  | 自選           | 緊急修復、特殊發布       |
 
 ### 必要的 GitHub Secrets
 
@@ -246,7 +294,9 @@ git push --tags
    ./gradlew :composeApp:publishReleaseBundle --track production
    ```
 
+
 ### 注意事項
+
 - **首次上傳**：必須先在 Play Console 手動建立 App 並完成一次手動上傳
 - **簽章一致性**：Upload keystore 必須與 Play Console 註冊的 Upload key SHA1 一致
 - **Service Account 權限**：在 Play Console → Users and permissions 授予 **Release manager** 角色
