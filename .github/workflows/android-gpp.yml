@@ -1,13 +1,13 @@
 name: Android Play Deploy (GPP)
 
 on:
+  # 移除 push to main 自動發布，改為只在打 tag 時發布
   push:
-    branches: [ main ]          # 自動上傳到 internal（內部測試）
     tags:
+      - 'android-internal-v*'   # 內部測試（如 android-internal-v1.0.0）
       - 'android-alpha-v*'      # 封閉測試（如 android-alpha-v1.0.0）
       - 'android-beta-v*'       # 公開測試（如 android-beta-v1.0.0）
       - 'android-v*'            # 正式版（如 android-v1.0.0）
-      - 'v*.*.*'                # 版本號 tag 也可觸發
   workflow_dispatch: # 手動觸發：可選擇任意軌道
     inputs:
       track:
@@ -64,19 +64,19 @@ jobs:
           elif [ "${{ github.ref_type }}" == "tag" ]; then
             # Tag 觸發：根據 tag 名稱決定軌道
             TAG_NAME="${{ github.ref_name }}"
-            if [[ "$TAG_NAME" == android-alpha-v* ]]; then
+            if [[ "$TAG_NAME" == android-internal-v* ]]; then
+              TRACK="internal"   # 內部測試
+            elif [[ "$TAG_NAME" == android-alpha-v* ]]; then
               TRACK="alpha"      # 封閉測試
             elif [[ "$TAG_NAME" == android-beta-v* ]]; then
               TRACK="beta"       # 公開測試
             elif [[ "$TAG_NAME" == android-v* ]]; then
               TRACK="production" # 正式版
-            elif [[ "$TAG_NAME" == v*.*.* ]]; then
-              TRACK="beta"       # 版本號 tag 預設公開測試
             else
               TRACK="internal"   # 預設
             fi
           else
-            # Push to main：內部測試
+            # 預設：內部測試（不應該走到這裡）
             TRACK="internal"
           fi
           echo "track=${TRACK}" >> $GITHUB_OUTPUT
