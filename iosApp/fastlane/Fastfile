@@ -55,21 +55,66 @@ platform :ios do
   desc "Upload the latest build to TestFlight"
   lane :beta do
     build
-    pilot(
-      **auth_options,
-      skip_submission: true,
-      skip_waiting_for_build_processing: false
-    )
+    # 檢查是否有 API Key
+    if ENV["ASC_KEY_ID"] && ENV["ASC_ISSUER_ID"] && ENV["ASC_PRIVATE_KEY"]
+      api_key = app_store_connect_api_key(
+        key_id: ENV["ASC_KEY_ID"],
+        issuer_id: ENV["ASC_ISSUER_ID"],
+        key_content: ENV["ASC_PRIVATE_KEY"],
+        is_key_content_base64: ENV["ASC_PRIVATE_KEY_BASE64"] == "true"
+      )
+      
+      pilot(
+        api_key: api_key,
+        ipa: "BlackCatNews.ipa",
+        skip_waiting_for_build_processing: false
+      )
+    else
+      # 使用 Apple ID 路徑
+      pilot(
+        **auth_options,
+        skip_waiting_for_build_processing: false
+      )
+    end
   end
 
   desc "Deliver the build to App Store Connect (metadata handled manually)"
   lane :release do
     build
-    deliver(
-      **auth_options,
-      submit_for_review: ENV["SUBMIT_FOR_REVIEW"] == "true",
-      automatic_release: ENV["AUTOMATIC_RELEASE"] == "true",
-      force: true
-    )
+    
+    # 讀取環境變數控制送審與上架
+    submit_for_review = ENV["SUBMIT_FOR_REVIEW"] == "true"
+    automatic_release = ENV["AUTOMATIC_RELEASE"] == "true"
+    
+    # 檢查是否有 API Key
+    if ENV["ASC_KEY_ID"] && ENV["ASC_ISSUER_ID"] && ENV["ASC_PRIVATE_KEY"]
+      api_key = app_store_connect_api_key(
+        key_id: ENV["ASC_KEY_ID"],
+        issuer_id: ENV["ASC_ISSUER_ID"],
+        key_content: ENV["ASC_PRIVATE_KEY"],
+        is_key_content_base64: ENV["ASC_PRIVATE_KEY_BASE64"] == "true"
+      )
+      
+      deliver(
+        api_key: api_key,
+        ipa: "BlackCatNews.ipa",
+        submit_for_review: submit_for_review,
+        automatic_release: automatic_release,
+        skip_metadata: true,
+        skip_screenshots: true,
+        force: true
+      )
+    else
+      # 使用 Apple ID 路徑
+      deliver(
+        **auth_options,
+        submit_for_review: submit_for_review,
+        automatic_release: automatic_release,
+        skip_metadata: true,
+        skip_screenshots: true,
+        force: true
+      )
+    end
   end
+
 end
