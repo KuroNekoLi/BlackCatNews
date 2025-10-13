@@ -32,13 +32,19 @@ platform :ios do
 
   desc "Build ipa for App Store distribution"
   lane :build do
+    team_id = ENV["APPLE_TEAM_ID"] || ENV["FASTLANE_TEAM_ID"]
+    export_opts = { signingStyle: "automatic" }
+    export_opts[:teamID] = team_id if team_id && !team_id.empty?
+
     gym(
       workspace: "iosApp.xcworkspace",
       scheme: "iosApp",
       configuration: "Release",
       export_method: "app-store",
       clean: true,
-      include_bitcode: false
+      include_bitcode: false,
+      export_options: export_opts,
+      xcargs: "-allowProvisioningUpdates"
     )
   end
 

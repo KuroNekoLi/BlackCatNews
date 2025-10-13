@@ -94,26 +94,22 @@ android {
     namespace = "com.linli.blackcatnews"
     compileSdk = libs.versions.android.compileSdk.get().toInt()
 
-    // Release 簽章設定（從環境變數讀取）
+    // Release 簽章設定（從環境變數讀取）；若未提供，略過設定以免非 Android 任務（如 :composeApp:podInstall）失敗
+    val keystorePath = System.getenv("UPLOAD_KEYSTORE")
+    val keystorePassword = System.getenv("UPLOAD_KEYSTORE_PASSWORD")
+    val keyAlias = System.getenv("UPLOAD_KEY_ALIAS")
+    val keyPassword = System.getenv("UPLOAD_KEY_PASSWORD")
+    val hasUploadKeystore =
+        listOf(keystorePath, keystorePassword, keyAlias, keyPassword).all { !it.isNullOrBlank() }
+
     signingConfigs {
-        create("release") {
-            val keystorePath = System.getenv("UPLOAD_KEYSTORE")
-            val keystorePassword = System.getenv("UPLOAD_KEYSTORE_PASSWORD")
-            val keyAlias = System.getenv("UPLOAD_KEY_ALIAS")
-            val keyPassword = System.getenv("UPLOAD_KEY_PASSWORD")
-
-            if (keystorePath.isNullOrBlank() ||
-                keystorePassword.isNullOrBlank() ||
-                keyAlias.isNullOrBlank() ||
-                keyPassword.isNullOrBlank()
-            ) {
-                throw GradleException("請先設定 UPLOAD_KEYSTORE、UPLOAD_KEYSTORE_PASSWORD、UPLOAD_KEY_ALIAS、UPLOAD_KEY_PASSWORD 環境變數")
+        if (hasUploadKeystore) {
+            create("release") {
+                storeFile = file(keystorePath!!)
+                storePassword = keystorePassword
+                this.keyAlias = keyAlias
+                this.keyPassword = keyPassword
             }
-
-            storeFile = file(keystorePath)
-            storePassword = keystorePassword
-            this.keyAlias = keyAlias
-            this.keyPassword = keyPassword
         }
     }
 
@@ -137,8 +133,10 @@ android {
         release {
             // 建議真機測試時先關混淆，正式釋出再開
             isMinifyEnabled = false
-            // 使用 release 簽章
-            signingConfig = signingConfigs.getByName("release")
+            // 只有當提供了 Upload keystore 環境變數時，才設定 release 簽章；否則不指定（避免在非 Android 任務出錯）
+            if (hasUploadKeystore) {
+                signingConfig = signingConfigs.getByName("release")
+            }
         }
     }
     compileOptions {

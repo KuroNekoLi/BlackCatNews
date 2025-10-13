@@ -36,3 +36,10 @@ Thumbs.db
 # iOS CocoaPods
 iosApp/Podfile.lock
 iosApp/Pods/
+
+# Secrets / credentials / build artifacts (should not be committed)
+play-credentials.json
+creds.b64
+**/*.ipa
+**/*.dSYM.zip
+composeApp/release/
