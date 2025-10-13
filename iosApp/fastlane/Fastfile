@@ -32,9 +32,14 @@ platform :ios do
 
   desc "Build ipa for App Store distribution"
   lane :build do
-    team_id = ENV["APPLE_TEAM_ID"] || ENV["FASTLANE_TEAM_ID"]
-    export_opts = { signingStyle: "automatic" }
-    export_opts[:teamID] = team_id if team_id && !team_id.empty?
+    # 使用 match 安裝的 App Store 描述檔（避免在 CI 登入 Xcode 帳號）
+    app_id = ENV["APP_IDENTIFIER"] || "com.linli.blackcatnews"
+    profile_name = "match AppStore #{app_id}"
+    export_opts = {
+      provisioningProfiles: {
+        app_id => profile_name
+      }
+    }
 
     gym(
       workspace: "iosApp.xcworkspace",
@@ -43,8 +48,7 @@ platform :ios do
       export_method: "app-store",
       clean: true,
       include_bitcode: false,
-      export_options: export_opts,
-      xcargs: "-allowProvisioningUpdates"
+      export_options: export_opts
     )
   end
 

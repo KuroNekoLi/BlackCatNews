@@ -50,6 +50,21 @@ jobs:
           bundle config set path 'vendor/bundle'
           bundle install
 
+      - name: Install certs and profiles (match)
+        working-directory: iosApp
+        env:
+          MATCH_GIT_URL: ${{ secrets.MATCH_GIT_URL }}
+          MATCH_PASSWORD: ${{ secrets.MATCH_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          APP_IDENTIFIER: com.linli.blackcatnews
+        run: |
+          # 若你的簽章倉庫需要權限，建議改用 Deploy Key 或 PAT 注入（略）
+          BUNDLE_GEMFILE=fastlane/Gemfile bundle exec fastlane run match \
+            type:appstore \
+            readonly:false \
+            app_identifier:$APP_IDENTIFIER \
+            team_id:$APPLE_TEAM_ID
+
       - name: Cache CocoaPods
         uses: actions/cache@v4
         with:
