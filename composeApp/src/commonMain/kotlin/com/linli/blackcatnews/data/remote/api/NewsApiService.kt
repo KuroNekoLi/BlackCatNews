@@ -21,7 +21,7 @@ class NewsApiService(
 
     companion object {
 //        private const val BASE_URL = "https://linlinews.zeabur.app"
-        private const val BASE_URL = "https://reasoning-compression-marijuana-katrina.trycloudflare.com/"
+        private const val BASE_URL = "https://reasoning-compression-marijuana-katrina.trycloudflare.com"
         private const val RANDOM_ARTICLES_ENDPOINT = "/api/ai-articles/random"
     }
 
