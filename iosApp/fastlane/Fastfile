@@ -149,17 +149,38 @@ platform :ios do
       key_content: ENV["ASC_PRIVATE_KEY"],
       is_key_content_base64: ENV["ASC_PRIVATE_KEY_BASE64"] == "true"
     )
-    deliver(
-      api_key: api_key,
-      ipa: "BlackCatNews.ipa",
-      submit_for_review: submit_for_review,
-      automatic_release: automatic_release,
-      submission_information: submission_info,
-      skip_metadata: true,
-      skip_screenshots: true,
-      force: true,
-      precheck_include_in_app_purchases: false,
-      run_precheck_before_submit: true
-    )
+    begin
+      deliver(
+        api_key: api_key,
+        ipa: "BlackCatNews.ipa",
+        submit_for_review: submit_for_review,
+        automatic_release: automatic_release,
+        submission_information: submission_info,
+        skip_metadata: true,
+        skip_screenshots: true,
+        force: true,
+        precheck_include_in_app_purchases: false,
+        run_precheck_before_submit: true
+      )
+    rescue => ex
+      if ex.message.include?("A relationship value is not acceptable for the current resource state")
+        UI.important("[自動重試] Build 尚未 ready for submission，sleep 5 分鐘後再嘗試僅送審 submit_for_review")
+        sleep(300)
+        deliver(
+          api_key: api_key,
+          submit_for_review: submit_for_review,
+          automatic_release: automatic_release,
+          submission_information: submission_info,
+          skip_binary_upload: true,
+          skip_metadata: true,
+          skip_screenshots: true,
+          force: true,
+          precheck_include_in_app_purchases: false,
+          run_precheck_before_submit: true
+        )
+      else
+        raise ex
+      end
+    end
   end
 end
