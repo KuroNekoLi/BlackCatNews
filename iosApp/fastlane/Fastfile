@@ -203,7 +203,9 @@ platform :ios do
         automatic_release: automatic_release,
         skip_metadata: true,
         skip_screenshots: true,
-        force: true
+        force: true,
+        precheck_include_in_app_purchases: false,
+        run_precheck_before_submit: true
       )
     else
       # 使用 Apple ID 路徑
@@ -213,7 +215,9 @@ platform :ios do
         automatic_release: automatic_release,
         skip_metadata: true,
         skip_screenshots: true,
-        force: true
+        force: true,
+        precheck_include_in_app_purchases: false,
+        run_precheck_before_submit: true
       )
     end
   end
