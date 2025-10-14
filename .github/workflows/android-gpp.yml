@@ -28,6 +28,8 @@ jobs:
     runs-on: ubuntu-latest
     
     env:
+      # Play Console 憑證（使用原始 JSON，多行）
+      PLAY_CREDENTIALS_JSON: ${{ secrets.PLAY_CREDENTIALS_JSON }}
       # Release 簽章環境變數
       UPLOAD_KEYSTORE: ${{ github.workspace }}/upload-keystore.jks
       UPLOAD_KEYSTORE_PASSWORD: ${{ secrets.UPLOAD_KEYSTORE_PASSWORD }}
@@ -51,12 +53,6 @@ jobs:
         run: |
           echo "${{ secrets.UPLOAD_KEYSTORE_BASE64 }}" | base64 --decode > upload-keystore.jks
           echo "✅ Keystore 已還原"
-
-      - name: Write Play credentials
-        if: github.event_name != 'pull_request'  # PR 時不需要憑證
-        run: |
-          echo "${{ secrets.PLAY_CREDENTIALS_JSON_B64 }}" | base64 --decode > play-credentials.json
-          echo "✅ Play credentials 已還原"
 
       - name: Determine track
         id: track

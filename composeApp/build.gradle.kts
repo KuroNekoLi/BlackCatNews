@@ -169,7 +169,13 @@ play {
             // 無環境變數時，沿用既有檔案（若不存在會導致後續任務報錯，屆時提示補上）
         }
     }
-    // 指定服務帳戶憑證檔
+    if (!credsFile.exists()) {
+        throw GradleException(
+            "Missing Google Play credentials. Set PLAY_CREDENTIALS_JSON (原始 JSON 內容) 或將憑證放在 ${project.rootDir}/play-credentials.json"
+        )
+    }
+    // 若 ANDROID_PUBLISHER_CREDENTIALS 由外部設定，GPP 會優先使用該環境變數（且需為 JSON 內容而非檔案路徑）。
+    // 建議不要同時設定，以避免來源衝突。
     serviceAccountCredentials.set(credsFile)
     defaultToAppBundles.set(true)
     // 允許透過 -Pplay.track 或環境變數覆寫軌道
