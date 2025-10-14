@@ -187,6 +187,23 @@ platform :ios do
     submit_for_review = ENV["SUBMIT_FOR_REVIEW"] == "true"
     automatic_release = ENV["AUTOMATIC_RELEASE"] == "true"
     
+    # 出口合規資訊（Export Compliance）
+    # 預設假設未使用需申報的加密（大多數僅使用 HTTPS 的 app 可設為 false）
+    # 可用環境變數覆寫：
+    #   EXPORT_COMPLIANCE_USES_ENCRYPTION, EXPORT_COMPLIANCE_IS_EXEMPT,
+    #   EXPORT_COMPLIANCE_THIRD_PARTY, EXPORT_COMPLIANCE_PROPRIETARY,
+    #   EXPORT_COMPLIANCE_AVAILABLE_ON_FRENCH_STORE
+    uses_encryption = (ENV["EXPORT_COMPLIANCE_USES_ENCRYPTION"] || "false") == "true"
+    submission_info = { export_compliance_uses_encryption: uses_encryption }
+    if uses_encryption
+      submission_info[:export_compliance_is_exempt] = ENV["EXPORT_COMPLIANCE_IS_EXEMPT"] == "true"
+      submission_info[:export_compliance_contains_third_party_cryptography] = ENV["EXPORT_COMPLIANCE_THIRD_PARTY"] == "true"
+      submission_info[:export_compliance_contains_proprietary_cryptography] = ENV["EXPORT_COMPLIANCE_PROPRIETARY"] == "true"
+      if ENV.key?("EXPORT_COMPLIANCE_AVAILABLE_ON_FRENCH_STORE")
+        submission_info[:export_compliance_available_on_french_store] = ENV["EXPORT_COMPLIANCE_AVAILABLE_ON_FRENCH_STORE"] == "true"
+      end
+    end
+
     # 檢查是否有 API Key
     if ENV["ASC_KEY_ID"] && ENV["ASC_ISSUER_ID"] && ENV["ASC_PRIVATE_KEY"]
       api_key = app_store_connect_api_key(
@@ -201,6 +218,7 @@ platform :ios do
         ipa: "BlackCatNews.ipa",
         submit_for_review: submit_for_review,
         automatic_release: automatic_release,
+        submission_information: submission_info,
         skip_metadata: true,
         skip_screenshots: true,
         force: true,
@@ -213,6 +231,7 @@ platform :ios do
         ipa: "BlackCatNews.ipa",
         submit_for_review: submit_for_review,
         automatic_release: automatic_release,
+        submission_information: submission_info,
         skip_metadata: true,
         skip_screenshots: true,
         force: true,
