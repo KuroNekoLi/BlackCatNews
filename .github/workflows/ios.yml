@@ -1,0 +1,135 @@
+
+name: iOS CI/CD (Fastlane)
+
+on:
+  push:
+    branches: [ main ]            # merge 到 main → TestFlight
+    tags:
+      - 'ios-alpha-v*'            # 封閉測試（可選）
+      - 'ios-beta-v*'             # 公開測試
+      - 'ios-v*'                  # 正式送審/上架
+  workflow_dispatch:
+    inputs:
+      lane:
+        description: "Fastlane lane to run (beta/release)"
+        required: false
+        default: beta
+
+jobs:
+  ios:
+    runs-on: macos-15
+
+    env:
+      # Apple ID 路徑（你要求使用 Apple ID）
+      FASTLANE_USER: ${{ secrets.FASTLANE_USER }}
+      FASTLANE_APPLE_APPLICATION_SPECIFIC_PASSWORD: ${{ secrets.FASTLANE_APPLE_APPLICATION_SPECIFIC_PASSWORD }}
+      FASTLANE_SESSION: ${{ secrets.FASTLANE_SESSION }}
+      # 使用測試通過的 App Store Connect API Key
+      ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+      ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+      ASC_PRIVATE_KEY: ${{ secrets.ASC_PRIVATE_KEY }}
+      # iOS Distribution 憑證（p12），Fastfile 於 CI 會使用這兩個變數
+      IOS_DIST_CERT_BASE64: ${{ secrets.IOS_DIST_CERT_BASE64 }}
+      IOS_DIST_CERT_PASSWORD: ${{ secrets.IOS_DIST_CERT_PASSWORD }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Cache Ruby gems
+        uses: actions/cache@v4
+        with:
+          path: iosApp/fastlane/vendor/bundle
+          key: ${{ runner.os }}-gems-${{ hashFiles('iosApp/fastlane/Gemfile.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-gems-
+
+      - name: Install Bundler dependencies
+        working-directory: iosApp/fastlane
+        run: |
+          gem install bundler --no-document
+          bundle config set path 'vendor/bundle'
+          bundle install
+
+      - name: Cache CocoaPods
+        uses: actions/cache@v4
+        with:
+          path: |
+            iosApp/Pods
+            ~/.cocoapods
+          key: ${{ runner.os }}-pods-${{ hashFiles('iosApp/Podfile.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-pods-
+
+      - name: Install CocoaPods & prepare KMP pods
+        working-directory: .
+        run: |
+          sudo gem install cocoapods --no-document
+          pod repo update
+          # 由 Gradle 的 cocoapods plugin 產生 Dummy framework 並執行 pod install
+          ./gradlew :composeApp:podInstall --no-daemon --stacktrace
+
+      - name: Gradle sync shared module
+        run: ./gradlew :shared:assemble
+
+      - name: Select Xcode 16
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: '16.*'
+
+      - name: Decide lane and flags by ref
+        id: decide
+        run: |
+          REF='${{ github.ref_name }}'
+          if [[ '${{ github.event_name }}' == 'push' && '${{ github.ref_type }}' == 'branch' ]]; then
+            LANE='beta'                           # merge 到 main → TestFlight
+            SUBMIT=false
+            AUTO_RELEASE=false
+          elif [[ '${{ github.ref_type }}' == 'tag' && "$REF" == ios-v* ]]; then
+            LANE='release'                        # 正式送審/上架
+            SUBMIT=true
+            AUTO_RELEASE=false
+          elif [[ '${{ github.ref_type }}' == 'tag' && "$REF" == ios-beta-v* ]]; then
+            LANE='beta'                           # 公開測試
+            SUBMIT=false
+            AUTO_RELEASE=false
+          elif [[ '${{ github.ref_type }}' == 'tag' && "$REF" == ios-alpha-v* ]]; then
+            LANE='beta'                           # 封閉測試（同 beta lane，上 App Connect 後再指定群組）
+            SUBMIT=false
+            AUTO_RELEASE=false
+          else
+            LANE='${{ github.event.inputs.lane || 'beta' }}'
+            SUBMIT=false
+            AUTO_RELEASE=false
+          fi
+          echo "lane=$LANE" >> $GITHUB_OUTPUT
+          echo "submit=$SUBMIT" >> $GITHUB_OUTPUT
+          echo "auto=$AUTO_RELEASE" >> $GITHUB_OUTPUT
+
+      - name: Bump build number (CFBundleVersion)
+        run: |
+          echo "Bumping build to $GITHUB_RUN_NUMBER"
+          /usr/bin/sed -i '' -E "s/^CURRENT_PROJECT_VERSION=.*/CURRENT_PROJECT_VERSION=${GITHUB_RUN_NUMBER}/" iosApp/Configuration/Config.xcconfig
+          grep CURRENT_PROJECT_VERSION iosApp/Configuration/Config.xcconfig
+
+      - name: Build and upload via Fastlane
+        working-directory: iosApp
+        env:
+          SUBMIT_FOR_REVIEW: ${{ steps.decide.outputs.submit }}
+          AUTOMATIC_RELEASE: ${{ steps.decide.outputs.auto }}
+        run: |
+          echo "lane=${{ steps.decide.outputs.lane }} submit=${{ env.SUBMIT_FOR_REVIEW }} auto=${{ env.AUTOMATIC_RELEASE }}"
+          BUNDLE_GEMFILE=fastlane/Gemfile bundle exec fastlane ${{ steps.decide.outputs.lane }}
+
+      - name: Upload ipa artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ios-ipa
+          path: iosApp/*.ipa

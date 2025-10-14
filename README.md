@@ -211,52 +211,192 @@ export UPLOAD_KEY_PASSWORD='your_password'
 
 ## 🍎 iOS 上架與自動化（App Store Connect）
 
-### 目前狀態
+### 概述
 
-已完成 iOS 自動化框架，但因 App Store Connect API 驗證問題暫時停用。
+- 使用 **Fastlane** + **App Store Connect API Key**（優先）或 **Apple ID + App 專用密碼**（備用）
+- 支援 TestFlight 與 App Store 發布：`beta`（TestFlight）、`release`（App Store 送審）
+- GitHub Actions 自動化：只在 main 分支和特定 tag 觸發，develop 分支不會觸發發布
 
-#### 已完成的設定
+### 認證策略（雙路徑容錯）
 
-- ✅ Fastlane 配置（`iosApp/fastlane/`）
-- ✅ CocoaPods 整合
-- ✅ GitHub Actions workflow（已暫時停用）
-- ✅ 簽章與建置流程
+**優先路徑：App Store Connect API Key**
 
-#### 待解決問題
+- 需要 GitHub Secrets：`ASC_KEY_ID`、`ASC_ISSUER_ID`、`ASC_PRIVATE_KEY`
+- 優點：無需 2FA、最穩定、CI 友善
 
-App Store Connect API 金鑰驗證失敗（HTTP 401），可能原因：
+**備用路徑：Apple ID + App 專用密碼**
 
-- API 存取權限尚未完全開通
-- 帳號合約或條款待處理
-- 角色權限設定需要 Apple 端調整
+- 需要 GitHub Secrets：`FASTLANE_USER`、`FASTLANE_APPLE_APPLICATION_SPECIFIC_PASSWORD`、
+  `FASTLANE_SESSION`
+- 當 API Key 失效或未設定時自動使用
 
-#### 暫時方案
+### 分支策略
 
-在 API 問題解決前，可使用 Xcode Organizer 手動上傳：
+```
+develop (開發分支)
+  ↓ 日常 commit（不觸發 CI/CD）
+  ↓ PR/merge
+main (穩定分支)
+  ↓ 自動發布到 TestFlight
+  ↓ 打 tag
+ios-alpha-v* → 封閉測試（TestFlight）
+ios-beta-v* → 公開測試（TestFlight）
+ios-v* → 正式發布（App Store 送審）
+```
 
-1. 開啟 `iosApp/iosApp.xcworkspace`
-2. 選擇 `Product → Archive`
-3. 在 Organizer 中選擇 `Distribute App`
-4. 選擇 `App Store Connect` 並完成上傳
+### 專案設定
 
-#### 本機測試 Fastlane
+1. **Fastlane 設定**（已配置於 `iosApp/fastlane/`）
+    - 支援 App Store Connect API Key 與 Apple ID 雙路徑認證
+    - 自動簽章（`-allowProvisioningUpdates`）
+    - lanes：`build`、`beta`（TestFlight）、`release`（App Store）
+
+2. **iOS 專案配置**
+    - 使用 `iosApp.xcworkspace`（CocoaPods + KMP framework）
+    - 自動簽章：Release 使用 Apple Distribution 憑證
+    - Bundle ID：`com.linli.blackcatnews`
+
+3. **版本管理**
+    - 本機：可在 Xcode 更新 Version 和 Build
+    - CI：已自動以 `GITHUB_RUN_NUMBER` 覆寫 `CURRENT_PROJECT_VERSION`（Build），確保每次上傳版本唯一
+
+### GitHub Actions 觸發策略
+
+| 觸發方式                                          | 目標軌道       | 使用場景                |
+|-----------------------------------------------|------------|---------------------|
+| `develop` 分支 commit                           | 不觸發        | 日常開發（不會建置/上傳）       |
+| PR: `develop` → `main`                        | 不上傳        | 只建置驗證（確保可以正常打包）     |
+| `git push origin main`                        | TestFlight | 合併後自動發布到 TestFlight |
+| `git tag ios-alpha-v1.0.0 && git push --tags` | TestFlight | 封閉測試（特定測試人員）        |
+| `git tag ios-beta-v1.0.0 && git push --tags`  | TestFlight | 公開測試（大規模驗證）         |
+| `git tag ios-v1.0.0 && git push --tags`       | App Store  | 正式發布（自動送審）          |
+| 手動觸發（Actions UI）                              | 自選         | 緊急修復、特殊發布           |
+
+### 必要的 GitHub Secrets
+
+**優先路徑：App Store Connect API Key**
+在 **Settings → Secrets and variables → Actions** 新增：
+
+| Secret Name       | 說明         | 取得方式                                                     |
+|-------------------|------------|----------------------------------------------------------|
+| `ASC_KEY_ID`      | API Key ID | App Store Connect → Integrations → App Store Connect API |
+| `ASC_ISSUER_ID`   | Issuer ID  | 同上，團隊金鑰頁面的 Issuer ID                                     |
+| `ASC_PRIVATE_KEY` | 私鑰內容       | 下載的 `.p8` 檔案內容（含 `-----BEGIN/END PRIVATE KEY-----`）      |
+
+**備用路徑：Apple ID + App 專用密碼**（可選）
+
+| Secret Name                                    | 說明        | 取得方式                         |
+|------------------------------------------------|-----------|------------------------------|
+| `FASTLANE_USER`                                | Apple ID  | 你的 Apple ID 帳號               |
+| `FASTLANE_APPLE_APPLICATION_SPECIFIC_PASSWORD` | App 專用密碼  | appleid.apple.com → App 專用密碼 |
+| `FASTLANE_SESSION`                             | 會話 Cookie | 本機執行 `fastlane spaceauth` 產生 |
+
+### 簽章憑證（p12）提供給 CI
+
+CI 會在打包前自動將你的 Apple Distribution 憑證匯入臨時 keychain。請新增以下 Secrets：
+| Secret Name | 說明 |
+|--------------------------|-------------------------------------|
+| `IOS_DIST_CERT_BASE64`   | 你的 `.p12` 憑證以 Base64 編碼後的一行字串 |
+| `IOS_DIST_CERT_PASSWORD` | 匯出 `.p12` 時設定的密碼 |
+
+在本機把 `.p12` 轉成 Base64（並複製到剪貼簿）：
 
 ```bash
+base64 -i "/path/to/dist_cert.p12" | tr -d '\n' | pbcopy
+```
+
+若需驗證 Base64 可還原：
+
+```bash
+echo '<貼上的Base64>' | base64 -d > restored.p12
+```
+
+### 本地測試
+
+**使用 App Store Connect API Key**：
+```bash
 cd iosApp
-export ASC_KEY_ID=<你的 Key ID>
-export ASC_ISSUER_ID=<你的 Issuer ID>
-export ASC_PRIVATE_KEY_PATH=<你的 .p8 絕對路徑>
+export ASC_KEY_ID="你的 Key ID"
+export ASC_ISSUER_ID="你的 Issuer ID"
+export ASC_PRIVATE_KEY="$(cat /path/to/AuthKey_XXX.p8)"
 BUNDLE_GEMFILE=fastlane/Gemfile bundle exec fastlane beta
 ```
 
-若需協助解決 API 驗證問題，請聯絡 Apple Developer Support。
+**使用 Apple ID + App 專用密碼**：
 
----
+```bash
+cd iosApp
+export FASTLANE_USER="你的 Apple ID"
+export FASTLANE_APPLE_APPLICATION_SPECIFIC_PASSWORD="xxxx-xxxx-xxxx-xxxx"
+export FASTLANE_SESSION="你的會話 Cookie"
+BUNDLE_GEMFILE=fastlane/Gemfile bundle exec fastlane beta
+```
 
-## 📚 相關資源
+### 工作流程範例
 
-- [Kotlin Multiplatform 官方文件](https://www.jetbrains.com/help/kotlin-multiplatform-dev/get-started.html)
-- [Compose Multiplatform](https://github.com/JetBrains/compose-multiplatform/)
-- [Kotlin/Wasm](https://kotl.in/wasm/)
+**日常開發**（在 develop 分支）：
 
-問題回報請至 [YouTrack](https://youtrack.jetbrains.com/newIssue?project=CMP)
+```bash
+# 1. 切換到 develop 分支
+git checkout develop
+
+# 2. 開發功能並測試
+git add .
+git commit -m "feat: 新增某功能"
+git push origin develop
+# → 不會觸發任何 CI/CD，可以自由開發
+```
+
+**準備發布到 TestFlight**（merge 到 main）：
+
+```bash
+# 1. 開 PR：develop → main
+gh pr create --base main --head develop --title "Release: v1.0.X"
+
+# 2. PR 自動觸發建置驗證（只建置，不上傳）
+# → 確保代碼可以正常打包
+
+# 3. Merge PR 後自動發布
+git checkout main
+git pull
+# → GitHub Actions 自動上傳到 TestFlight
+```
+
+**準備公測**：
+
+```bash
+# 1. 確保已 merge 到 main 並在 TestFlight 測試通過
+# 2. 打 beta tag 並推送
+git checkout main
+git tag ios-beta-v1.0.1
+git push --tags
+# → GitHub Actions 自動上傳到 TestFlight（公開測試）
+```
+
+**正式發布**：
+
+```bash
+# 1. 確保 beta 測試通過
+# 2. 打正式版 tag 並推送
+git checkout main
+git tag ios-v1.0.1
+git push --tags
+# → GitHub Actions 自動上傳到 App Store Connect 並送審
+# 
+# 或手動觸發（備用方式）：
+# 前往 GitHub → Actions → iOS Deploy
+# → Run workflow → 選擇 'release' lane
+```
+
+### 注意事項
+
+- **自動簽章**：使用 Xcode 的自動簽章，需確保 Apple Developer 帳號有效
+- **版本管理**：發布前記得在 Xcode 更新 Version 和 Build 號碼
+- **TestFlight 審查**：beta 版本可能需要 TestFlight 審查（通常幾小時內完成）
+- **App Store 審查**：正式版本需要 App Store 審查（通常 1-3 天）
+
+### 參考資源
+
+- [Fastlane 官方文件](https://docs.fastlane.tools/)
+- [App Store Connect API](https://developer.apple.com/documentation/appstoreconnectapi)
+- [TestFlight 發布指南](https://developer.apple.com/testflight/)
