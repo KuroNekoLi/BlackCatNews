@@ -1,4 +1,3 @@
-
 name: iOS CI/CD (Fastlane)
 
 on:
@@ -20,27 +19,44 @@ jobs:
     runs-on: macos-15
 
     env:
-      # Apple ID 路徑（你要求使用 Apple ID）
-      FASTLANE_USER: ${{ secrets.FASTLANE_USER }}
-      FASTLANE_APPLE_APPLICATION_SPECIFIC_PASSWORD: ${{ secrets.FASTLANE_APPLE_APPLICATION_SPECIFIC_PASSWORD }}
-      FASTLANE_SESSION: ${{ secrets.FASTLANE_SESSION }}
-      # 使用測試通過的 App Store Connect API Key
+      # App Store Connect API Key（唯一認證路徑）
       ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
       ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
       ASC_PRIVATE_KEY: ${{ secrets.ASC_PRIVATE_KEY }}
-      # iOS Distribution 憑證（p12），Fastfile 於 CI 會使用這兩個變數
+      ASC_PRIVATE_KEY_BASE64: ${{ secrets.ASC_PRIVATE_KEY_BASE64 }} # 可選，若私鑰以 base64 存放
+
+      # iOS Distribution 憑證（p12）
       IOS_DIST_CERT_BASE64: ${{ secrets.IOS_DIST_CERT_BASE64 }}
       IOS_DIST_CERT_PASSWORD: ${{ secrets.IOS_DIST_CERT_PASSWORD }}
+
+      # 可選：出口合規（如需申報加密）
+      # EXPORT_COMPLIANCE_USES_ENCRYPTION: true
+      # EXPORT_COMPLIANCE_IS_EXEMPT: true
+      # EXPORT_COMPLIANCE_THIRD_PARTY: false
+      # EXPORT_COMPLIANCE_PROPRIETARY: false
+      # EXPORT_COMPLIANCE_AVAILABLE_ON_FRENCH_STORE: false
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Select Xcode 16
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: '16.*'
 
       - name: Set up Java
         uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: "17"
+
+      - name: Install Bundler dependencies
+        working-directory: iosApp/fastlane
+        run: |
+          gem install bundler --no-document
+          bundle config set path 'vendor/bundle'
+          bundle install
 
       - name: Cache Ruby gems
         uses: actions/cache@v4
@@ -50,12 +66,10 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-gems-
 
-      - name: Install Bundler dependencies
-        working-directory: iosApp/fastlane
+      - name: Prepare KMP Pods (CocoaPods if missing)
         run: |
-          gem install bundler --no-document
-          bundle config set path 'vendor/bundle'
-          bundle install
+          pod --version || sudo gem install cocoapods --no-document
+          ./gradlew :composeApp:podInstall --no-daemon --stacktrace
 
       - name: Cache CocoaPods
         uses: actions/cache@v4
@@ -67,40 +81,24 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-pods-
 
-      - name: Install CocoaPods & prepare KMP pods
-        working-directory: .
-        run: |
-          sudo gem install cocoapods --no-document
-          pod repo update
-          # 由 Gradle 的 cocoapods plugin 產生 Dummy framework 並執行 pod install
-          ./gradlew :composeApp:podInstall --no-daemon --stacktrace
-
-      - name: Gradle sync shared module
-        run: ./gradlew :shared:assemble
-
-      - name: Select Xcode 16
-        uses: maxim-lobanov/setup-xcode@v1
-        with:
-          xcode-version: '16.*'
-
       - name: Decide lane and flags by ref
         id: decide
         run: |
           REF='${{ github.ref_name }}'
           if [[ '${{ github.event_name }}' == 'push' && '${{ github.ref_type }}' == 'branch' ]]; then
-            LANE='beta'                           # merge 到 main → TestFlight
+            LANE='beta'
             SUBMIT=false
             AUTO_RELEASE=false
           elif [[ '${{ github.ref_type }}' == 'tag' && "$REF" == ios-v* ]]; then
-            LANE='release'                        # 正式送審/上架
+            LANE='release'
             SUBMIT=true
             AUTO_RELEASE=false
           elif [[ '${{ github.ref_type }}' == 'tag' && "$REF" == ios-beta-v* ]]; then
-            LANE='beta'                           # 公開測試
+            LANE='beta'
             SUBMIT=false
             AUTO_RELEASE=false
           elif [[ '${{ github.ref_type }}' == 'tag' && "$REF" == ios-alpha-v* ]]; then
-            LANE='beta'                           # 封閉測試（同 beta lane，上 App Connect 後再指定群組）
+            LANE='beta'
             SUBMIT=false
             AUTO_RELEASE=false
           else
