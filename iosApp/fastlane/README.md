@@ -1,4 +1,4 @@
-## Fastlane 使用說明（iOS）
+## Fastlane 使用說明（iOS，僅使用 App Store Connect API）
 
 ### 1) 安裝需求
 
@@ -12,30 +12,43 @@
   bundle install
   ```
 
-### 2) 認證方式（擇一）
+### 2) 認證方式（僅此一種）
 
-- 推薦：App Store Connect API 金鑰（免 2FA，CI 友善）
+- App Store Connect API 金鑰（免 2FA，CI 友善）
   - 需要環境變數：
     ```bash
     export ASC_KEY_ID=...
     export ASC_ISSUER_ID=...
-    export ASC_PRIVATE_KEY_PATH=/absolute/path/to/AuthKey_xxx.p8
-    # 或用 ASC_PRIVATE_KEY（私鑰全文），搭配 ASC_PRIVATE_KEY_BASE64=true（若是 base64 編碼）
-    ```
-- 替代：Apple ID + App 專用密碼 + 會話（FASTLANE_SESSION）
-  - 第一次互動產生會話：
-    ```bash
-    export FASTLANE_USER='你的 Apple ID'
-    # 這一步會在終端顯示一段 FASTLANE_SESSION，複製下來
-    BUNDLE_GEMFILE=fastlane/Gemfile bundle exec fastlane spaceauth -u "$FASTLANE_USER"
-    ```
-  - 上傳前設定：
-    ```bash
-    export FASTLANE_SESSION='<貼上剛才的整段 FASTLANE_SESSION>'
-    export FASTLANE_APPLE_APPLICATION_SPECIFIC_PASSWORD='xxxx-xxxx-xxxx-xxxx'
+    # 二選一：
+    export ASC_PRIVATE_KEY="$(cat /absolute/path/to/AuthKey_xxx.p8)"
+    # 或
+    export ASC_PRIVATE_KEY="<base64-encoded-contents>"
+    export ASC_PRIVATE_KEY_BASE64=true
     ```
 
-### 3) 可用 Lanes
+### 3) 必要簽章設定（p12 + Provisioning Profile）
+
+- GitHub Actions Secrets 建議：
+  - `IOS_DIST_CERT_BASE64`: Apple Distribution 憑證 `.p12` 的 base64 字串
+  - `IOS_DIST_CERT_PASSWORD`: `.p12` 密碼
+- 打包時會：
+  - 建立臨時 keychain 並匯入 `.p12`
+  - 以 API Key 透過 `sigh` 下載 App Store 描述檔
+
+### 4) 出口合規（Export Compliance）
+
+- 預設 `ITSAppUsesNonExemptEncryption=false` 並於上傳時提供 `submission_information`
+- 若你的 App 使用需申報之加密，請在 CI 設定對應環境變數：
+  ```bash
+  EXPORT_COMPLIANCE_USES_ENCRYPTION=true
+  EXPORT_COMPLIANCE_IS_EXEMPT=true
+  EXPORT_COMPLIANCE_THIRD_PARTY=false
+  EXPORT_COMPLIANCE_PROPRIETARY=false
+  # 可選：
+  # EXPORT_COMPLIANCE_AVAILABLE_ON_FRENCH_STORE=true
+  ```
+
+### 5) 可用 Lanes
 
 - 打包 ipa（App Store 發布設定）：
   ```bash
@@ -50,14 +63,14 @@
   BUNDLE_GEMFILE=fastlane/Gemfile bundle exec fastlane ios release
   ```
 
-### 4) 簽章與專案設定
+### 6) 簽章與專案設定
 
 - 請在 Xcode 的 `iosApp.xcworkspace` 中，`iosApp` target → `Signing & Capabilities`：
   - Release 使用 Apple Distribution 憑證與 App Store Profile
   - `Automatically manage signing` 務必可正常產生 `App Store` 描述檔
 - Fastlane `gym` 以 `Release` + `export_method: app-store` 打包
 
-### 5) 常見問題
+### 7) 常見問題
 
 - 要求輸入 Apple ID 密碼：
   - 使用 API Key 路徑可避免
@@ -67,12 +80,12 @@
 - 上傳卡在 Processing：
   - 等幾分鐘；或至 App Store Connect 查看錯誤信件
 
-### 6) 安全與版控
+### 8) 安全與版控
 
 - `FASTLANE_SESSION`、金鑰與密碼請勿提交到 Git
 - CI 環境請使用 Secrets 注入（GitHub Actions → Secrets and variables → Actions）
 
-### 7) 參考
+### 9) 參考
 
 - fastlane 官方文件：`https://docs.fastlane.tools`
 - App Store Connect API：`https://developer.apple.com/documentation/appstoreconnectapi`
