@@ -146,19 +146,22 @@ git push --tags
 
 前往 **Settings → Secrets and variables → Actions** 新增以下 Secrets：
 
-| Secret 名稱                   | 說明                           | 如何取得                                           |
-|-----------------------------|------------------------------|------------------------------------------------|
-| `PLAY_CREDENTIALS_JSON_B64` | Service Account JSON（base64） | `base64 -i service-account.json \| tr -d '\n'` |
-| `UPLOAD_KEYSTORE_BASE64`    | Upload keystore（base64）      | `base64 -i my_keystore.jks \| tr -d '\n'`      |
-| `UPLOAD_KEYSTORE_PASSWORD`  | Keystore 密碼                  | 純文字                                            |
-| `UPLOAD_KEY_ALIAS`          | Key alias                    | 純文字                                            |
-| `UPLOAD_KEY_PASSWORD`       | Key 密碼                       | 純文字                                            |
+| Secret 名稱                   | 說明                              | 如何取得                                           |
+|-----------------------------|---------------------------------|------------------------------------------------|
+| `PLAY_CREDENTIALS_JSON`     | Service Account JSON（原始全文，多行）   | 下載的 JSON 內容直接貼上                                |
+| `PLAY_CREDENTIALS_JSON_B64` | Service Account JSON（base64，可選） | `base64 -i service-account.json \| tr -d '\n'` |
+| `UPLOAD_KEYSTORE_BASE64`    | Upload keystore（base64）         | `base64 -i my_keystore.jks \| tr -d '\n'`      |
+| `UPLOAD_KEYSTORE_PASSWORD`  | Keystore 密碼                     | 純文字                                            |
+| `UPLOAD_KEY_ALIAS`          | Key alias                       | 純文字                                            |
+| `UPLOAD_KEY_PASSWORD`       | Key 密碼                          | 純文字                                            |
 
 #### 設定步驟
 
-1. **取得 Service Account JSON**
+1. **取得 Service Account JSON**（推薦直接使用原始 JSON，避免 base64 造成格式問題）
     - 前往 Google Cloud Console 建立 Service Account
-    - 下載 JSON 金鑰，轉換為 base64：
+   - 下載 JSON 金鑰（`service-account.json`）
+   - 將內容直接貼到 GitHub Secret `PLAY_CREDENTIALS_JSON`
+   - 若必須使用 base64，則：
       ```bash
       base64 -i service-account.json | tr -d '\n' > creds.txt
       ```
@@ -189,8 +192,9 @@ export UPLOAD_KEY_PASSWORD='your_password'
 # 建置 AAB
 ./gradlew :composeApp:bundleRelease
 
-# 上傳到指定軌道
+# 上傳到指定軌道（可用 --track 覆寫，或在 CI 設 PLAY_TRACK）
 ./gradlew :composeApp:publishReleaseBundle --track internal
+./gradlew :composeApp:publishReleaseBundle --track alpha
 ./gradlew :composeApp:publishReleaseBundle --track beta
 ./gradlew :composeApp:publishReleaseBundle --track production
 ```

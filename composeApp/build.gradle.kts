@@ -1,5 +1,5 @@
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
-import com.github.triplet.gradle.play.PlayPublisherExtension
+import java.util.Base64
 
 plugins {
     alias(libs.plugins.kotlinMultiplatform)
@@ -148,8 +148,29 @@ android {
 // Gradle Play Publisher 設定改以 gradle.properties 參數提供
 // 可在 CI 以 -Pplay.track=internal/production 等方式覆寫
 play {
-    // 預設讀取專案根目錄的憑證檔
-    serviceAccountCredentials.set(file("${project.rootDir}/play-credentials.json"))
+    // 優先從環境變數注入服務帳戶金鑰，以避免 CI 中的編碼問題
+    // - PLAY_CREDENTIALS_JSON: 直接貼上原始 JSON 內容（推薦）
+    // - PLAY_CREDENTIALS_JSON_B64: 將 JSON 先做 base64（備選）
+    val credsFile = file("${project.rootDir}/play-credentials.json")
+    val credsRaw = System.getenv("PLAY_CREDENTIALS_JSON")
+    val credsB64 = System.getenv("PLAY_CREDENTIALS_JSON_B64")
+    when {
+        !credsRaw.isNullOrBlank() -> {
+            // 直接寫入原始 JSON（避免 base64 解碼造成格式破壞）
+            credsFile.writeText(credsRaw)
+        }
+        !credsB64.isNullOrBlank() -> {
+            // 從 base64 來源解碼寫入
+            val decoded = Base64.getDecoder().decode(credsB64)
+            credsFile.writeBytes(decoded)
+        }
+
+        else -> {
+            // 無環境變數時，沿用既有檔案（若不存在會導致後續任務報錯，屆時提示補上）
+        }
+    }
+    // 指定服務帳戶憑證檔
+    serviceAccountCredentials.set(credsFile)
     defaultToAppBundles.set(true)
     // 允許透過 -Pplay.track 或環境變數覆寫軌道
     track.set(
