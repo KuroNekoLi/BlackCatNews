@@ -20,6 +20,13 @@ object FavoritesRoute
 @Serializable
 object SettingsRoute
 
+// 搜尋和通知路由
+@Serializable
+object SearchRoute
+
+@Serializable
+object NotificationsRoute
+
 // 詳情頁路由
 @Serializable
 data class ArticleDetailRoute(

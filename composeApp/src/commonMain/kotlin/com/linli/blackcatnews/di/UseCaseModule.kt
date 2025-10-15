@@ -1,5 +1,6 @@
 package com.linli.blackcatnews.di
 
+import com.linli.blackcatnews.domain.usecase.GetAllArticlesUseCase
 import com.linli.blackcatnews.domain.usecase.GetArticleDetailUseCase
 import com.linli.blackcatnews.domain.usecase.GetArticlesBySectionUseCase
 import com.linli.blackcatnews.domain.usecase.ManageFavoritesUseCase
@@ -11,4 +12,5 @@ val useCaseModule = module {
     factory { RefreshArticlesUseCase(repository = get()) }
     factory { GetArticleDetailUseCase(repository = get()) }
     factory { ManageFavoritesUseCase(repository = get()) }
+    factory { GetAllArticlesUseCase(getArticlesBySectionUseCase = get()) }
 }

@@ -149,6 +149,9 @@ private fun CategoryChipsRow(
     onCategorySelected: (NewsCategory) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    // 只顯示已實作的分類
+    val visibleCategories = categories.filter { it in supportedCategories }
+
     Surface(
         modifier = modifier,
         color = MaterialTheme.colorScheme.surface,
@@ -159,7 +162,7 @@ private fun CategoryChipsRow(
             contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            items(categories) { category ->
+            items(visibleCategories) { category ->
                 CategoryChip(
                     category = category,
                     isSelected = category == selectedCategory,
