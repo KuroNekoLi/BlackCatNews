@@ -1,9 +1,8 @@
-package com.linli.blackcatnews.ui.components.previews
+package com.linli.blackcatnews.ui.components
 
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.tooling.preview.Preview
 import com.linli.blackcatnews.domain.model.QuizQuestion
-import com.linli.blackcatnews.ui.components.QuizQuestionItem
 import com.linli.blackcatnews.ui.theme.AppTheme
 
 @Preview(showBackground = true, name = "Quiz Question - Not Submitted")
