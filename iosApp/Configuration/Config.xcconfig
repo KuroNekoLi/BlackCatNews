@@ -3,5 +3,10 @@ TEAM_ID=W2R2DW3K68
 PRODUCT_NAME=BlackCatNews
 PRODUCT_BUNDLE_IDENTIFIER=com.linli.blackcatnews
 
-CURRENT_PROJECT_VERSION=4
+// 版本號說明：
+// - MARKETING_VERSION: 顯示給用戶的版本號，需手動更新（語意化版本）
+// - CURRENT_PROJECT_VERSION: 建置號，CI/CD 會自動覆蓋成 GitHub Run Number
+//   本機開發時使用此預設值，上傳到 CI 時會被自動替換
+
+CURRENT_PROJECT_VERSION=1
 MARKETING_VERSION=1.0.1
