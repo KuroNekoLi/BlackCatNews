@@ -40,6 +40,33 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Sanity-check ASC secrets (safe)
+        run: |
+          set -euo pipefail
+
+          # 顯示長度與前綴（前 8 碼），不輸出完整內容
+          echo "ASC_KEY_ID length: ${#ASC_KEY_ID}"
+          echo "ASC_KEY_ID head8: ${ASC_KEY_ID:0:8}"
+
+          echo "ASC_ISSUER_ID length: ${#ASC_ISSUER_ID}"
+          echo "ASC_ISSUER_ID head8: ${ASC_ISSUER_ID:0:8}"
+
+          if [ -n "${ASC_PRIVATE_KEY_BASE64:-}" ]; then
+            DECODED=$(echo "$ASC_PRIVATE_KEY_BASE64" | base64 -d 2>/dev/null || true)
+            echo "ASC_PRIVATE_KEY_BASE64 decoded length: ${#DECODED}"
+            echo "ASC_PRIVATE_KEY_BASE64 decoded head30:"
+            echo "$DECODED" | head -c 30
+            echo
+          elif [ -n "${ASC_PRIVATE_KEY:-}" ]; then
+            echo "ASC_PRIVATE_KEY length: ${#ASC_PRIVATE_KEY}"
+            echo "ASC_PRIVATE_KEY head30:"
+            echo "$ASC_PRIVATE_KEY" | head -c 30
+            echo
+          else
+            echo "❌ 未提供 ASC_PRIVATE_KEY 或 ASC_PRIVATE_KEY_BASE64"
+            exit 1
+          fi
+
       - name: Select Xcode 16
         uses: maxim-lobanov/setup-xcode@v1
         with:
