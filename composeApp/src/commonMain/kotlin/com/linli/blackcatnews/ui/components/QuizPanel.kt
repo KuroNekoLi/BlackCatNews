@@ -5,7 +5,6 @@ import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -19,11 +18,14 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.MenuBook
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -33,14 +35,10 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import blackcatnews.composeapp.generated.resources.Res
-import blackcatnews.composeapp.generated.resources.icon_book
 import com.linli.blackcatnews.domain.model.QuizQuestion
 import com.linli.blackcatnews.ui.theme.AppTheme
-import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.ui.tooling.preview.Preview
 
 /**
@@ -166,7 +164,6 @@ fun QuizPanel(
         FloatingActionButton(
             onClick = { onExpandChange(!isExpanded) },
             modifier = Modifier.size(56.dp),
-            containerColor = if (isExpanded) MaterialTheme.colorScheme.primary else Color.Transparent
         ) {
             if (isExpanded) {
                 Text(
@@ -175,10 +172,16 @@ fun QuizPanel(
                     color = MaterialTheme.colorScheme.onPrimary
                 )
             } else {
-                Image(
-                    painter = painterResource(Res.drawable.icon_book),
+                Icon(
+                    imageVector = Icons.AutoMirrored.Filled.MenuBook,
                     contentDescription = "開啟測驗",
+                    tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                    modifier = Modifier.size(32.dp)
                 )
+//                Image(
+//                    painter = painterResource(Res.drawable.icon_book),
+//                    contentDescription = "開啟測驗",
+//                )
             }
         }
     }

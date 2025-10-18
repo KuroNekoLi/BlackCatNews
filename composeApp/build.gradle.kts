@@ -23,8 +23,15 @@ kotlin {
     }
     
     // iOS targets
-    iosArm64()
-    iosSimulatorArm64()
+    listOf(
+        iosArm64(),
+        iosSimulatorArm64()
+    ).forEach { iosTarget ->
+        iosTarget.binaries.framework {
+            baseName = "ComposeApp"
+            isStatic = true
+        }
+    }
     
     // CocoaPods 配置 - 自动支持 Debug 和 Release
     cocoapods {
