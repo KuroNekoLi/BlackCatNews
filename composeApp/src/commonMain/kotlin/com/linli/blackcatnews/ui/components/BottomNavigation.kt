@@ -31,8 +31,8 @@ fun AppBottomNavigation(
 ) {
     val items = listOf(
         BottomNavItem(HomeRoute, "🏠", "首頁"),
-        BottomNavItem(CategoriesRoute, "📑", "分類"),
-        BottomNavItem(FavoritesRoute, "❤️", "收藏"),
+        // BottomNavItem(CategoriesRoute, "📑", "分類"),  // 暫時註解，功能尚未完整實作
+        // BottomNavItem(FavoritesRoute, "❤️", "收藏"),  // 暫時註解，需在文章詳情中實作收藏UI
         BottomNavItem(SettingsRoute, "⚙️", "設定")
     )
 

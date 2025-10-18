@@ -21,11 +21,15 @@ import com.linli.blackcatnews.ui.screens.ArticleDetailScreen
 import com.linli.blackcatnews.ui.screens.CategoriesScreen
 import com.linli.blackcatnews.ui.screens.FavoritesScreen
 import com.linli.blackcatnews.ui.screens.HomeScreen
+import com.linli.blackcatnews.ui.screens.NotificationsScreen
+import com.linli.blackcatnews.ui.screens.SearchScreen
 import com.linli.blackcatnews.ui.screens.SettingsScreen
 import org.koin.compose.viewmodel.koinViewModel
 import org.koin.core.parameter.parametersOf
 import com.linli.blackcatnews.presentation.viewmodel.ArticleDetailViewModel
+import com.linli.blackcatnews.presentation.viewmodel.FavoritesViewModel
 import com.linli.blackcatnews.presentation.viewmodel.HomeViewModel
+import com.linli.blackcatnews.presentation.viewmodel.SearchViewModel
 import com.linli.blackcatnews.presentation.viewmodel.SettingsViewModel
 import org.koin.compose.koinInject
 
@@ -48,13 +52,18 @@ fun AppNavigation() {
                     AppTopBar(
                         title = getTopBarTitle(currentRoute),
                         onSearchClick = {
-                            // TODO: 導航到搜尋頁面
+                            navController.navigate(SearchRoute) {
+                                launchSingleTop = true
+                            }
                         },
                         onNotificationClick = {
-                            // TODO: 顯示通知
+                            // TODO: Implement cross-platform notification functionality
+                            // navController.navigate(NotificationsRoute) {
+                            //     launchSingleTop = true
+                            // }
                         },
                         showActions = isHomeRoute(currentRoute),
-                        showBackButton = isArticleDetailRoute(currentRoute),
+                        showBackButton = isDetailRoute(currentRoute),
                         onBackClick = {
                             navController.navigateUp()
                         }
@@ -123,13 +132,45 @@ fun AppNavigation() {
 
             // 收藏頁面
             composable<FavoritesRoute> {
-                FavoritesScreen()
+                val viewModel: FavoritesViewModel = koinViewModel()
+                FavoritesScreen(
+                    viewModel = viewModel,
+                    onNewsItemClick = { newsItem ->
+                        navController.navigate(
+                            ArticleDetailRoute(
+                                articleId = newsItem.id,
+                                title = newsItem.title
+                            )
+                        )
+                    }
+                )
             }
 
             // 設定頁面
             composable<SettingsRoute> {
                 SettingsScreen(viewModel = koinInject())
             }
+
+            // 搜尋頁面
+            composable<SearchRoute> {
+                val viewModel: SearchViewModel = koinViewModel()
+                SearchScreen(
+                    viewModel = viewModel,
+                    onNewsItemClick = { newsItem ->
+                        navController.navigate(
+                            ArticleDetailRoute(
+                                articleId = newsItem.id,
+                                title = newsItem.title
+                            )
+                        )
+                    }
+                )
+            }
+
+            // 通知頁面 (暫時註解，等待跨平台通知功能完整實作)
+            // composable<NotificationsRoute> {
+            //     NotificationsScreen()
+            // }
         }
     }
 }
@@ -161,9 +202,9 @@ private fun AppTopBar(
                 IconButton(onClick = onSearchClick) {
                     Text("🔍", style = MaterialTheme.typography.titleLarge)
                 }
-                IconButton(onClick = onNotificationClick) {
-                    Text("🔔", style = MaterialTheme.typography.titleLarge)
-                }
+                // IconButton(onClick = onNotificationClick) {
+                //     Text("🔔", style = MaterialTheme.typography.titleLarge)
+                // }
             }
         },
         colors = TopAppBarDefaults.topAppBarColors(
@@ -182,6 +223,8 @@ private fun shouldShowTopBar(route: String?): Boolean {
         "com.linli.blackcatnews.navigation.CategoriesRoute",
         "com.linli.blackcatnews.navigation.FavoritesRoute",
         "com.linli.blackcatnews.navigation.SettingsRoute",
+        "com.linli.blackcatnews.navigation.SearchRoute",
+        // "com.linli.blackcatnews.navigation.NotificationsRoute",  // 暫時註解
         "com.linli.blackcatnews.navigation.ArticleDetailRoute"
     )
 }
@@ -206,10 +249,14 @@ private fun isHomeRoute(route: String?): Boolean {
 }
 
 /**
- * 判斷是否為文章詳情路由
+ * 判斷是否為詳情頁路由（文章詳情、搜尋、通知）
  */
-private fun isArticleDetailRoute(route: String?): Boolean {
-    return route == "com.linli.blackcatnews.navigation.ArticleDetailRoute"
+private fun isDetailRoute(route: String?): Boolean {
+    return route in listOf(
+        "com.linli.blackcatnews.navigation.ArticleDetailRoute",
+        "com.linli.blackcatnews.navigation.SearchRoute"
+        // "com.linli.blackcatnews.navigation.NotificationsRoute"  // 暫時註解
+    )
 }
 
 /**
@@ -221,6 +268,8 @@ private fun getTopBarTitle(route: String?): String {
         "com.linli.blackcatnews.navigation.CategoriesRoute" -> "分類"
         "com.linli.blackcatnews.navigation.FavoritesRoute" -> "收藏"
         "com.linli.blackcatnews.navigation.SettingsRoute" -> "設定"
+        "com.linli.blackcatnews.navigation.SearchRoute" -> "搜尋"
+        // "com.linli.blackcatnews.navigation.NotificationsRoute" -> "通知"  // 暫時註解
         "com.linli.blackcatnews.navigation.ArticleDetailRoute" -> "文章詳情"
         else -> "黑貓新聞"
     }
