@@ -8,7 +8,6 @@ plugins {
     alias(libs.plugins.composeCompiler)
     alias(libs.plugins.kotlinx.serialization)
     alias(libs.plugins.ksp)
-    alias(libs.plugins.kotlinCocoapods)
     // Google Play Publisher plugin（用於自動化上傳至 Play Console）
     id("com.github.triplet.play") version "3.12.1"
 }
@@ -28,19 +27,6 @@ kotlin {
         iosSimulatorArm64()
     ).forEach { iosTarget ->
         iosTarget.binaries.framework {
-            baseName = "ComposeApp"
-            isStatic = true
-        }
-    }
-    
-    // CocoaPods 配置 - 自动支持 Debug 和 Release
-    cocoapods {
-        summary = "Black Cat News - AI 雙語新聞學習"
-        homepage = "https://github.com/linli/BlackCatNews"
-        version = "1.0"
-        ios.deploymentTarget = "15.0"
-        
-        framework {
             baseName = "ComposeApp"
             isStatic = true
         }
@@ -101,7 +87,7 @@ android {
     namespace = "com.linli.blackcatnews"
     compileSdk = libs.versions.android.compileSdk.get().toInt()
 
-    // Release 簽章設定（從環境變數讀取）；若未提供，略過設定以免非 Android 任務（如 :composeApp:podInstall）失敗
+    // Release 簽章設定（從環境變數讀取）；若未提供，略過設定以免非 Android 任務失敗
     val keystorePath = System.getenv("UPLOAD_KEYSTORE")
     val keystorePassword = System.getenv("UPLOAD_KEYSTORE_PASSWORD")
     val keyAlias = System.getenv("UPLOAD_KEY_ALIAS")
