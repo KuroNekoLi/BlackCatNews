@@ -16,22 +16,20 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.toRoute
+import com.linli.blackcatnews.presentation.viewmodel.ArticleDetailViewModel
+import com.linli.blackcatnews.presentation.viewmodel.FavoritesViewModel
+import com.linli.blackcatnews.presentation.viewmodel.HomeViewModel
+import com.linli.blackcatnews.presentation.viewmodel.SearchViewModel
 import com.linli.blackcatnews.ui.components.AppBottomNavigation
 import com.linli.blackcatnews.ui.screens.ArticleDetailScreen
 import com.linli.blackcatnews.ui.screens.CategoriesScreen
 import com.linli.blackcatnews.ui.screens.FavoritesScreen
 import com.linli.blackcatnews.ui.screens.HomeScreen
-import com.linli.blackcatnews.ui.screens.NotificationsScreen
 import com.linli.blackcatnews.ui.screens.SearchScreen
 import com.linli.blackcatnews.ui.screens.SettingsScreen
+import org.koin.compose.koinInject
 import org.koin.compose.viewmodel.koinViewModel
 import org.koin.core.parameter.parametersOf
-import com.linli.blackcatnews.presentation.viewmodel.ArticleDetailViewModel
-import com.linli.blackcatnews.presentation.viewmodel.FavoritesViewModel
-import com.linli.blackcatnews.presentation.viewmodel.HomeViewModel
-import com.linli.blackcatnews.presentation.viewmodel.SearchViewModel
-import com.linli.blackcatnews.presentation.viewmodel.SettingsViewModel
-import org.koin.compose.koinInject
 
 /**
  * 主導航結構

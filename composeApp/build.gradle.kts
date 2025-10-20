@@ -1,5 +1,6 @@
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import java.util.Base64
+import java.util.Properties
 
 plugins {
     alias(libs.plugins.kotlinMultiplatform)
@@ -9,9 +10,12 @@ plugins {
     alias(libs.plugins.kotlinx.serialization)
     alias(libs.plugins.ksp)
     // Google Play Publisher plugin（用於自動化上傳至 Play Console）
-    id("com.github.triplet.play") version "3.12.1"
+    alias(libs.plugins.gpp)
+    // Google Services plugin（处理 google-services.json 文件和 Firebase 配置）
+    alias(libs.plugins.googleServices)
+    // Firebase Crashlytics plugin（生成 Crashlytics Build ID）
+    alias(libs.plugins.firebaseCrashlytics)
 }
-
 // 暫時移除 Room plugin，等確認版本相容性
 
 kotlin {
@@ -20,7 +24,7 @@ kotlin {
             jvmTarget.set(JvmTarget.JVM_11)
         }
     }
-    
+
     // iOS targets
     listOf(
         iosArm64(),
@@ -68,6 +72,11 @@ kotlin {
             implementation(libs.koin.compose.viewmodel)
             implementation(libs.room.runtime)
             implementation(libs.sqlite.bundled)
+            // GitLive Firebase Kotlin SDK - 只使用需要的功能
+            implementation(libs.gitlive.firebase.app)        // 核心依赖，必须包含
+            implementation(libs.gitlive.firebase.auth)       // 用户认证
+            implementation(libs.gitlive.firebase.analytics)  // 分析统计
+            implementation(libs.gitlive.firebase.crashlytics) // 崩溃报告
         }
         commonTest.dependencies {
             implementation(libs.kotlin.test)
@@ -79,30 +88,51 @@ dependencies {
     debugImplementation(compose.uiTooling)
     // Room KSP 編譯器 - 官方最佳實踐：每個 target 都要配置
     add("kspAndroid", libs.room.compiler)
-    add("kspIosArm64", libs.room.compiler)
-    add("kspIosSimulatorArm64", libs.room.compiler)
 }
 
 android {
     namespace = "com.linli.blackcatnews"
     compileSdk = libs.versions.android.compileSdk.get().toInt()
 
-    // Release 簽章設定（從環境變數讀取）；若未提供，略過設定以免非 Android 任務失敗
-    val keystorePath = System.getenv("UPLOAD_KEYSTORE")
-    val keystorePassword = System.getenv("UPLOAD_KEYSTORE_PASSWORD")
-    val keyAlias = System.getenv("UPLOAD_KEY_ALIAS")
-    val keyPassword = System.getenv("UPLOAD_KEY_PASSWORD")
-    val hasUploadKeystore =
-        listOf(keystorePath, keystorePassword, keyAlias, keyPassword).all { !it.isNullOrBlank() }
+    // 讀取 keystore.properties
+    val keystorePropertiesFile = rootProject.file("composeApp/keystore.properties")
+    val keystoreProperties = Properties()
+    if (keystorePropertiesFile.exists()) {
+        keystoreProperties.load(keystorePropertiesFile.inputStream())
+    }
+
+    // Release 簽名配置：優先使用環境變數（CI/CD），其次使用 keystore.properties（本地開發）
+    val finalKeystorePath =
+        System.getenv("UPLOAD_KEYSTORE") ?: keystoreProperties.getProperty("keystore.path")
+    val finalKeystorePassword = System.getenv("UPLOAD_KEYSTORE_PASSWORD")
+        ?: keystoreProperties.getProperty("keystore.password")
+    val finalKeyAlias =
+        System.getenv("UPLOAD_KEY_ALIAS") ?: keystoreProperties.getProperty("key.alias")
+    val finalKeyPassword =
+        System.getenv("UPLOAD_KEY_PASSWORD") ?: keystoreProperties.getProperty("key.password")
 
     signingConfigs {
-        if (hasUploadKeystore) {
-            create("release") {
-                storeFile = file(keystorePath!!)
-                storePassword = keystorePassword
-                this.keyAlias = keyAlias
-                this.keyPassword = keyPassword
+        create("release") {
+            val pathEmpty = finalKeystorePath.isNullOrBlank()
+            val storePwdEmpty = finalKeystorePassword.isNullOrBlank()
+            val aliasEmpty = finalKeyAlias.isNullOrBlank()
+            val keyPwdEmpty = finalKeyPassword.isNullOrBlank()
+
+            if (pathEmpty || storePwdEmpty || aliasEmpty || keyPwdEmpty) {
+                throw GradleException(
+                    "Release 簽名設定不完整，請補齊以下項目：\n" +
+                            "- keystore.path${if (pathEmpty) " (缺失)" else ""}\n" +
+                            "- keystore.password${if (storePwdEmpty) " (缺失)" else ""}\n" +
+                            "- key.alias${if (aliasEmpty) " (缺失)" else ""}\n" +
+                            "- key.password${if (keyPwdEmpty) " (缺失)" else ""}\n" +
+                            "請檢查 `composeApp/keystore.properties` 或對應環境變數。"
+                )
             }
+
+            storeFile = file(finalKeystorePath!!)
+            storePassword = finalKeystorePassword
+            keyAlias = finalKeyAlias
+            keyPassword = finalKeyPassword
         }
     }
 
@@ -113,29 +143,25 @@ android {
         versionCode = System.getenv("VERSION_CODE")?.toIntOrNull() ?: 2
         versionName = System.getenv("VERSION_NAME") ?: "1.0"
     }
+
     packaging {
         resources {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
         }
     }
+
     buildTypes {
         debug {
+            signingConfig = signingConfigs.getByName("debug")
             applicationIdSuffix = ".debug"
             versionNameSuffix = "-debug"
         }
         release {
-            // 建議真機測試時先關混淆，正式釋出再開
+            signingConfig = signingConfigs.getByName("release")
             isMinifyEnabled = false
-            // 只有當提供了 Upload keystore 環境變數時，才設定 release 簽章；否則不指定（避免在非 Android 任務出錯）
-            if (hasUploadKeystore) {
-                signingConfig = signingConfigs.getByName("release")
-            }
         }
     }
-    compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_11
-        targetCompatibility = JavaVersion.VERSION_11
-    }
+
 }
 
 // Gradle Play Publisher 設定改以 gradle.properties 參數提供

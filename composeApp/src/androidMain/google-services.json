@@ -1,0 +1,76 @@
+{
+  "project_info": {
+    "project_number": "181914763371",
+    "project_id": "blackcatnews-117bd",
+    "storage_bucket": "blackcatnews-117bd.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:181914763371:android:0bcca0766316d50aea312e",
+        "android_client_info": {
+          "package_name": "com.linli.blackcatnews"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "181914763371-a4ud44e9k2f3hp1l9s48qnci7gplc65c.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyC1wrlamtK5ygO-UpM6fpTO7-KpEfb9FzY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "181914763371-a4ud44e9k2f3hp1l9s48qnci7gplc65c.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:181914763371:android:10736e82c1e492e3ea312e",
+        "android_client_info": {
+          "package_name": "com.linli.blackcatnews.debug"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "181914763371-ipvr8rhntrvt7p0c50afa4m04guk7hbs.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.linli.blackcatnews.debug",
+            "certificate_hash": "cc7a0a7f5e7461747d1c603aea3005be4421bcef"
+          }
+        },
+        {
+          "client_id": "181914763371-a4ud44e9k2f3hp1l9s48qnci7gplc65c.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyC1wrlamtK5ygO-UpM6fpTO7-KpEfb9FzY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "181914763371-a4ud44e9k2f3hp1l9s48qnci7gplc65c.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

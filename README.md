@@ -35,6 +35,8 @@
     - 其他資料夾為平台專屬的 Kotlin 程式碼
 
 * [/iosApp](./iosApp/iosApp) - iOS 應用程式進入點，包含 SwiftUI 程式碼
+    - **開發注意事項**：直接打開 `iosApp.xcodeproj` 文件進行開發
+    - **重要**：本項目不使用 CocoaPods，請勿打開 `.xcworkspace` 文件（已移除）
 
 * [/server](./server/src/main/kotlin) - Ktor 伺服器應用程式
 

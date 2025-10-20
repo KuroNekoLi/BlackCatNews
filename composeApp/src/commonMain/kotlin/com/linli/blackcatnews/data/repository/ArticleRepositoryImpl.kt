@@ -17,7 +17,7 @@ import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.withContext
-import kotlinx.datetime.Clock
+import kotlin.time.ExperimentalTime
 
 /**
  * 文章數據倉庫實作
@@ -119,6 +119,7 @@ class ArticleRepositoryImpl(
             }
     }
 
+    @OptIn(ExperimentalTime::class)
     override suspend fun addToFavorites(articleId: String): Result<Unit> {
         return withContext(ioDispatcher) {
             try {
@@ -131,7 +132,7 @@ class ArticleRepositoryImpl(
                 articleDao.updateFavoriteStatus(
                     id = existingEntity.id,
                     isFavorite = true,
-                    updatedAt = Clock.System.now().toEpochMilliseconds()
+                    updatedAt = kotlin.time.Clock.System.now().toEpochMilliseconds()
                 )
                 Result.Success(Unit)
             } catch (throwable: Throwable) {
@@ -140,6 +141,7 @@ class ArticleRepositoryImpl(
         }
     }
 
+    @OptIn(ExperimentalTime::class)
     override suspend fun removeFromFavorites(articleId: String): Result<Unit> {
         return withContext(ioDispatcher) {
             try {
@@ -152,7 +154,7 @@ class ArticleRepositoryImpl(
                 articleDao.updateFavoriteStatus(
                     id = existingEntity.id,
                     isFavorite = false,
-                    updatedAt = Clock.System.now().toEpochMilliseconds()
+                    updatedAt = kotlin.time.Clock.System.now().toEpochMilliseconds()
                 )
                 Result.Success(Unit)
             } catch (throwable: Throwable) {

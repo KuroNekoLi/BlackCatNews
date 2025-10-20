@@ -38,6 +38,8 @@ iosApp/Podfile.lock
 iosApp/Pods/
 
 # Secrets / credentials / build artifacts (should not be committed)
+keystore.properties
+*.jks
 play-credentials.json
 creds.b64
 **/*.ipa

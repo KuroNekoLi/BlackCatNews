@@ -25,12 +25,11 @@ import com.linli.blackcatnews.domain.model.PhraseIdiom
 import com.linli.blackcatnews.domain.model.Quiz
 import com.linli.blackcatnews.domain.model.QuizQuestion
 import com.linli.blackcatnews.domain.model.SentencePattern
-import com.linli.blackcatnews.model.ArticleData
 import com.linli.blackcatnews.model.Block
-import com.linli.blackcatnews.model.Title
 import com.linli.blackcatnews.utils.decodeHtmlEntities
 import com.linli.blackcatnews.utils.parseHtmlToArticle
-import kotlinx.datetime.Clock
+import kotlin.time.Clock
+import kotlin.time.ExperimentalTime
 
 /**
  * 文章資料映射器
@@ -44,6 +43,7 @@ object ArticleMapper {
     /**
      * 將遠端 DTO 轉換為 Room Entity，並保留既有收藏與建立時間
      */
+    @OptIn(ExperimentalTime::class)
     fun dtoToEntity(dto: AiArticleDto, existing: ArticleEntity? = null): ArticleEntity {
         val now = Clock.System.now().toEpochMilliseconds()
         val createdAt = existing?.createdAt ?: now
