@@ -195,7 +195,10 @@ platform :ios do
       "OTHER_CODE_SIGN_FLAGS='--keychain #{keychain_path}'",
       "DEVELOPMENT_TEAM=#{team_id}",
       "PROVISIONING_PROFILE_SPECIFIER=#{profile_uuid}",
-      'ONLY_ACTIVE_ARCH=NO'
+      'ONLY_ACTIVE_ARCH=NO',
+      '-showBuildTimingSummary',      # 顯示構建時間統計，便於優化
+      '-parallelizeTargets',          # 並行構建多個 targets，加速構建
+      '-destination generic/platform=iOS'  # 明確指定為 iOS 設備（而非模擬器）
     ].join(' ')
     
     begin
