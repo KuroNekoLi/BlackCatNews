@@ -152,6 +152,13 @@ platform :ios do
     end
     
     UI.success("✅ 描述檔已成功下載並驗證")
+    
+    # 手動安裝 profile 到系統目錄（CI 環境必須）
+    system_profile_dir = File.expand_path("~/Library/MobileDevice/Provisioning Profiles")
+    FileUtils.mkdir_p(system_profile_dir)
+    system_profile_path = File.join(system_profile_dir, "#{profile_uuid}.mobileprovision")
+    FileUtils.cp(profile_path, system_profile_path)
+    UI.success("✅ 已安裝 profile 到系統目錄: #{system_profile_path}")
 
     # 從描述檔讀取 Team ID
     team_id = extract_team_id(profile_path)
@@ -160,13 +167,15 @@ platform :ios do
     end
     UI.message("🏢 Team ID: #{team_id}")
 
-    # Xcode 參數（維持最小必要，避免干擾 SPM）
+    # Xcode 參數（包含 PROVISIONING_PROFILE_SPECIFIER）
     xc = [
+      "-allowProvisioningUpdates",
       "OTHER_CODE_SIGN_FLAGS='--keychain #{keychain_path}'",
       "DEVELOPMENT_TEAM=#{team_id}",
+      "PROVISIONING_PROFILE_SPECIFIER=#{profile_uuid}",
       'ONLY_ACTIVE_ARCH=NO'
     ].join(' ')
-
+    
     begin
       gym(
         project: XCODEPROJ,
