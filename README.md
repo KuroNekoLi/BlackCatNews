@@ -1,305 +1,450 @@
-# Black Cat News - AI 雙語新聞學習
+# BlackCatNews - AI 雙語新聞學習應用程式
 
-## 📱 最新更新 (2025-10-15)
-
-### ✅ App Store 審核準備
-
-針對 Apple App Store 審核回饋，已完成以下功能實作：
-
-1. **收藏功能 ✅**
-    - 完整的收藏文章列表顯示
-    - 滑動刪除收藏功能
-    - 空狀態提示界面
-
-2. **搜尋功能 ✅**
-    - 即時搜尋文章（支援中英文）
-    - 搜尋結果展示
-    - 清除搜尋功能
-
-3. **通知功能 ✅**
-    - 通知列表顯示
-    - 示範通知內容
-
-所有功能已完整實作，應用程式不再包含任何開發中的佔位符內容。
-
-詳細資訊請參閱：[App Store 重新提交指南](./APP_STORE_RESUBMISSION_GUIDE.md)
+> **Kotlin Multiplatform 跨平台專案**  
+> 支援 Android 與 iOS 雙平台
 
 ---
 
-這是一個 Kotlin Multiplatform 專案，支援 Android、iOS、Web 與 Server。
+## 📱 專案簡介
 
-## 專案結構
+BlackCatNews 是一個創新的雙語新聞學習應用程式，幫助使用者透過閱讀新聞提升語言能力。
 
-* [/composeApp](./composeApp/src) - 跨平台共享的 Compose Multiplatform 應用程式碼
-    - [commonMain](./composeApp/src/commonMain/kotlin) - 所有平台共用的程式碼
-    - 其他資料夾為平台專屬的 Kotlin 程式碼
+### 核心功能
 
-* [/iosApp](./iosApp/iosApp) - iOS 應用程式進入點，包含 SwiftUI 程式碼
-    - **開發注意事項**：直接打開 `iosApp.xcodeproj` 文件進行開發
-    - **重要**：本項目不使用 CocoaPods，請勿打開 `.xcworkspace` 文件（已移除）
+- 📰 雙語新聞瀏覽（繁體中文 / English）
+- 🔍 新聞搜尋與分類
+- 💾 離線收藏功能
+- 📊 學習進度追蹤
+- 🔐 使用者帳號系統
 
-* [/server](./server/src/main/kotlin) - Ktor 伺服器應用程式
+### 技術架構
 
-* [/shared](./shared/src) - 所有目標平台共享的程式碼
-    - [commonMain](./shared/src/commonMain/kotlin) - 核心共用程式碼
+| 技術           | 版本 / 說明                           |
+|--------------|-----------------------------------|
+| **開發語言**     | Kotlin 2.2.20                     |
+| **UI 框架**    | Compose Multiplatform 1.9.0       |
+| **平台支援**     | Android (API 24+)、iOS (14.0+)     |
+| **網路請求**     | Ktor 3.3.0                        |
+| **資料庫**      | Room 2.8.1 + SQLite               |
+| **依賴注入**     | Koin 4.1.1                        |
+| **Firebase** | GitLive Firebase Kotlin SDK 2.1.0 |
 
-## 本機開發
+---
 
-### Android 應用程式
+## 🚀 快速開始
 
-使用 IDE 的執行設定，或從終端機建置：
+### 環境需求
 
-```shell
-# macOS/Linux
+- **JDK**: 11 或以上
+- **Android Studio**: Koala (2024.1.1) 或以上
+- **Xcode**: 15.0 或以上（僅 iOS 開發需要）
+- **macOS**: 13.0 或以上（僅 iOS 開發需要）
+
+### 專案結構
+
+```
+BlackCatNews/
+├── composeApp/          # 主應用程式模組
+│   ├── src/
+│   │   ├── androidMain/       # Android 特定程式碼
+│   │   ├── iosMain/           # iOS 特定程式碼
+│   │   ├── commonMain/        # 共用程式碼
+│   │   ├── debug/             # Debug 配置檔案
+│   │   └── release/           # Release 配置檔案
+│   └── build.gradle.kts
+├── iosApp/              # iOS 應用程式（SwiftUI）
+│   └── iosApp/
+│       └── iosApp.xcodeproj
+├── shared/              # 共用邏輯模組
+├── docs/                # 文檔目錄
+│   ├── features/        # 功能說明文檔
+│   └── iOS_CICD問題排除.md
+├── Firebase_與_部署完整指南.md    # Firebase 設定與 CI/CD
+├── 開發者指南.md                  # 開發者技術文檔
+└── GOOGLE_PLAY_AD_ID_FIX.md      # Google Play 問題修復
+```
+
+### 建立與執行
+
+#### Android
+
+```bash
+# Debug 版本
 ./gradlew :composeApp:assembleDebug
+./gradlew :composeApp:installDebug
 
-# Windows
-.\gradlew.bat :composeApp:assembleDebug
+# Release 版本
+./gradlew :composeApp:assembleRelease
+
+# 重新安裝 Release（解決簽名衝突）
+./gradlew reinstallRelease
+
+# 安裝並啟動
+./gradlew installAndRunRelease
 ```
 
-### Server 應用程式
+#### iOS
 
-```shell
-# macOS/Linux
-./gradlew :server:run
+```bash
+# 1. 建立 Kotlin Framework
+./gradlew :composeApp:embedAndSignAppleFrameworkForXcode
 
-# Windows
-.\gradlew.bat :server:run
+# 2. 打開 Xcode 專案
+open iosApp/iosApp.xcodeproj
+
+# 3. 在 Xcode 中選擇 scheme 並執行
 ```
 
-### iOS 應用程式
+**重要**：
 
-使用 IDE 的執行設定，或在 Xcode 中開啟 [/iosApp](./iosApp) 目錄執行。
+- ✅ 使用 `iosApp.xcodeproj` 而非 `.xcworkspace`
+- ✅ 專案已移除 CocoaPods，改用 SPM
+- ❌ 不要執行 `pod install`
 
 ---
 
-## 📱 Android 自動化發佈（Google Play Console）
+## 🔥 Firebase 設定
 
-### 概述
+詳細的 Firebase 設定步驟請參考：**[Firebase_與_部署完整指南.md](./Firebase_與_部署完整指南.md)**
 
-- 使用 **Gradle Play Publisher (GPP)** 外掛自動上傳 AAB 到 Google Play Console
-- 支援多軌道發布：`internal`（內測）、`alpha`（封閉測試）、`beta`（公測）、`production`（正式版）
-- GitHub Actions 自動化：只在 main 分支和特定 tag 觸發，develop 分支不會觸發發布
-- 自動遞增版本號，並在版本衝突時自動重試
+### 快速摘要
+
+#### 1. Firebase Console 設定
+
+在 Firebase Console 建立 **4 個應用程式**：
+
+| 平台      | 環境      | Package/Bundle ID              |
+|---------|---------|--------------------------------|
+| Android | Debug   | `com.linli.blackcatnews.debug` |
+| Android | Release | `com.linli.blackcatnews`       |
+| iOS     | Debug   | `com.linli.blackcatnews.debug` |
+| iOS     | Release | `com.linli.blackcatnews`       |
+
+#### 2. 配置檔案位置
+
+**Android：**
+
+```
+composeApp/src/debug/google-services.json
+composeApp/src/release/google-services.json
+```
+
+**iOS：**
+
+```
+iosApp/iosApp/GoogleService-Info-Debug.plist
+iosApp/iosApp/GoogleService-Info-Release.plist
+```
+
+#### 3. 使用的 Firebase 功能
+
+- ✅ **Analytics** - 使用者行為分析
+- ✅ **Crashlytics** - 當機報告
+- ✅ **Authentication** - 使用者認證（匿名登入）
+
+### Firebase 測試
+
+應用程式內建測試界面：
+
+```
+應用程式 → 設定 → 開發者選項 → 🔥 Firebase 功能測試
+```
+
+可測試：
+
+- Analytics 事件記錄
+- Authentication 匿名登入
+- Crashlytics 當機報告
+
+---
+
+## 🔐 簽名設定
+
+### 本地開發
+
+建立 `composeApp/keystore.properties`：
+
+```properties
+keystore.path=/path/to/your/upload-keystore.jks
+keystore.password=your_keystore_password
+key.alias=upload
+key.password=your_key_password
+```
+
+**重要**：此檔案已加入 `.gitignore`，不會提交到 Git
+
+### CI/CD 環境變數
+
+在 GitHub Secrets 中設定：
+
+| 變數名稱                       | 說明                     |
+|----------------------------|------------------------|
+| `UPLOAD_KEYSTORE`          | Keystore 檔案（Base64 編碼） |
+| `UPLOAD_KEYSTORE_PASSWORD` | Keystore 密碼            |
+| `UPLOAD_KEY_ALIAS`         | Key 別名                 |
+| `UPLOAD_KEY_PASSWORD`      | Key 密碼                 |
+| `PLAY_CREDENTIALS_JSON`    | Play Console 服務帳號 JSON |
+
+---
+
+## 🤖 GitHub Actions CI/CD
+
+### Android 自動部署
+
+**檔案**：`.github/workflows/android-gpp.yml`
+
+**觸發條件**：
+
+- Push 到 `main` 分支
+- 手動觸發
+
+**流程**：
+
+1. 檢出程式碼
+2. 設定 Java 環境
+3. 建立 Release AAB
+4. 上傳至 Google Play Internal Testing
+
+### iOS 自動部署
+
+**檔案**：`.github/workflows/ios.yml`
+
+**流程**：
+
+1. 檢出程式碼
+2. 設定 Xcode 環境
+3. 建立 Kotlin Framework（**不使用** `podInstall`）
+4. 建立 iOS Archive
+5. 上傳至 App Store Connect
+
+**重要更新**：
+
+- ✅ 使用 `embedAndSignAppleFrameworkForXcode`
+- ❌ 已移除 `podInstall` 任務
+
+---
+
+## 📦 Google Play 部署
+
+### 手動上傳
+
+```bash
+# 建立 AAB
+./gradlew :composeApp:bundleRelease
+
+# 檔案位置
+composeApp/build/outputs/bundle/release/composeApp-release.aab
+```
+
+### 自動上傳（使用 Gradle Plugin）
+
+```bash
+# 上傳至 Internal Testing
+./gradlew publishReleaseBundle --track=internal
+
+# 上傳至 Alpha
+./gradlew publishReleaseBundle --track=alpha
+
+# 上傳至 Beta
+./gradlew publishReleaseBundle --track=beta
+
+# 上傳至 Production
+./gradlew publishReleaseBundle --track=production
+```
+
+---
+
+## ⚠️ 常見問題
+
+### 1. Android Crashlytics 無法運作
+
+**症狀**：`FirebaseApp is not initialized`
+
+**解決方案**：
+確認已添加兩個必要插件：
+
+```kotlin
+plugins {
+    alias(libs.plugins.googleServices)
+    alias(libs.plugins.firebaseCrashlytics)  // 必須！
+}
+```
+
+### 2. GitHub Actions 找不到 podInstall
+
+**症狀**：`Cannot locate tasks that match ':composeApp:podInstall'`
+
+**解決方案**：
+專案已移除 CocoaPods，更新 `.github/workflows/ios.yml`：
+
+```yaml
+# ✅ 正確
+run: ./gradlew :composeApp:embedAndSignAppleFrameworkForXcode
+```
+
+### 3. Google Play 上傳失敗（AD_ID 權限）
+
+**症狀**：應用程式包含 AD_ID 權限但未在 Play Console 聲明
+
+**解決方案**：
+在 `AndroidManifest.xml` 中明確移除：
+
+```xml
+<uses-permission 
+    android:name="com.google.android.gms.permission.AD_ID"
+    tools:node="remove" />
+```
+
+詳細說明請參考：**[GOOGLE_PLAY_AD_ID_FIX.md](./GOOGLE_PLAY_AD_ID_FIX.md)**
+
+### 4. iOS 無法開啟 .xcworkspace
+
+**症狀**：找不到 `.xcworkspace` 檔案
+
+**解決方案**：
+專案已移除 CocoaPods，改用 `.xcodeproj`：
+
+```bash
+# ✅ 正確
+open iosApp/iosApp.xcodeproj
+
+# ❌ 錯誤
+open iosApp/iosApp.xcworkspace  # 此檔案已刪除
+```
+
+---
+
+## 📚 文檔索引
+
+### 核心文檔
+
+| 文件                                                         | 說明                       | 適用對象      |
+|------------------------------------------------------------|--------------------------|-----------|
+| **[README.md](./README.md)**                               | 專案總覽（本文件）                | 所有人       |
+| **[Firebase_與_部署完整指南.md](./Firebase_與_部署完整指南.md)**         | Firebase 設定、CI/CD、部署完整指南 | DevOps、後端 |
+| **[開發者指南.md](./開發者指南.md)**                                 | 架構、導航、UI、資料層開發文檔         | 前端開發者     |
+| **[GOOGLE_PLAY_AD_ID_FIX.md](./GOOGLE_PLAY_AD_ID_FIX.md)** | Google Play AD_ID 權限問題修復 | 發布管理員     |
+
+### 功能文檔
+
+| 文件                                                       | 說明          |
+|----------------------------------------------------------|-------------|
+| **[docs/features/雙語文章功能.md](./docs/features/雙語文章功能.md)** | 雙語學習新聞詳細頁功能 |
+| **[docs/features/測驗功能.md](./docs/features/測驗功能.md)**     | 閱讀測驗功能說明    |
+
+### 問題排除
+
+| 文件                                                 | 說明                          |
+|----------------------------------------------------|-----------------------------|
+| **[docs/iOS_CICD問題排除.md](./docs/iOS_CICD問題排除.md)** | iOS CI/CD 警告與 Keychain 錯誤排除 |
+
+---
+
+## 🛠️ 開發工具
+
+### 推薦 IDE 設定
+
+**Android Studio / IntelliJ IDEA：**
+
+- Kotlin Plugin
+- Compose Multiplatform IDE Support
+- Kotlin Multiplatform Mobile
+
+**Xcode：**
+
+- Swift 5.9+
+- iOS Deployment Target: 14.0+
+
+### 實用指令
+
+```bash
+# 清理建立
+./gradlew clean
+
+# 檢查依賴
+./gradlew :composeApp:dependencies
+
+# 檢查簽名資訊
+./gradlew :composeApp:signingReport
+
+# 同步 Gradle
+./gradlew --refresh-dependencies
+```
+
+---
+
+## 🔄 版本管理
+
+### 版本號規則
+
+- **versionCode**：每次發布自動遞增
+- **versionName**：語意化版本 (Semantic Versioning)
+  - 格式：`主版本.次版本.修訂版本`
+  - 範例：`1.0.0`、`1.1.0`、`1.1.1`
+
+### 在 CI/CD 中設定版本
+
+```yaml
+env:
+  VERSION_CODE: ${{ github.run_number }}
+  VERSION_NAME: "1.0.${{ github.run_number }}"
+```
+
+---
+
+## 🤝 貢獻指南
 
 ### 分支策略
 
-```
-develop (開發分支)
-  ↓ 日常 commit（不觸發 CI/CD）
-  ↓ PR/merge
-main (穩定分支)
-  ↓ 自動發布到 internal 軌道
-  ↓ 打 tag
-android-beta-v* → 公開測試（beta 軌道）
-android-v* → 正式發布（production 軌道）
-```
+- `main` - 穩定版本分支
+- `develop` - 開發分支
+- `feature/*` - 功能分支
+- `hotfix/*` - 緊急修復分支
 
-**工作原則**：
+### Pull Request 流程
 
-1. 在 `develop` 分支日常開發（不會觸發發布）
-2. 開 PR 從 `develop` 到 `main`（只建置驗證，不上傳）
-3. Merge 到 `main` 後自動發布到 `internal` 軌道
-4. 測試通過後打 tag 發布到 beta 或 production
+1. Fork 專案
+2. 建立功能分支 (`git checkout -b feature/amazing-feature`)
+3. 提交變更 (`git commit -m 'Add some amazing feature'`)
+4. 推送到分支 (`git push origin feature/amazing-feature`)
+5. 開啟 Pull Request
 
-### GitHub Actions 觸發策略
+### 程式碼規範
 
-| 觸發方式                           | 目標軌道         | 說明             |
-|--------------------------------|--------------|----------------|
-| `develop` 分支 commit            | 不觸發          | 日常開發，不會建置或上傳   |
-| PR: `develop` → `main`         | 不上傳          | 只建置驗證，確保可以正常打包 |
-| Merge PR 或 push to `main`      | `internal`   | 自動發布到內部測試軌道    |
-| `git tag android-alpha-v1.0.0` | `alpha`      | 封閉測試（特定測試人員）   |
-| `git tag android-beta-v1.0.0`  | `beta`       | 公開測試（大規模驗證）    |
-| `git tag android-v1.0.0`       | `production` | 正式發布           |
-| 手動觸發（Actions UI）               | 自選           | 緊急修復或特殊發布      |
-
-### 使用流程範例
-
-#### 日常開發（在 develop 分支）
-
-```bash
-# 切換到 develop 分支
-git checkout develop
-
-# 開發功能並測試
-git add .
-git commit -m "feat: 新增某功能"
-git push origin develop
-# → 不會觸發任何 CI/CD，可以自由開發
-```
-
-#### 發布到內部測試（merge 到 main）
-
-```bash
-# 方式 1：使用 GitHub CLI 開 PR
-gh pr create --base main --head develop --title "Release: v1.0.X"
-# → PR 自動觸發建置驗證（只建置，不上傳）
-
-# 方式 2：直接 merge
-git checkout main
-git merge develop
-git push origin main
-# → GitHub Actions 自動上傳到 internal 軌道
-```
-
-#### 發布到公開測試
-
-```bash
-# 確保已 merge 到 main 並在 internal 測試通過
-git checkout main
-git tag android-beta-v1.0.1
-git push --tags
-# → GitHub Actions 自動上傳到 beta 軌道
-```
-
-#### 正式發布
-
-```bash
-# 確保 beta 測試通過
-git checkout main
-git tag android-v1.0.1
-git push --tags
-# → GitHub Actions 自動上傳到 production 軌道
-```
-
-### 版本號管理
-
-- **versionCode**：CI 自動遞增（使用 `github.run_number + 100`），本機預設為 2
-- **versionName**：CI 自動產生（格式：`1.0.{run_number}`），本機預設為 `1.0`
-- 本機測試時使用預設值，推送到 GitHub 後自動遞增，無需手動修改
-- 若版本號已被使用，會自動偵測並遞增版本號重試
-
-### 必要的 GitHub Secrets
-
-前往 **Settings → Secrets and variables → Actions** 新增以下 Secrets：
-
-| Secret 名稱                   | 說明                              | 如何取得                                           |
-|-----------------------------|---------------------------------|------------------------------------------------|
-| `PLAY_CREDENTIALS_JSON`     | Service Account JSON（原始全文，多行）   | 下載的 JSON 內容直接貼上                                |
-| `PLAY_CREDENTIALS_JSON_B64` | Service Account JSON（base64，可選） | `base64 -i service-account.json \| tr -d '\n'` |
-| `UPLOAD_KEYSTORE_BASE64`    | Upload keystore（base64）         | `base64 -i my_keystore.jks \| tr -d '\n'`      |
-| `UPLOAD_KEYSTORE_PASSWORD`  | Keystore 密碼                     | 純文字                                            |
-| `UPLOAD_KEY_ALIAS`          | Key alias                       | 純文字                                            |
-| `UPLOAD_KEY_PASSWORD`       | Key 密碼                          | 純文字                                            |
-
-#### 設定步驟
-
-1. **取得 Service Account JSON**（推薦直接使用原始 JSON，避免 base64 造成格式問題）
-    - 前往 Google Cloud Console 建立 Service Account
-   - 下載 JSON 金鑰（`service-account.json`）
-   - 將內容直接貼到 GitHub Secret `PLAY_CREDENTIALS_JSON`
-   - 若必須使用 base64，則：
-      ```bash
-      base64 -i service-account.json | tr -d '\n' > creds.txt
-      ```
-    - 複製內容到 `PLAY_CREDENTIALS_JSON_B64`
-
-2. **取得 Keystore**
-    - 使用現有的 upload keystore 或建立新的
-    - 轉換為 base64：
-      ```bash
-      base64 -i my_keystore.jks | tr -d '\n' > keystore.txt
-      ```
-    - 複製內容到 `UPLOAD_KEYSTORE_BASE64`
-
-3. **設定密碼和 alias**
-    - 將 keystore 密碼、key alias 和 key 密碼分別新增到對應的 Secrets
-
-### 本機測試
-
-如需在本機手動建置和上傳：
-
-```bash
-# 設定環境變數
-export UPLOAD_KEYSTORE=/path/to/my_keystore.jks
-export UPLOAD_KEYSTORE_PASSWORD='your_password'
-export UPLOAD_KEY_ALIAS='your_alias'
-export UPLOAD_KEY_PASSWORD='your_password'
-
-# 建置 AAB
-./gradlew :composeApp:bundleRelease
-
-# 上傳到指定軌道（可用 --track 覆寫，或在 CI 設 PLAY_TRACK）
-./gradlew :composeApp:publishReleaseBundle --track internal
-./gradlew :composeApp:publishReleaseBundle --track alpha
-./gradlew :composeApp:publishReleaseBundle --track beta
-./gradlew :composeApp:publishReleaseBundle --track production
-```
-
-### 注意事項
-
-- **首次上傳**：必須先在 Play Console 手動建立 App 並完成一次手動上傳
-- **簽章一致性**：Upload keystore 必須與 Play Console 註冊的 Upload key SHA1 一致
-- **Service Account 權限**：在 Play Console → Users and permissions 授予 **Release manager** 角色
-- **版本號衝突**：系統會自動偵測並遞增版本號重試
-
-### 參考資源
-
-- [Gradle Play Publisher 官方文件](https://github.com/Triple-T/gradle-play-publisher)
-- [Google Play Console 發布流程](https://support.google.com/googleplay/android-developer/answer/9859152)
+- 使用 Kotlin 官方程式碼風格
+- 所有公開 API 必須有註解
+- 提交訊息使用英文，格式：`[類型] 簡短說明`
+  - 類型：`feat`, `fix`, `docs`, `refactor`, `test`, `chore`
+  - 範例：`feat: 新增雙語切換功能`
 
 ---
 
-## 🍎 iOS 上架與自動化（App Store Connect API Only）
+## 📄 授權條款
 
-### 概述
+本專案採用 MIT 授權條款 - 詳見 [LICENSE](LICENSE) 檔案
 
-- 使用 Fastlane，僅走 App Store Connect API 金鑰路徑（不再支援 Apple ID 路徑）
-- 支援 `beta`（TestFlight）與 `release`（App Store 送審）
+---
 
-### 必要 GitHub Secrets（Actions → Secrets and variables → Actions）
+## 📞 聯絡資訊
 
-| 名稱                       | 用途                                | 取得方式                                                     |
-|--------------------------|-----------------------------------|----------------------------------------------------------|
-| `ASC_KEY_ID`             | API Key ID                        | App Store Connect → Integrations → App Store Connect API |
-| `ASC_ISSUER_ID`          | Issuer ID                         | 同上頁面                                                     |
-| `ASC_PRIVATE_KEY`        | `.p8` 內容                          | 下載的 `.p8` 檔案全文；若為 base64，設 `ASC_PRIVATE_KEY_BASE64=true` |
-| `IOS_DIST_CERT_BASE64`   | Apple Distribution `.p12`（base64） | 本機：`base64 -i dist_cert.p12                              | tr -d '\n'` |
-| `IOS_DIST_CERT_PASSWORD` | `.p12` 密碼                         | 匯出時設定的密碼                                                 |
+- **專案維護者**：BlackCatNews 開發團隊
+- **問題回報**：請在 GitHub Issues 中提出
+- **功能建議**：歡迎在 Discussions 中討論
 
-可選（出口合規，若 App 使用需申報之加密）：
+---
 
-| 名稱                                            | 建議值                          |
-|-----------------------------------------------|------------------------------|
-| `EXPORT_COMPLIANCE_USES_ENCRYPTION`           | `true` 或 `false`（預設 `false`） |
-| `EXPORT_COMPLIANCE_IS_EXEMPT`                 | `true`                       |
-| `EXPORT_COMPLIANCE_THIRD_PARTY`               | `false`                      |
-| `EXPORT_COMPLIANCE_PROPRIETARY`               | `false`                      |
-| `EXPORT_COMPLIANCE_AVAILABLE_ON_FRENCH_STORE` | `true` 或 `false`             |
+## 🙏 致謝
 
-### 常用命令（本機）
+感謝以下開源專案：
 
-```bash
-cd iosApp
-export ASC_KEY_ID=...; export ASC_ISSUER_ID=...
-export ASC_PRIVATE_KEY="$(cat /path/to/AuthKey_xxx.p8)"
-export IOS_DIST_CERT_BASE64="$(base64 -i /path/to/dist_cert.p12 | tr -d '\n')"
-export IOS_DIST_CERT_PASSWORD='your_p12_password'
+- [Kotlin Multiplatform](https://kotlinlang.org/docs/multiplatform.html)
+- [Compose Multiplatform](https://www.jetbrains.com/lp/compose-multiplatform/)
+- [GitLive Firebase Kotlin SDK](https://github.com/GitLiveApp/firebase-kotlin-sdk)
+- [Ktor](https://ktor.io/)
+- [Koin](https://insert-koin.io/)
+- [Coil](https://coil-kt.github.io/coil/)
 
-BUNDLE_GEMFILE=fastlane/Gemfile bundle exec fastlane ios build
-BUNDLE_GEMFILE=fastlane/Gemfile bundle exec fastlane ios beta
-BUNDLE_GEMFILE=fastlane/Gemfile bundle exec fastlane ios release # 以 SUBMIT_FOR_REVIEW / AUTOMATIC_RELEASE 控制送審與上架
-```
+---
 
-### GitHub Actions 範例（片段）
-
-```yaml
-- name: Release to App Store
-  working-directory: iosApp
-  env:
-    ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
-    ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
-    ASC_PRIVATE_KEY: ${{ secrets.ASC_PRIVATE_KEY }}
-    ASC_PRIVATE_KEY_BASE64: ${{ secrets.ASC_PRIVATE_KEY_BASE64 }}
-    IOS_DIST_CERT_BASE64: ${{ secrets.IOS_DIST_CERT_BASE64 }}
-    IOS_DIST_CERT_PASSWORD: ${{ secrets.IOS_DIST_CERT_PASSWORD }}
-    SUBMIT_FOR_REVIEW: true
-    AUTOMATIC_RELEASE: false
-  run: |
-    bundle install --gemfile fastlane/Gemfile
-    bundle exec fastlane ios release
-```
-
-附註：`iosApp/iosApp/Info.plist` 已設定 `ITSAppUsesNonExemptEncryption=false`；`release` lane 也會帶入
-`submission_information`。
+**最後更新**：2025-01-21  
+**版本**：1.0.0
