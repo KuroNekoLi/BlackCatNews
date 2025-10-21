@@ -32,8 +32,35 @@ end
 
 # 取得 Team ID 以供 Xcode 簽章
 def extract_team_id(profile_path)
-  plist = Plist.parse_xml(`security cms -D -i "#{profile_path}"`)
-  plist['TeamIdentifier']&.first
+  UI.message("🔍 從描述檔提取 Team ID: #{profile_path}")
+  
+  # 檢查檔案是否存在
+  unless File.exist?(profile_path)
+    UI.error("描述檔不存在: #{profile_path}")
+    return nil
+  end
+  
+  # 解析描述檔
+  profile_content = `security cms -D -i "#{profile_path}"`
+  if profile_content.empty?
+    UI.error("無法讀取描述檔內容")
+    return nil
+  end
+  
+  plist = Plist.parse_xml(profile_content)
+  unless plist
+    UI.error("無法解析描述檔 plist 內容")
+    return nil
+  end
+  
+  team_id = plist['TeamIdentifier']&.first
+  if team_id.nil? || team_id.empty?
+    UI.error("描述檔中找不到 TeamIdentifier")
+    return nil
+  end
+  
+  UI.success("✅ 成功提取 Team ID: #{team_id}")
+  team_id
 end
 
 # 匯入 p12 到指定 keychain
@@ -109,9 +136,23 @@ platform :ios do
     profile_uuid = lane_context[SharedValues::SIGH_UUID]
     profile_name = lane_context[SharedValues::SIGH_NAME]
     UI.success("📋 使用描述檔: #{profile_name} (#{profile_uuid})")
+    
+    # 驗證描述檔路徑
+    if profile_path.nil? || profile_path.empty?
+      UI.user_error!("❌ 描述檔下載失敗：profile_path 為空")
+    end
+    
+    unless File.exist?(profile_path)
+      UI.user_error!("❌ 描述檔不存在: #{profile_path}")
+    end
+    
+    UI.message("✅ 描述檔已下載: #{profile_path}")
 
     # 從描述檔讀取 Team ID
     team_id = extract_team_id(profile_path)
+    if team_id.nil? || team_id.empty?
+      UI.user_error!("❌ 無法從描述檔提取 Team ID，請檢查描述檔是否有效")
+    end
     UI.message("🏢 Team ID: #{team_id}")
 
     # Xcode 參數（維持最小必要，避免干擾 SPM）
