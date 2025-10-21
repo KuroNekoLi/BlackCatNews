@@ -71,6 +71,20 @@ jobs:
           distribution: temurin
           java-version: "17"
 
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-home-cache-cleanup: true
+          cache-encryption-key: ${{ secrets.GRADLE_CACHE_ENCRYPTION_KEY }}
+
+      - name: Cache Konan
+        uses: actions/cache@v4
+        with:
+          path: ~/.konan
+          key: ${{ runner.os }}-konan-${{ hashFiles('**/gradle/libs.versions.toml', '**/build.gradle.kts') }}
+          restore-keys: |
+            ${{ runner.os }}-konan-
+
       - name: Install Bundler dependencies
         working-directory: iosApp/fastlane
         run: |
