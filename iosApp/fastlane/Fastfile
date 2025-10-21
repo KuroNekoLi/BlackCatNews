@@ -11,11 +11,33 @@ require 'fileutils'
 
 default_platform(:ios)
 
-# ---- 可調整專案設定 ----
-APP_IDENTIFIER = 'com.linli.blackcatnews'
+# ---- 從專案檔案讀取配置 ----
+def read_xcconfig(key, default = nil)
+  config_file = File.expand_path('../Configuration/Config.xcconfig', __dir__)
+  return default unless File.exist?(config_file)
+  
+  File.readlines(config_file).each do |line|
+    # 跳過註釋和空行
+    next if line.strip.start_with?('//') || line.strip.empty?
+    
+    # 解析 KEY=VALUE 格式
+    if line =~ /^#{key}\s*=\s*(.+)$/
+      return $1.strip
+    end
+  end
+  
+  default
+end
+
+# 專案配置（從 Config.xcconfig 動態讀取）
+APP_IDENTIFIER = read_xcconfig('PRODUCT_BUNDLE_IDENTIFIER', 'com.linli.blackcatnews')
+PRODUCT_NAME   = read_xcconfig('PRODUCT_NAME', 'BlackCatNews')
 XCODEPROJ      = 'iosApp.xcodeproj'
 SCHEME         = 'iosApp'
-IPA_NAME       = 'BlackCatNews'
+IPA_NAME       = PRODUCT_NAME
+
+UI.message("📱 App Identifier: #{APP_IDENTIFIER}")
+UI.message("📦 Product Name: #{PRODUCT_NAME}")
 
 # ---- Helpers ----
 def fetch_api_key!
