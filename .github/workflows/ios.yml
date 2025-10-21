@@ -29,9 +29,6 @@ jobs:
       IOS_DIST_CERT_BASE64: ${{ secrets.IOS_DIST_CERT_BASE64 }}
       IOS_DIST_CERT_PASSWORD: ${{ secrets.IOS_DIST_CERT_PASSWORD }}
       
-      # Kotlin/Native 快取路徑（確保所有子流程使用同一路徑）
-      KONAN_DATA_DIR: $HOME/.konan
-
     steps:
       - name: Checkout
         uses: actions/checkout@v4
