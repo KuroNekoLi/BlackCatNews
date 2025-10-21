@@ -86,20 +86,36 @@ BlackCatNews/
 #### iOS
 
 ```bash
-# 1. 建立 Kotlin Framework
-./gradlew :composeApp:embedAndSignAppleFrameworkForXcode
-
-# 2. 打開 Xcode 專案
+# 1. 打開 Xcode 專案
 open iosApp/iosApp.xcodeproj
 
-# 3. 在 Xcode 中選擇 scheme 並執行
+# 2. 在 Xcode 中選擇 scheme 並執行（Cmd+R）
+# Xcode Build Phase 會自動建立 Kotlin Framework
 ```
 
-**重要**：
+**為什麼不能直接執行 Gradle 任務？**
 
+```bash
+# ❌ 錯誤：不要單獨執行這個任務
+./gradlew :composeApp:embedAndSignAppleFrameworkForXcode
+
+# 原因：此任務需要 Xcode 提供的環境變數（ARCHS、CONFIGURATION 等）
+# 只有在 Xcode build 過程中這些變數才會被設定
+```
+
+**Xcode Build Phase 流程：**
+
+1. 你在 Xcode 中點擊 Run
+2. Xcode 執行 Build Phases
+3. Run Script 階段會呼叫 `embedAndSignAppleFrameworkForXcode`
+4. Gradle 使用 Xcode 提供的環境變數建立 Framework
+5. Framework 被嵌入到 iOS App 中
+
+**重要提醒**：
 - ✅ 使用 `iosApp.xcodeproj` 而非 `.xcworkspace`
 - ✅ 專案已移除 CocoaPods，改用 SPM
 - ❌ 不要執行 `pod install`
+- ❌ 不要單獨執行 `embedAndSignAppleFrameworkForXcode`
 
 ---
 
@@ -213,14 +229,15 @@ key.password=your_key_password
 
 1. 檢出程式碼
 2. 設定 Xcode 環境
-3. 建立 Kotlin Framework（**不使用** `podInstall`）
+3. Fastlane 建立（**自動**呼叫 `embedAndSignAppleFrameworkForXcode`）
 4. 建立 iOS Archive
 5. 上傳至 App Store Connect
 
 **重要更新**：
 
-- ✅ 使用 `embedAndSignAppleFrameworkForXcode`
-- ❌ 已移除 `podInstall` 任務
+- ✅ Xcode build 會自動執行 Build Phase 中的 Run Script
+- ✅ Run Script 會呼叫 `embedAndSignAppleFrameworkForXcode`
+- ❌ **不要**在 workflow 中單獨執行 `embedAndSignAppleFrameworkForXcode`
 
 ---
 
@@ -270,19 +287,37 @@ plugins {
 }
 ```
 
-### 2. GitHub Actions 找不到 podInstall
+### 2. iOS 無法建立 Kotlin Framework
+
+**症狀**：`Could not infer iOS target architectures`
+
+**解決方案**：
+
+```bash
+# ❌ 錯誤：不要單獨執行
+./gradlew :composeApp:embedAndSignAppleFrameworkForXcode
+
+# ✅ 正確：在 Xcode 中建立
+open iosApp/iosApp.xcodeproj
+# 然後在 Xcode 中 Run (Cmd+R)
+```
+
+**原因**：此任務需要 Xcode 提供的環境變數，只能在 Xcode build 過程中執行。
+
+### 3. GitHub Actions 找不到 podInstall
 
 **症狀**：`Cannot locate tasks that match ':composeApp:podInstall'`
 
 **解決方案**：
-專案已移除 CocoaPods，更新 `.github/workflows/ios.yml`：
+專案已移除 CocoaPods，GitHub Actions 不需要單獨建立 Framework：
 
 ```yaml
-# ✅ 正確
-run: ./gradlew :composeApp:embedAndSignAppleFrameworkForXcode
+# ✅ 正確：讓 Fastlane/Xcode 自動處理
+- name: Build and upload via Fastlane
+  run: bundle exec fastlane beta
 ```
 
-### 3. Google Play 上傳失敗（AD_ID 權限）
+### 4. Google Play 上傳失敗（AD_ID 權限）
 
 **症狀**：應用程式包含 AD_ID 權限但未在 Play Console 聲明
 
@@ -297,7 +332,7 @@ run: ./gradlew :composeApp:embedAndSignAppleFrameworkForXcode
 
 詳細說明請參考：**[GOOGLE_PLAY_AD_ID_FIX.md](./GOOGLE_PLAY_AD_ID_FIX.md)**
 
-### 4. iOS 無法開啟 .xcworkspace
+### 5. iOS 無法開啟 .xcworkspace
 
 **症狀**：找不到 `.xcworkspace` 檔案
 
@@ -345,13 +380,11 @@ open iosApp/iosApp.xcworkspace  # 此檔案已刪除
 ### 推薦 IDE 設定
 
 **Android Studio / IntelliJ IDEA：**
-
 - Kotlin Plugin
 - Compose Multiplatform IDE Support
 - Kotlin Multiplatform Mobile
 
 **Xcode：**
-
 - Swift 5.9+
 - iOS Deployment Target: 14.0+
 
@@ -448,3 +481,4 @@ env:
 
 **最後更新**：2025-01-21  
 **版本**：1.0.0
+

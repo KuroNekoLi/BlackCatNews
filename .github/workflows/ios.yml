@@ -29,13 +29,6 @@ jobs:
       IOS_DIST_CERT_BASE64: ${{ secrets.IOS_DIST_CERT_BASE64 }}
       IOS_DIST_CERT_PASSWORD: ${{ secrets.IOS_DIST_CERT_PASSWORD }}
 
-      # 可選：出口合規（如需申報加密）
-      # EXPORT_COMPLIANCE_USES_ENCRYPTION: true
-      # EXPORT_COMPLIANCE_IS_EXEMPT: true
-      # EXPORT_COMPLIANCE_THIRD_PARTY: false
-      # EXPORT_COMPLIANCE_PROPRIETARY: false
-      # EXPORT_COMPLIANCE_AVAILABLE_ON_FRENCH_STORE: false
-
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -93,9 +86,9 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-gems-
 
-      - name: Build Kotlin Framework
-        run: |
-          ./gradlew :composeApp:embedAndSignAppleFrameworkForXcode --no-daemon --stacktrace
+      # ⚠️ 注意：不要單獨執行 embedAndSignAppleFrameworkForXcode
+      # 這個任務會在 Xcode build 時自動被觸發
+      # Xcode Build Phase 中已經配置了 Run Script 來呼叫這個任務
 
       - name: Decide lane and flags by ref
         id: decide
@@ -139,6 +132,8 @@ jobs:
           AUTOMATIC_RELEASE: ${{ steps.decide.outputs.auto }}
         run: |
           echo "lane=${{ steps.decide.outputs.lane }} submit=${{ env.SUBMIT_FOR_REVIEW }} auto=${{ env.AUTOMATIC_RELEASE }}"
+          # Fastlane 會呼叫 xcodebuild，xcodebuild 會自動執行 Build Phase 中的 Run Script
+          # Run Script 會呼叫 embedAndSignAppleFrameworkForXcode
           BUNDLE_GEMFILE=fastlane/Gemfile bundle exec fastlane ${{ steps.decide.outputs.lane }}
 
       - name: Upload ipa artifact

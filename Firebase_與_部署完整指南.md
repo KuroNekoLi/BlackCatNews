@@ -213,9 +213,9 @@ struct iOSApp: App {
    https://github.com/firebase/firebase-ios-sdk
    ```
 3. 選擇需要的產品：
-    - ✅ `FirebaseAuth`
-    - ✅ `FirebaseAnalytics`
-    - ✅ `FirebaseCrashlytics`
+   - ✅ `FirebaseAuth`
+   - ✅ `FirebaseAnalytics`
+   - ✅ `FirebaseCrashlytics`
 4. Target 選擇 `iosApp`
 
 #### 5. 打開 iOS 專案的正確方式
@@ -230,6 +230,30 @@ open iosApp/iosApp.xcodeproj
 
 **原因**：專案已移除 CocoaPods，不再使用 `.xcworkspace`
 
+#### 6. 本地開發建立流程
+
+**重要**：`embedAndSignAppleFrameworkForXcode` 任務不能單獨執行！
+
+```bash
+# ❌ 錯誤：不要單獨執行這個任務
+./gradlew :composeApp:embedAndSignAppleFrameworkForXcode
+
+# ✅ 正確：直接在 Xcode 中建立
+open iosApp/iosApp.xcodeproj
+# 在 Xcode 中點擊 Run (Cmd+R)
+# Xcode Build Phase 會自動呼叫 embedAndSignAppleFrameworkForXcode
+```
+
+**為什麼？**
+
+`embedAndSignAppleFrameworkForXcode` 任務需要 Xcode 提供的環境變數：
+
+- `ARCHS` - 目標架構
+- `CONFIGURATION` - Debug/Release
+- `BUILT_PRODUCTS_DIR` - 輸出路徑
+
+這些變數只有在 Xcode build 過程中才會被設定。
+
 ---
 
 ## Firebase 功能測試
@@ -239,7 +263,6 @@ open iosApp/iosApp.xcodeproj
 專案中已經內建 Firebase 測試界面，可以測試所有功能：
 
 **進入測試界面：**
-
 ```
 應用程式 → 設定（底部導航欄）→ 開發者選項 → "🔥 Firebase 功能測試"
 ```
@@ -298,7 +321,6 @@ adb shell setprop debug.firebase.analytics.app .none.
 
 **iOS：**
 在 Xcode Scheme 中添加啟動參數：
-
 ```
 -FIRAnalyticsDebugEnabled
 ```
@@ -320,7 +342,6 @@ FirebaseApp is not initialized in this process
 
 **解決方案：**
 確認 `composeApp/build.gradle.kts` 中已添加：
-
 ```kotlin
 plugins {
     alias(libs.plugins.googleServices)
@@ -328,7 +349,30 @@ plugins {
 }
 ```
 
-### 問題 2：GitHub Actions 找不到 podInstall 任務
+### 問題 2：iOS 單獨執行 embedAndSignAppleFrameworkForXcode 失敗
+
+**錯誤訊息：**
+
+```
+Could not infer iOS target architectures. 
+Make sure to build via XCode
+```
+
+**原因：**
+此任務需要在 Xcode 環境下執行，不能從命令列單獨執行。
+
+**解決方案：**
+
+```bash
+# ✅ 正確：在 Xcode 中建立
+open iosApp/iosApp.xcodeproj
+# 然後在 Xcode 中 Run (Cmd+R)
+
+# ❌ 錯誤：不要單獨執行
+./gradlew :composeApp:embedAndSignAppleFrameworkForXcode
+```
+
+### 問題 3：GitHub Actions 找不到 podInstall 任務
 
 **錯誤訊息：**
 
@@ -340,19 +384,19 @@ Cannot locate tasks that match ':composeApp:podInstall'
 專案已移除 CocoaPods，但 CI/CD 配置未更新。
 
 **解決方案：**
-修改 `.github/workflows/ios.yml`：
+GitHub Actions 不需要單獨建立 Framework，Xcode build 會自動處理：
 
 ```yaml
-# ❌ 錯誤
-- name: 設定 iOS Framework
-  run: ./gradlew :composeApp:podInstall
+# ✅ 正確：讓 Fastlane/Xcode 處理
+- name: Build and upload via Fastlane
+  run: bundle exec fastlane beta
 
-# ✅ 正確
-- name: 構建 Kotlin Multiplatform Framework
-  run: ./gradlew :composeApp:embedAndSignAppleFrameworkForXcode
+# ❌ 錯誤：不要單獨執行
+# - name: Build Kotlin Framework
+#   run: ./gradlew :composeApp:embedAndSignAppleFrameworkForXcode
 ```
 
-### 問題 3：Google Play 上傳失敗（AD_ID 權限）
+### 問題 4：Google Play 上傳失敗（AD_ID 權限）
 
 **錯誤訊息：**
 
@@ -369,12 +413,11 @@ Firebase Analytics 會自動添加 AD_ID 權限，但 Play Console 中聲明不�
 在 `composeApp/src/androidMain/AndroidManifest.xml` 中：
 
 ```xml
-
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
 
     <!-- 明確移除廣告 ID 權限 -->
-    <uses-permission android:name="com.google.android.gms.permission.AD_ID" tools:node="remove" />
+   <uses-permission android:name="com.google.android.gms.permission.AD_ID" tools:node="remove" />
 
 </manifest>
 ```
@@ -385,8 +428,8 @@ Firebase Analytics 會自動添加 AD_ID 權限，但 Play Console 中聲明不�
 2. 選擇應用程式 → **政策** → **應用程式內容**
 3. 找到 **廣告 ID** 區塊 → 點擊「管理」
 4. 回答問題：
-    - **是否使用廣告 ID**：選擇「是」
-    - **使用目的**：勾選「廣告或行銷」、「分析」
+   - **是否使用廣告 ID**：選擇「是」
+   - **使用目的**：勾選「廣告或行銷」、「分析」
 5. 儲存並提交
 
 同時需要更新隱私權政策說明廣告 ID 的使用。
@@ -425,14 +468,26 @@ Firebase Analytics 會自動添加 AD_ID 權限，但 Play Console 中聲明不�
 
 1. 檢出程式碼
 2. 設定 Xcode 環境
-3. 構建 Kotlin Framework（使用 `embedAndSignAppleFrameworkForXcode`）
+3. **Fastlane 建立**（會自動呼叫 `embedAndSignAppleFrameworkForXcode`）
 4. 建立 iOS Archive
 5. 上傳至 App Store Connect
 
 **重要**：
 
-- ✅ 使用 `embedAndSignAppleFrameworkForXcode` 而非 `podInstall`
-- ✅ 直接打開 `.xcodeproj` 而非 `.xcworkspace`
+- ✅ Xcode build 會自動執行 Build Phase 中的 Run Script
+- ✅ Run Script 會呼叫 `embedAndSignAppleFrameworkForXcode`
+- ❌ **不要**在 workflow 中單獨執行 `embedAndSignAppleFrameworkForXcode`
+
+**iOS Build Phase 配置：**
+
+Xcode 專案中已經配置了 Build Phase → Run Script：
+
+```bash
+cd "$SRCROOT/.."
+./gradlew :composeApp:embedAndSignAppleFrameworkForXcode
+```
+
+這個腳本會在 Xcode build 時自動執行，獲取正確的環境變數。
 
 ---
 
@@ -491,9 +546,9 @@ play {
     serviceAccountCredentials.set(file("${rootDir}/play-credentials.json"))
     defaultToAppBundles.set(true)
     track.set(
-        project.findProperty("play.track")?.toString()
-            ?: System.getenv("PLAY_TRACK")
-            ?: "internal"
+       project.findProperty("play.track")?.toString()
+          ?: System.getenv("PLAY_TRACK")
+          ?: "internal"
     )
 }
 ```
