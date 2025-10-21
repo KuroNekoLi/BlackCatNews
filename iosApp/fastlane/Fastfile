@@ -127,15 +127,20 @@ platform :ios do
     import_p12!(keychain_path: keychain_path, keychain_password: keychain_password)
 
     # 下載並安裝 App Store 描述檔
-    profile_path = sigh(
+    sigh(
       api_key: api_key,
       app_identifier: APP_IDENTIFIER,
       force: true,
       skip_install: false
     )
+    
+    # 從 lane_context 中獲取所有需要的信息
+    profile_path = lane_context[SharedValues::SIGH_PROFILE_PATH]
     profile_uuid = lane_context[SharedValues::SIGH_UUID]
     profile_name = lane_context[SharedValues::SIGH_NAME]
+    
     UI.success("📋 使用描述檔: #{profile_name} (#{profile_uuid})")
+    UI.message("📄 描述檔路徑: #{profile_path}")
     
     # 驗證描述檔路徑
     if profile_path.nil? || profile_path.empty?
@@ -146,7 +151,7 @@ platform :ios do
       UI.user_error!("❌ 描述檔不存在: #{profile_path}")
     end
     
-    UI.message("✅ 描述檔已下載: #{profile_path}")
+    UI.success("✅ 描述檔已成功下載並驗證")
 
     # 從描述檔讀取 Team ID
     team_id = extract_team_id(profile_path)
