@@ -93,20 +93,9 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-gems-
 
-      - name: Prepare KMP Pods (CocoaPods if missing)
+      - name: Build Kotlin Framework
         run: |
-          pod --version || sudo gem install cocoapods --no-document
-          ./gradlew :composeApp:podInstall --no-daemon --stacktrace
-
-      - name: Cache CocoaPods
-        uses: actions/cache@v4
-        with:
-          path: |
-            iosApp/Pods
-            ~/.cocoapods
-          key: ${{ runner.os }}-pods-${{ hashFiles('iosApp/Podfile.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-pods-
+          ./gradlew :composeApp:embedAndSignAppleFrameworkForXcode --no-daemon --stacktrace
 
       - name: Decide lane and flags by ref
         id: decide
