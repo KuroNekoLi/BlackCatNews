@@ -60,11 +60,27 @@ platform :ios do
     sigh(
       api_key: api_key,
       app_identifier: "com.linli.blackcatnews",
-      force: true
+      force: true,
+      skip_install: false
     )
     profile_uuid = lane_context[SharedValues::SIGH_UUID]
     profile_name = lane_context[SharedValues::SIGH_NAME]
+    profile_path = lane_context[SharedValues::SIGH_PROFILE_PATH]
     puts "📋 使用描述檔: #{profile_name} (#{profile_uuid})"
+    
+    # 手动安装 profile 到系统目录（确保 Xcode 能找到）
+    system_profile_dir = File.expand_path("~/Library/MobileDevice/Provisioning Profiles")
+    FileUtils.mkdir_p(system_profile_dir)
+    system_profile_path = File.join(system_profile_dir, "#{profile_uuid}.mobileprovision")
+    FileUtils.cp(profile_path, system_profile_path)
+    puts "✅ 已安裝 profile 到: #{system_profile_path}"
+    
+    # 从 provisioning profile 中提取 Team ID（读取 plist）
+    require 'plist'
+    profile_content = `security cms -D -i "#{profile_path}"`
+    profile_plist = Plist.parse_xml(profile_content)
+    team_id = profile_plist['TeamIdentifier'][0]
+    puts "🏢 使用 Team ID: #{team_id}"
 
     export_opts = {
       method: "app-store",
@@ -73,16 +89,17 @@ platform :ios do
         "com.linli.blackcatnews" => profile_uuid
       }
     }
+    # 只设置必要的签名参数，不强制 CODE_SIGN_STYLE，让 SPM 依赖使用自动签名
     xcargs = [
       "-allowProvisioningUpdates",
-      "CODE_SIGN_STYLE=Manual",
-      "CODE_SIGN_IDENTITY='iPhone Distribution'",
-      "PROVISIONING_PROFILE=#{profile_uuid}",
-      "OTHER_CODE_SIGN_FLAGS='--keychain #{keychain_path}'"
+      "OTHER_CODE_SIGN_FLAGS='--keychain #{keychain_path}'",
+      "DEVELOPMENT_TEAM=#{team_id}",  
+      "PROVISIONING_PROFILE_SPECIFIER=#{profile_uuid}",  
+      "ONLY_ACTIVE_ARCH=NO"  
     ].join(" ")
 
     gym(
-      workspace: "iosApp.xcworkspace",
+      project: "iosApp.xcodeproj",
       scheme: "iosApp",
       configuration: "Release",
       export_method: "app-store",

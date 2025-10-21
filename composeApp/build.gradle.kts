@@ -88,6 +88,8 @@ dependencies {
     debugImplementation(compose.uiTooling)
     // Room KSP 編譯器 - 官方最佳實踐：每個 target 都要配置
     add("kspAndroid", libs.room.compiler)
+    add("kspIosSimulatorArm64", libs.room.compiler)
+    add("kspIosArm64", libs.room.compiler)
 }
 
 android {
