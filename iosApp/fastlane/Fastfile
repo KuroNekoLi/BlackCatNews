@@ -1,29 +1,84 @@
-require "securerandom"
-require "base64"
+# Fastfile — iOS build / TestFlight / Release（精簡可維護版）
+# 需求：
+#   ENV: ASC_KEY_ID, ASC_ISSUER_ID, ASC_PRIVATE_KEY[, ASC_PRIVATE_KEY_BASE64=true]
+#        IOS_DIST_CERT_PASSWORD, (IOS_DIST_CERT_PATH 或 IOS_DIST_CERT_BASE64)
+#        SUBMIT_FOR_REVIEW, AUTOMATIC_RELEASE, EXPORT_COMPLIANCE_*
+
+require 'securerandom'
+require 'base64'
+require 'plist'
+require 'fileutils'
 
 default_platform(:ios)
 
-platform :ios do
-  
-  desc "Build ipa for App Store distribution"
-  lane :build do
-    # 僅使用 App Store Connect API Key（不使用 Apple ID 路徑）
-    unless ENV["ASC_KEY_ID"] && ENV["ASC_ISSUER_ID"] && ENV["ASC_PRIVATE_KEY"]
-      UI.user_error!("缺少 App Store Connect API 金鑰設定：請提供 ASC_KEY_ID、ASC_ISSUER_ID、ASC_PRIVATE_KEY")
-    end
-    puts "🔑 使用 App Store Connect API Key 認證"
-    api_key = app_store_connect_api_key(
-      key_id: ENV["ASC_KEY_ID"],
-      issuer_id: ENV["ASC_ISSUER_ID"],
-      key_content: ENV["ASC_PRIVATE_KEY"],
-      is_key_content_base64: ENV["ASC_PRIVATE_KEY_BASE64"] == "true"
-    )
+# ---- 可調整專案設定 ----
+APP_IDENTIFIER = 'com.linli.blackcatnews'
+XCODEPROJ      = 'iosApp.xcodeproj'
+SCHEME         = 'iosApp'
+IPA_NAME       = 'BlackCatNews'
 
-    # 使用手動簽章（匯入 p12 到臨時 keychain + 下載 App Store 描述檔）
-    keychain_name = "fastlane_tmp_keychain"
+# ---- Helpers ----
+def fetch_api_key!
+  %w[ASC_KEY_ID ASC_ISSUER_ID ASC_PRIVATE_KEY].each do |k|
+    UI.user_error!("缺少 #{k}") if ENV[k].to_s.empty?
+  end
+  app_store_connect_api_key(
+    key_id: ENV['ASC_KEY_ID'],
+    issuer_id: ENV['ASC_ISSUER_ID'],
+    key_content: ENV['ASC_PRIVATE_KEY'],
+    is_key_content_base64: ENV['ASC_PRIVATE_KEY_BASE64'] == 'true'
+  )
+end
+
+# 取得 Team ID 以供 Xcode 簽章
+def extract_team_id(profile_path)
+  plist = Plist.parse_xml(`security cms -D -i "#{profile_path}"`)
+  plist['TeamIdentifier']&.first
+end
+
+# 匯入 p12 到指定 keychain
+def import_p12!(keychain_path:, keychain_password:)
+  pwd = ENV['IOS_DIST_CERT_PASSWORD']
+  UI.user_error!('缺少 IOS_DIST_CERT_PASSWORD') if pwd.to_s.empty?
+
+  cert_path = ENV['IOS_DIST_CERT_PATH']
+  unless cert_path && !cert_path.empty?
+    UI.user_error!('缺少 IOS_DIST_CERT_BASE64 或 IOS_DIST_CERT_PATH') if ENV['IOS_DIST_CERT_BASE64'].to_s.empty?
+    cert_path = File.join(Dir.pwd, 'dist_cert.p12')
+    File.binwrite(cert_path, Base64.decode64(ENV['IOS_DIST_CERT_BASE64']))
+  end
+
+  import_certificate(
+    certificate_path: cert_path,
+    certificate_password: pwd,
+    keychain_path: keychain_path,
+    keychain_password: keychain_password
+  )
+end
+
+# 出口合規資訊（可選）
+def export_compliance_info
+  uses = ENV['EXPORT_COMPLIANCE_USES_ENCRYPTION'] == 'true'
+  info = { export_compliance_uses_encryption: uses }
+  if uses
+    info[:export_compliance_is_exempt] = ENV['EXPORT_COMPLIANCE_IS_EXEMPT'] == 'true'
+    info[:export_compliance_contains_third_party_cryptography] = ENV['EXPORT_COMPLIANCE_THIRD_PARTY'] == 'true'
+    info[:export_compliance_contains_proprietary_cryptography] = ENV['EXPORT_COMPLIANCE_PROPRIETARY'] == 'true'
+    info[:export_compliance_available_on_french_store] = ENV['EXPORT_COMPLIANCE_AVAILABLE_ON_FRENCH_STORE'] == 'true' if ENV.key?('EXPORT_COMPLIANCE_AVAILABLE_ON_FRENCH_STORE')
+  end
+  info
+end
+
+# ---- Lanes ----
+platform :ios do
+  desc 'Build ipa（App Store 發佈用）'
+  lane :build do
+    UI.message('🔑 使用 App Store Connect API Key 認證')
+    api_key = fetch_api_key!
+
+    keychain_name = 'fastlane_tmp_keychain'
     keychain_password = SecureRandom.uuid
-    puts "🔐 創建臨時 keychain: #{keychain_name}"
-    keychain_path = File.expand_path("~/Library/Keychains/#{keychain_name}-db")
+
     create_keychain(
       name: keychain_name,
       password: keychain_password,
@@ -32,147 +87,87 @@ platform :ios do
       timeout: 3600,
       lock_when_sleeps: false
     )
-    keychain_candidates = [
+
+    # 嘗試幾種常見的 keychain 路徑
+    candidates = [
       File.expand_path("~/Library/Keychains/#{keychain_name}-db"),
       File.expand_path("~/Library/Keychains/#{keychain_name}.keychain-db"),
       File.expand_path("~/Library/Keychains/#{keychain_name}.keychain")
     ]
-    detected_path = keychain_candidates.find { |p| File.exist?(p) }
-    keychain_path = detected_path || keychain_path
+    keychain_path = candidates.find { |p| File.exist?(p) } || candidates.first
 
-    unless (ENV["IOS_DIST_CERT_BASE64"] || ENV["IOS_DIST_CERT_PATH"]) && ENV["IOS_DIST_CERT_PASSWORD"]
-      UI.user_error!("缺少發行憑證（p12）設定：請提供 IOS_DIST_CERT_BASE64（或 IOS_DIST_CERT_PATH）與 IOS_DIST_CERT_PASSWORD")
-    end
-    cert_path = ENV["IOS_DIST_CERT_PATH"]
-    if cert_path.nil? || cert_path.empty?
-      cert_path = File.join(Dir.pwd, "dist_cert.p12")
-      File.binwrite(cert_path, Base64.decode64(ENV["IOS_DIST_CERT_BASE64"]))
-    end
-    cert_password = ENV["IOS_DIST_CERT_PASSWORD"]
-    puts "🔏 匯入 Distribution 憑證到臨時 keychain"
-    import_certificate(
-      certificate_path: cert_path,
-      certificate_password: cert_password,
-      keychain_path: keychain_path,
-      keychain_password: keychain_password
-    )
+    UI.message('🔏 匯入 Distribution 憑證到臨時 keychain')
+    import_p12!(keychain_path: keychain_path, keychain_password: keychain_password)
 
-    sigh(
+    # 下載並安裝 App Store 描述檔
+    profile_path = sigh(
       api_key: api_key,
-      app_identifier: "com.linli.blackcatnews",
+      app_identifier: APP_IDENTIFIER,
       force: true,
       skip_install: false
     )
     profile_uuid = lane_context[SharedValues::SIGH_UUID]
     profile_name = lane_context[SharedValues::SIGH_NAME]
-    profile_path = lane_context[SharedValues::SIGH_PROFILE_PATH]
-    puts "📋 使用描述檔: #{profile_name} (#{profile_uuid})"
-    
-    # 手动安装 profile 到系统目录（确保 Xcode 能找到）
-    system_profile_dir = File.expand_path("~/Library/MobileDevice/Provisioning Profiles")
-    FileUtils.mkdir_p(system_profile_dir)
-    system_profile_path = File.join(system_profile_dir, "#{profile_uuid}.mobileprovision")
-    FileUtils.cp(profile_path, system_profile_path)
-    puts "✅ 已安裝 profile 到: #{system_profile_path}"
-    
-    # 从 provisioning profile 中提取 Team ID（读取 plist）
-    require 'plist'
-    profile_content = `security cms -D -i "#{profile_path}"`
-    profile_plist = Plist.parse_xml(profile_content)
-    team_id = profile_plist['TeamIdentifier'][0]
-    puts "🏢 使用 Team ID: #{team_id}"
+    UI.success("📋 使用描述檔: #{profile_name} (#{profile_uuid})")
 
-    export_opts = {
-      method: "app-store",
-      signingStyle: "manual",
-      provisioningProfiles: {
-        "com.linli.blackcatnews" => profile_uuid
-      }
-    }
-    # 只设置必要的签名参数，不强制 CODE_SIGN_STYLE，让 SPM 依赖使用自动签名
-    xcargs = [
-      "-allowProvisioningUpdates",
+    # 從描述檔讀取 Team ID
+    team_id = extract_team_id(profile_path)
+    UI.message("🏢 Team ID: #{team_id}")
+
+    # Xcode 參數（維持最小必要，避免干擾 SPM）
+    xc = [
       "OTHER_CODE_SIGN_FLAGS='--keychain #{keychain_path}'",
-      "DEVELOPMENT_TEAM=#{team_id}",  
-      "PROVISIONING_PROFILE_SPECIFIER=#{profile_uuid}",  
-      "ONLY_ACTIVE_ARCH=NO"  
-    ].join(" ")
+      "DEVELOPMENT_TEAM=#{team_id}",
+      'ONLY_ACTIVE_ARCH=NO'
+    ].join(' ')
 
-    gym(
-      project: "iosApp.xcodeproj",
-      scheme: "iosApp",
-      configuration: "Release",
-      export_method: "app-store",
-      clean: true,
-      include_bitcode: false,
-      export_options: export_opts,
-      xcargs: xcargs,
-      output_directory: ".",
-      output_name: "BlackCatNews"
-    )
-
-    # 清理臨時 keychain
-    puts "🗑️ 刪除臨時 keychain: #{keychain_name}"
-    delete_keychain(name: keychain_name)
+    begin
+      gym(
+        project: XCODEPROJ,
+        scheme: SCHEME,
+        configuration: 'Release',
+        export_method: 'app-store',
+        clean: true,
+        include_bitcode: false,
+        export_options: {
+          method: 'app-store',
+          signingStyle: 'manual',
+          provisioningProfiles: { APP_IDENTIFIER => profile_uuid }
+        },
+        xcargs: xc,
+        output_directory: '.',
+        output_name: IPA_NAME
+      )
+    ensure
+      UI.message("🗑️ 刪除臨時 keychain: #{keychain_name}")
+      delete_keychain(name: keychain_name)
+    end
   end
 
-  desc "Upload to TestFlight"
+  desc '上傳 TestFlight'
   lane :beta do
     build
-    
-    # 僅使用 API Key 上傳 TestFlight
-    api_key = app_store_connect_api_key(
-      key_id: ENV["ASC_KEY_ID"],
-      issuer_id: ENV["ASC_ISSUER_ID"],
-      key_content: ENV["ASC_PRIVATE_KEY"],
-      is_key_content_base64: ENV["ASC_PRIVATE_KEY_BASE64"] == "true"
-    )
     pilot(
-      api_key: api_key,
-      ipa: "BlackCatNews.ipa",
+      api_key: fetch_api_key! ,
+      ipa: "#{IPA_NAME}.ipa",
       skip_waiting_for_build_processing: false
     )
   end
 
-  desc "Upload to App Store Connect (不自動送審)"
+  desc '上傳至 App Store Connect（可選送審/自動發布）'
   lane :release do
     build
-    
-    # 讀取環境變數控制送審與上架
-    submit_for_review = ENV["SUBMIT_FOR_REVIEW"] == "true"
-    automatic_release = ENV["AUTOMATIC_RELEASE"] == "true"
-    
-    # 出口合規資訊（Export Compliance）
-    # 預設假設未使用需申報的加密（大多數僅使用 HTTPS 的 app 可設為 false）
-    # 可用環境變數覆寫：
-    #   EXPORT_COMPLIANCE_USES_ENCRYPTION, EXPORT_COMPLIANCE_IS_EXEMPT,
-    #   EXPORT_COMPLIANCE_THIRD_PARTY, EXPORT_COMPLIANCE_PROPRIETARY,
-    #   EXPORT_COMPLIANCE_AVAILABLE_ON_FRENCH_STORE
-    uses_encryption = (ENV["EXPORT_COMPLIANCE_USES_ENCRYPTION"] || "false") == "true"
-    submission_info = { export_compliance_uses_encryption: uses_encryption }
-    if uses_encryption
-      submission_info[:export_compliance_is_exempt] = ENV["EXPORT_COMPLIANCE_IS_EXEMPT"] == "true"
-      submission_info[:export_compliance_contains_third_party_cryptography] = ENV["EXPORT_COMPLIANCE_THIRD_PARTY"] == "true"
-      submission_info[:export_compliance_contains_proprietary_cryptography] = ENV["EXPORT_COMPLIANCE_PROPRIETARY"] == "true"
-      if ENV.key?("EXPORT_COMPLIANCE_AVAILABLE_ON_FRENCH_STORE")
-        submission_info[:export_compliance_available_on_french_store] = ENV["EXPORT_COMPLIANCE_AVAILABLE_ON_FRENCH_STORE"] == "true"
-      end
-    end
 
-    # 僅使用 API Key 上傳並（可選）送審
-    api_key = app_store_connect_api_key(
-      key_id: ENV["ASC_KEY_ID"],
-      issuer_id: ENV["ASC_ISSUER_ID"],
-      key_content: ENV["ASC_PRIVATE_KEY"],
-      is_key_content_base64: ENV["ASC_PRIVATE_KEY_BASE64"] == "true"
-    )
+    submit_for_review = ENV['SUBMIT_FOR_REVIEW'] == 'true'
+    automatic_release = ENV['AUTOMATIC_RELEASE'] == 'true'
+
     begin
       deliver(
-        api_key: api_key,
-        ipa: "BlackCatNews.ipa",
+        api_key: fetch_api_key!,
+        ipa: "#{IPA_NAME}.ipa",
         submit_for_review: submit_for_review,
         automatic_release: automatic_release,
-        submission_information: submission_info,
+        submission_information: export_compliance_info,
         skip_metadata: true,
         skip_screenshots: true,
         force: true,
@@ -180,14 +175,14 @@ platform :ios do
         run_precheck_before_submit: true
       )
     rescue => ex
-      if ex.message.include?("A relationship value is not acceptable for the current resource state")
-        UI.important("[自動重試] Build 尚未 ready for submission，sleep 5 分鐘後再嘗試僅送審 submit_for_review")
+      if ex.message.include?('A relationship value is not acceptable for the current resource state')
+        UI.important('[自動重試] Build 尚未 ready，5 分鐘後改以 skip_binary_upload=1 僅送審')
         sleep(300)
         deliver(
-          api_key: api_key,
+          api_key: fetch_api_key!,
           submit_for_review: submit_for_review,
           automatic_release: automatic_release,
-          submission_information: submission_info,
+          submission_information: export_compliance_info,
           skip_binary_upload: true,
           skip_metadata: true,
           skip_screenshots: true,
