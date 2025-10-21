@@ -28,10 +28,15 @@ jobs:
       # iOS Distribution 憑證（p12）
       IOS_DIST_CERT_BASE64: ${{ secrets.IOS_DIST_CERT_BASE64 }}
       IOS_DIST_CERT_PASSWORD: ${{ secrets.IOS_DIST_CERT_PASSWORD }}
+      
+      # Kotlin/Native 快取路徑（確保所有子流程使用同一路徑）
+      KONAN_DATA_DIR: $HOME/.konan
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Sanity-check ASC secrets (safe)
         run: |
@@ -81,16 +86,9 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ~/.konan
-          key: ${{ runner.os }}-konan-${{ hashFiles('**/gradle/libs.versions.toml', '**/build.gradle.kts') }}
+          key: ${{ runner.os }}-konan-${{ hashFiles('**/gradle/libs.versions.toml', '**/build.gradle.kts', '**/gradle.properties') }}
           restore-keys: |
             ${{ runner.os }}-konan-
-
-      - name: Install Bundler dependencies
-        working-directory: iosApp/fastlane
-        run: |
-          gem install bundler --no-document
-          bundle config set path 'vendor/bundle'
-          bundle install
 
       - name: Cache Ruby gems
         uses: actions/cache@v4
@@ -99,6 +97,13 @@ jobs:
           key: ${{ runner.os }}-gems-${{ hashFiles('iosApp/fastlane/Gemfile.lock') }}
           restore-keys: |
             ${{ runner.os }}-gems-
+
+      - name: Install Bundler dependencies
+        working-directory: iosApp/fastlane
+        run: |
+          gem install bundler --no-document
+          bundle config set path 'vendor/bundle'
+          bundle install
 
       # ⚠️ 注意：不要單獨執行 embedAndSignAppleFrameworkForXcode
       # 這個任務會在 Xcode build 時自動被觸發
