@@ -102,9 +102,20 @@ jobs:
           bundle config set path 'vendor/bundle'
           bundle install
 
-      # ⚠️ 注意：不要單獨執行 embedAndSignAppleFrameworkForXcode
-      # 這個任務會在 Xcode build 時自動被觸發
-      # Xcode Build Phase 中已經配置了 Run Script 來呼叫這個任務
+      - name: Prepare KMP Pods (CocoaPods if missing)
+        run: |
+          pod --version || sudo gem install cocoapods --no-document
+          ./gradlew :composeApp:podInstall --no-daemon --stacktrace
+
+      - name: Cache CocoaPods
+        uses: actions/cache@v4
+        with:
+          path: |
+            iosApp/Pods
+            ~/.cocoapods
+          key: ${{ runner.os }}-pods-${{ hashFiles('iosApp/Podfile.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-pods-
 
       - name: Decide lane and flags by ref
         id: decide
@@ -149,7 +160,6 @@ jobs:
         run: |
           echo "lane=${{ steps.decide.outputs.lane }} submit=${{ env.SUBMIT_FOR_REVIEW }} auto=${{ env.AUTOMATIC_RELEASE }}"
           # Fastlane 會呼叫 xcodebuild，xcodebuild 會自動執行 Build Phase 中的 Run Script
-          # Run Script 會呼叫 embedAndSignAppleFrameworkForXcode
           BUNDLE_GEMFILE=fastlane/Gemfile bundle exec fastlane ${{ steps.decide.outputs.lane }}
 
       - name: Upload ipa artifact

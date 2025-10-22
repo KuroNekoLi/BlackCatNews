@@ -1,3 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">BlackCatNews</string>
+    <string name="app_name">BlackCat News</string>
+
+    <!-- 
+        Google Sign-In Web Client ID
+        從 Firebase Console 取得：
+        1. 前往 https://console.firebase.google.com/
+        2. 選擇你的專案
+        3. Project Settings -> General
+        4. 找到 "Web client ID"
+        5. 複製並替換下面的值
+        
+        注意：Google Services plugin 會自動從 google-services.json 生成此值
+        但為了明確性，我們在這裡也定義它
+    -->
+    <string name="default_web_client_id">181914763371-a4ud44e9k2f3hp1l9s48qnci7gplc65c.apps.googleusercontent.com</string>
 </resources>

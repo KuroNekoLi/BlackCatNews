@@ -7,7 +7,8 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Divider
+import androidx.compose.material3.DividerDefaults
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -105,9 +106,9 @@ fun ArticleHeader(
             )
         }
 
-        Divider(
-            modifier = Modifier.padding(vertical = 16.dp),
-            color = MaterialTheme.colorScheme.outlineVariant
+        HorizontalDivider(
+            Modifier.padding(vertical = 16.dp),
+            DividerDefaults.Thickness, MaterialTheme.colorScheme.outlineVariant
         )
     }
 }

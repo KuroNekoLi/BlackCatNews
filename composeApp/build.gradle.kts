@@ -9,6 +9,7 @@ plugins {
     alias(libs.plugins.composeCompiler)
     alias(libs.plugins.kotlinx.serialization)
     alias(libs.plugins.ksp)
+    alias(libs.plugins.kotlinCocoapods)
     // Google Play Publisher plugin（用於自動化上傳至 Play Console）
     alias(libs.plugins.gpp)
     // Google Services plugin（处理 google-services.json 文件和 Firebase 配置）
@@ -36,6 +37,19 @@ kotlin {
         }
     }
 
+    // CocoaPods 配置 - 自動支持 Debug 和 Release
+    cocoapods {
+        summary = "Black Cat News - AI 雙語新聞學習"
+        homepage = "https://github.com/linli/BlackCatNews"
+        version = "1.0"
+        ios.deploymentTarget = "15.0"
+
+        framework {
+            baseName = "ComposeApp"
+            isStatic = true
+        }
+    }
+
     sourceSets {
         androidMain.dependencies {
             implementation(compose.preview)
@@ -57,6 +71,7 @@ kotlin {
             implementation(libs.androidx.lifecycle.viewmodelCompose)
             implementation(libs.androidx.lifecycle.runtimeCompose)
             implementation(projects.shared)
+            implementation(project(":core:authentication"))
             implementation(libs.ksoup)
             implementation(libs.coil.compose)
             implementation(libs.coil.network)

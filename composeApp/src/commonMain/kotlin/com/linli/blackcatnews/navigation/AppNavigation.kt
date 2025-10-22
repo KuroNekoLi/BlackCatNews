@@ -10,12 +10,21 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.toRoute
+import com.linli.authentication.ProviderType
+import com.linli.authentication.domain.SignInUIClient
+import com.linli.authentication.presentation.SignInScreen
+import com.linli.authentication.presentation.SignInViewModel
+import com.linli.authentication.presentation.onAppleClick
+import com.linli.authentication.presentation.onGoogleClick
 import com.linli.blackcatnews.presentation.viewmodel.ArticleDetailViewModel
 import com.linli.blackcatnews.presentation.viewmodel.FavoritesViewModel
 import com.linli.blackcatnews.presentation.viewmodel.HomeViewModel
@@ -32,6 +41,15 @@ import org.koin.compose.viewmodel.koinViewModel
 import org.koin.core.parameter.parametersOf
 
 /**
+ * 平台特定函數：建立 SignIn UIClients
+ *
+ * Android: 使用 Activity 建立 GoogleUIClient
+ * iOS: 使用 AuthProvider 建立 GoogleUIClient 和 AppleUIClient
+ */
+@Composable
+expect fun rememberSignInUIClients(): Map<ProviderType, SignInUIClient>
+
+/**
  * 主導航結構
  * 使用統一的 Scaffold 管理頂部欄和底部導航
  */
@@ -41,6 +59,12 @@ fun AppNavigation() {
     val navController = rememberNavController()
     val currentBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = currentBackStackEntry?.destination?.route
+
+    // 認證狀態（實際應用中應該從 ViewModel 或 Repository 讀取）
+    var isAuthenticated by remember { mutableStateOf(false) }
+
+    // 根據認證狀態決定起始路由
+    val startDestination = if (isAuthenticated) HomeRoute else SignInRoute
 
     Scaffold(
         topBar = {
@@ -90,10 +114,43 @@ fun AppNavigation() {
     ) { innerPadding ->
         NavHost(
             navController = navController,
-            startDestination = HomeRoute,
+            startDestination = startDestination,
             modifier = Modifier.padding(innerPadding)
         ) {
-            // 首頁 - 不再需要內部的 Scaffold
+            // 登入頁面
+            composable<SignInRoute> {
+                // 改進後的設計：
+                // 1. UI 層使用 Builder 創建 UIClients (平台特定)
+                // 2. 通過 parametersOf 傳遞給 ViewModel
+                // 3. ViewModel 將 Map 傳遞給 UseCase
+                val uiClients = rememberSignInUIClients()
+                val signInViewModel: SignInViewModel = koinViewModel { parametersOf(uiClients) }
+
+                SignInScreen(
+                    vm = signInViewModel,
+                    onAppleClick = {
+                        // 直接呼叫 ViewModel 的 Apple 登入方法
+                        signInViewModel.onAppleClick()
+                    },
+                    onGoogleClick = {
+                        // 直接呼叫 ViewModel 的 Google 登入方法
+                        // ViewModel → UseCase → UIClient (從 Map 取得)
+                        signInViewModel.onGoogleClick()
+                    },
+                    onFacebookClick = {
+                        // TODO: Facebook 登入
+                    },
+                    onNavigateHome = {
+                        // 登入成功後導航到首頁
+                        isAuthenticated = true
+                        navController.navigate(HomeRoute) {
+                            popUpTo(SignInRoute) { inclusive = true }
+                        }
+                    }
+                )
+            }
+
+            // 首頁
             composable<HomeRoute> {
                 val viewModel: HomeViewModel = koinViewModel()
                 HomeScreen(

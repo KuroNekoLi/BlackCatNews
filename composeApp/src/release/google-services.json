@@ -14,6 +14,14 @@
       },
       "oauth_client": [
         {
+          "client_id": "181914763371-23lnf8uoue469heoqvtfhiknpuobq81r.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.linli.blackcatnews",
+            "certificate_hash": "99f964e6ae45ebcf9fa65cb0fad2c456de712da5"
+          }
+        },
+        {
           "client_id": "181914763371-a4ud44e9k2f3hp1l9s48qnci7gplc65c.apps.googleusercontent.com",
           "client_type": 3
         }
@@ -29,6 +37,14 @@
             {
               "client_id": "181914763371-a4ud44e9k2f3hp1l9s48qnci7gplc65c.apps.googleusercontent.com",
               "client_type": 3
+            },
+            {
+              "client_id": "181914763371-4i1ekkidl3it9bn5jfukq0318am9ppn4.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.linli.blackcatnews.debug",
+                "app_store_id": "6753890779"
+              }
             }
           ]
         }
@@ -66,6 +82,14 @@
             {
               "client_id": "181914763371-a4ud44e9k2f3hp1l9s48qnci7gplc65c.apps.googleusercontent.com",
               "client_type": 3
+            },
+            {
+              "client_id": "181914763371-4i1ekkidl3it9bn5jfukq0318am9ppn4.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.linli.blackcatnews.debug",
+                "app_store_id": "6753890779"
+              }
             }
           ]
         }

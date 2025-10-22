@@ -30,17 +30,15 @@ fun parseHtmlToArticle(html: String, baseUri: String? = null): ArticleData {
         // 找到 article 或 body 標籤
         val container = doc.selectFirst("article") ?: doc.body()
 
-        if (container != null) {
-            for (element in container.children()) {
-                // 跳過已經用作標題的第一個 h1
-                if (element == titleElement) {
-                    continue
-                }
-
-                val parsedBlocks = parseElement(element, blockIndex)
-                blocks.addAll(parsedBlocks)
-                blockIndex += parsedBlocks.size
+        for (element in container.children()) {
+            // 跳過已經用作標題的第一個 h1
+            if (element == titleElement) {
+                continue
             }
+
+            val parsedBlocks = parseElement(element, blockIndex)
+            blocks.addAll(parsedBlocks)
+            blockIndex += parsedBlocks.size
         }
 
         ArticleData(
@@ -267,7 +265,7 @@ private fun parseOrderedList(ol: Element, blockIndex: Int): Block.OrderedList {
 }
 
 private fun parseParagraph(paragraph: Element, blockIndex: Int): List<Block> {
-    val textNodes = paragraph.textNodes()
+    paragraph.textNodes()
     val children = paragraph.children()
     val blocks = mutableListOf<Block>()
 

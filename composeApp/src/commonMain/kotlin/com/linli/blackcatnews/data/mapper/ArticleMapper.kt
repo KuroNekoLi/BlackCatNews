@@ -443,7 +443,6 @@ object ArticleMapper {
                 originalHtml = englishBlock.html
             )
 
-            else -> null
         }
     }
 
