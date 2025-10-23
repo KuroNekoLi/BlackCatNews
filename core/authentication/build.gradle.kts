@@ -109,14 +109,6 @@ kotlin {
             }
         }
 
-        getByName("androidDeviceTest") {
-            dependencies {
-                implementation(libs.androidx.runner)
-                implementation(libs.androidx.core)
-                implementation(libs.androidx.testExt.junit)
-            }
-        }
-
         iosMain {
             dependencies {
                 // Add iOS-specific dependencies here. This a source set created by Kotlin Gradle
@@ -132,8 +124,5 @@ kotlin {
 }
 
 dependencies {
-    // Firebase Android BOM（Bill of Materials）- 统一管理 Firebase Android SDK 版本
-    add("androidMainImplementation", platform("com.google.firebase:firebase-bom:33.7.0"))
-    add("androidMainImplementation", "com.google.firebase:firebase-auth-ktx")
-    add("androidMainImplementation", "com.google.firebase:firebase-common-ktx")
+    add("androidMainImplementation", platform("com.google.firebase:firebase-bom:33.9.0"))
 }
