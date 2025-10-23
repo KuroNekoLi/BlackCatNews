@@ -83,6 +83,7 @@ kotlin {
                 implementation(libs.kotlinx.coroutines.core)
                 implementation(libs.gitlive.firebase.app)        // 核心依赖，必须包含
                 implementation(libs.gitlive.firebase.auth)                     // Add KMP dependencies here
+                implementation(libs.okio)
                 implementation(compose.runtime)
                 implementation(compose.foundation)
                 implementation(compose.material3)

@@ -44,6 +44,9 @@ fun SignInScreen(
             when (effect) {
                 is SignInEffect.ShowSnackbar -> {
                     snackbarHostState.showSnackbar(effect.message)
+                    println(
+                        "error message: ${effect.message}"
+                    )
                 }
 
                 SignInEffect.NavigateHome -> {
