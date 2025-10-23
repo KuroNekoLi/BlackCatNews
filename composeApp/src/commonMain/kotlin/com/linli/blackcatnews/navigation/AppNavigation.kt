@@ -10,9 +10,6 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -59,12 +56,6 @@ fun AppNavigation() {
     val navController = rememberNavController()
     val currentBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = currentBackStackEntry?.destination?.route
-
-    // 認證狀態（實際應用中應該從 ViewModel 或 Repository 讀取）
-    var isAuthenticated by remember { mutableStateOf(false) }
-
-    // 根據認證狀態決定起始路由
-    val startDestination = if (isAuthenticated) HomeRoute else SignInRoute
 
     Scaffold(
         topBar = {
@@ -114,37 +105,25 @@ fun AppNavigation() {
     ) { innerPadding ->
         NavHost(
             navController = navController,
-            startDestination = startDestination,
+            startDestination = SignInRoute,  // 固定起始路由
             modifier = Modifier.padding(innerPadding)
         ) {
             // 登入頁面
             composable<SignInRoute> {
-                // 改進後的設計：
-                // 1. UI 層使用 Builder 創建 UIClients (平台特定)
-                // 2. 通過 parametersOf 傳遞給 ViewModel
-                // 3. ViewModel 將 Map 傳遞給 UseCase
                 val uiClients = rememberSignInUIClients()
                 val signInViewModel: SignInViewModel = koinViewModel { parametersOf(uiClients) }
 
                 SignInScreen(
                     vm = signInViewModel,
-                    onAppleClick = {
-                        // 直接呼叫 ViewModel 的 Apple 登入方法
-                        signInViewModel.onAppleClick()
-                    },
-                    onGoogleClick = {
-                        // 直接呼叫 ViewModel 的 Google 登入方法
-                        // ViewModel → UseCase → UIClient (從 Map 取得)
-                        signInViewModel.onGoogleClick()
-                    },
-                    onFacebookClick = {
-                        // TODO: Facebook 登入
-                    },
+                    onAppleClick = { signInViewModel.onAppleClick() },
+                    onGoogleClick = { signInViewModel.onGoogleClick() },
+                    onFacebookClick = { },
                     onNavigateHome = {
-                        // 登入成功後導航到首頁
-                        isAuthenticated = true
                         navController.navigate(HomeRoute) {
-                            popUpTo(SignInRoute) { inclusive = true }
+                            popUpTo(SignInRoute) {
+                                inclusive = true
+                            }
+                            launchSingleTop = true
                         }
                     }
                 )

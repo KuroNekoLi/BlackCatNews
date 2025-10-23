@@ -1,6 +1,5 @@
 package com.linli.authentication.domain
 
-import com.linli.authentication.data.AppleAuthProvider
 import com.linli.authentication.data.GoogleAuthProvider
 import com.linli.authentication.presentation.AppleUIClientImpl
 import com.linli.authentication.presentation.GoogleUIClientImpl
@@ -26,11 +25,10 @@ fun SignInUIClientBuilder.createGoogleClient(
 /**
  * 創建 Apple Sign-In UIClient (iOS)
  *
- * @param appleAuthProvider Apple 認證提供者（使用 AuthenticationServices）
+ * 使用 iOS 原生的 AuthenticationServices framework
+ * 不需要額外參數，直接創建即可
  */
-fun SignInUIClientBuilder.createAppleClient(
-    appleAuthProvider: AppleAuthProvider
-): SignInUIClientBuilder {
-    val client = AppleUIClientImpl(appleAuthProvider)
+fun SignInUIClientBuilder.createAppleClient(): SignInUIClientBuilder {
+    val client = AppleUIClientImpl()
     return addClient(client)
 }

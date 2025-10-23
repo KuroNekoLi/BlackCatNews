@@ -54,10 +54,12 @@ class SignInUseCase(
         }
 
         // 4. 執行登入
-        return authManager.signIn(
+        val result = authManager.signIn(
             type = providerType,
             credential = credential
         )
+
+        return result
     }
 }
 

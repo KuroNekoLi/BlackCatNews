@@ -40,22 +40,27 @@ class SignInViewModel(
      */
     fun dispatch(action: SignInAction) {
         viewModelScope.launch {
-            // 轉成 Result
-            val result = when (action) {
-                is SignInAction.ClickApple -> performSignIn(ProviderType.Apple)
-                is SignInAction.ClickGoogle -> performSignIn(ProviderType.Google)
-                is SignInAction.ClickFacebook -> SignInResult.Failure("Facebook 登入尚未實作")
-                SignInAction.DismissError -> SignInResult.Failure("")
-            }
+            try {
+                // 轉成 Result
+                val result = when (action) {
+                    is SignInAction.ClickApple -> performSignIn(ProviderType.Apple)
+                    is SignInAction.ClickGoogle -> performSignIn(ProviderType.Google)
+                    is SignInAction.ClickFacebook -> SignInResult.Failure("Facebook 登入尚未實作")
+                    SignInAction.DismissError -> SignInResult.Failure("")
+                }
 
-            // 更新 state（使用 reducer）
-            _state.value = reduceSignIn(_state.value, result)
+                // 更新 state（使用 reducer）
+                _state.value = reduceSignIn(_state.value, result)
 
-            // 處理副作用（如導航）
-            if (result is SignInResult.Success) {
-                _effect.emit(SignInEffect.NavigateHome)
-            } else if (result is SignInResult.Failure && result.message.isNotEmpty()) {
-                _effect.emit(SignInEffect.ShowSnackbar(result.message))
+                // 處理副作用（如導航）
+                if (result is SignInResult.Success) {
+                    _effect.emit(SignInEffect.NavigateHome)
+                } else if (result is SignInResult.Failure && result.message.isNotEmpty()) {
+                    _effect.emit(SignInEffect.ShowSnackbar(result.message))
+                }
+            } catch (e: Exception) {
+                _state.value =
+                    reduceSignIn(_state.value, SignInResult.Failure("發生錯誤: ${e.message}"))
             }
         }
     }
