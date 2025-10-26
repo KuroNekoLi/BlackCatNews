@@ -2,15 +2,19 @@ package com.linli.authentication.presentation
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.linli.authentication.AuthCredential
 import com.linli.authentication.ProviderType
 import com.linli.authentication.domain.SignInUIClient
 import com.linli.authentication.domain.usecase.SignInUseCase
+import com.linli.authentication.domain.usecase.SignUpUseCase
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import org.koin.core.component.KoinComponent
+import org.koin.core.component.inject
 
 /**
  * 單向資料流 ViewModel：
@@ -26,7 +30,10 @@ import kotlinx.coroutines.launch
 class SignInViewModel(
     private val signInUseCase: SignInUseCase,
     private val uiClients: Map<ProviderType, SignInUIClient>
-) : ViewModel() {
+) : ViewModel(), KoinComponent {
+
+    // 注入 SignUpUseCase
+    private val signUpUseCase: SignUpUseCase by inject()
 
     private val _state = MutableStateFlow(SignInState())
     val state: StateFlow<SignInState> = _state.asStateFlow()
@@ -46,6 +53,16 @@ class SignInViewModel(
                     is SignInAction.ClickApple -> performSignIn(ProviderType.Apple)
                     is SignInAction.ClickGoogle -> performSignIn(ProviderType.Google)
                     is SignInAction.ClickFacebook -> SignInResult.Failure("Facebook 登入尚未實作")
+                    is SignInAction.ClickAnonymous -> performAnonymousSignIn()
+                    is SignInAction.ClickEmailSignIn -> performEmailSignIn(
+                        action.email,
+                        action.password
+                    )
+
+                    is SignInAction.ClickEmailSignUp -> performEmailSignUp(
+                        action.email,
+                        action.password
+                    )
                     SignInAction.DismissError -> SignInResult.Failure("")
                 }
 
@@ -66,7 +83,7 @@ class SignInViewModel(
     }
 
     /**
-     * 執行登入（統一邏輯）
+     * 執行社交登入（統一邏輯）
      *
      * ViewModel 提供 UIClient Map 給 UseCase
      * UseCase 負責：
@@ -99,6 +116,87 @@ class SignInViewModel(
     }
 
     /**
+     * 執行匿名登入（不需要 UIClient）
+     */
+    private suspend fun performAnonymousSignIn(): SignInResult {
+        return try {
+            emit(SignInResult.Loading)
+
+            val result = signInUseCase.signInAnonymously()
+
+            result.fold(
+                onSuccess = { session -> SignInResult.Success(session) },
+                onFailure = { e ->
+                    SignInResult.Failure(
+                        e.message ?: "匿名登入失敗"
+                    )
+                }
+            )
+        } catch (e: Exception) {
+            SignInResult.Failure("匿名登入發生錯誤: ${e.message}")
+        }
+    }
+
+    /**
+     * 執行 Email/Password 登入
+     */
+    private suspend fun performEmailSignIn(email: String, password: String): SignInResult {
+        return try {
+            emit(SignInResult.Loading)
+
+            // 創建憑證
+            val credential = AuthCredential(
+                idToken = email,
+                accessToken = password
+            )
+
+            // 使用 AuthManager 登入
+            val result = signInUseCase(
+                providerType = ProviderType.EmailPassword,
+                uiClients = mapOf(
+                    ProviderType.EmailPassword to object : SignInUIClient {
+                        override val providerType = ProviderType.EmailPassword
+                        override suspend fun getCredential() = credential
+                    }
+                )
+            )
+
+            result.fold(
+                onSuccess = { session -> SignInResult.Success(session) },
+                onFailure = { e ->
+                    SignInResult.Failure(
+                        e.message ?: "登入失敗"
+                    )
+                }
+            )
+        } catch (e: Exception) {
+            SignInResult.Failure("登入發生錯誤: ${e.message}")
+        }
+    }
+
+    /**
+     * 執行 Email/Password 註冊
+     */
+    private suspend fun performEmailSignUp(email: String, password: String): SignInResult {
+        return try {
+            emit(SignInResult.Loading)
+
+            val result = signUpUseCase(email, password)
+
+            result.fold(
+                onSuccess = { session -> SignInResult.Success(session) },
+                onFailure = { e ->
+                    SignInResult.Failure(
+                        e.message ?: "註冊失敗"
+                    )
+                }
+            )
+        } catch (e: Exception) {
+            SignInResult.Failure("註冊發生錯誤: ${e.message}")
+        }
+    }
+
+    /**
      * 立即更新 state（用於顯示載入狀態）
      */
     private fun emit(result: SignInResult) {
@@ -110,4 +208,10 @@ class SignInViewModel(
 
 fun SignInViewModel.onAppleClick() = dispatch(SignInAction.ClickApple)
 fun SignInViewModel.onGoogleClick() = dispatch(SignInAction.ClickGoogle)
+fun SignInViewModel.onAnonymousClick() = dispatch(SignInAction.ClickAnonymous)
+fun SignInViewModel.onEmailSignIn(email: String, password: String) =
+    dispatch(SignInAction.ClickEmailSignIn(email, password))
+
+fun SignInViewModel.onEmailSignUp(email: String, password: String) =
+    dispatch(SignInAction.ClickEmailSignUp(email, password))
 fun SignInViewModel.onErrorShown() = dispatch(SignInAction.DismissError)

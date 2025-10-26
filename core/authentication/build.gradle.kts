@@ -1,4 +1,3 @@
-
 plugins {
     alias(libs.plugins.kotlinMultiplatform)
     alias(libs.plugins.android.kotlin.multiplatform.library)
@@ -84,10 +83,6 @@ kotlin {
                 implementation(libs.gitlive.firebase.app)        // 核心依赖，必须包含
                 implementation(libs.gitlive.firebase.auth)                     // Add KMP dependencies here
                 implementation(libs.okio)
-                implementation(compose.runtime)
-                implementation(compose.foundation)
-                implementation(compose.material3)
-                implementation(compose.ui)
             }
         }
 
@@ -105,7 +100,6 @@ kotlin {
                 implementation(libs.androidx.credentials)
                 implementation(libs.androidx.credentials.play.services)
                 implementation(libs.googleid)
-                // 官方 Firebase SDK（GitLive 的底層依賴）
             }
         }
 

@@ -26,6 +26,7 @@ ksp = "2.2.20-2.0.2"
 sqlite = "2.6.1"
 room = "2.8.2"
 firebase-gitlive = "2.3.0"
+firebase-bom = "33.11.0"
 google-services = "4.4.4"
 firebase-crashlytics = "3.0.6"
 kotlinStdlib = "2.2.20"
@@ -86,6 +87,11 @@ androidx-credentials = { module = "androidx.credentials:credentials", version.re
 androidx-credentials-play-services = { module = "androidx.credentials:credentials-play-services-auth", version.ref = "androidx-credentials" }
 googleid = { module = "com.google.android.libraries.identity.googleid:googleid", version.ref = "googleid" }
 okio = { module = "com.squareup.okio:okio", version.ref = "okio" }
+firebase-bom = { module = "com.google.firebase:firebase-bom", version.ref = "firebase-bom" }
+firebase-common = { module = "com.google.firebase:firebase-common" }
+firebase-auth = { module = "com.google.firebase:firebase-auth" }
+firebase-analytics = { module = "com.google.firebase:firebase-analytics" }
+firebase-crashlytics = { module = "com.google.firebase:firebase-crashlytics" }
 
 [plugins]
 androidApplication = { id = "com.android.application", version.ref = "agp" }

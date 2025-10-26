@@ -101,6 +101,14 @@ kotlin {
 
 dependencies {
     debugImplementation(compose.uiTooling)
+
+    // Firebase BOM - 使用 platform 來管理所有 Firebase 依賴的版本
+    implementation(platform(libs.firebase.bom))
+    implementation(libs.firebase.common)
+    implementation(libs.firebase.auth)
+    implementation(libs.firebase.analytics)
+    implementation(libs.firebase.crashlytics)
+
     // Room KSP 編譯器 - 官方最佳實踐：每個 target 都要配置
     add("kspAndroid", libs.room.compiler)
     add("kspIosSimulatorArm64", libs.room.compiler)
