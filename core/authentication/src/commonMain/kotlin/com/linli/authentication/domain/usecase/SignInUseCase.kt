@@ -24,7 +24,7 @@ class SignInUseCase(
     private val authManager: AuthManager
 ) {
     /**
-     * 執行登入
+     * 執行登入（社交登入：需要 UIClient）
      *
      * @param providerType 認證供應商類型（Google, Apple, Facebook 等）
      * @param uiClients UIClient Map（由 UI 層建立並傳入）
@@ -60,6 +60,19 @@ class SignInUseCase(
         )
 
         return result
+    }
+
+    /**
+     * 執行匿名登入（不需要 UIClient）
+     *
+     * @return Result<UserSession> 登入結果
+     */
+    suspend fun signInAnonymously(): Result<UserSession> {
+        // 匿名登入不需要憑證
+        return authManager.signIn(
+            type = ProviderType.Anonymous,
+            credential = null
+        )
     }
 }
 

@@ -1,14 +1,19 @@
 package com.linli.authentication
 
+import com.linli.authentication.data.AnonymousAuthProvider
 import com.linli.authentication.data.AuthManager
 import com.linli.authentication.data.AuthProvider
+import com.linli.authentication.data.EmailPasswordAuthProvider
+import com.linli.authentication.domain.usecase.GetCurrentUserUseCase
 import com.linli.authentication.domain.usecase.SignInUseCase
 import com.linli.authentication.domain.usecase.SignOutUseCase
+import com.linli.authentication.domain.usecase.SignUpUseCase
 import com.linli.authentication.presentation.SignInViewModel
 import dev.gitlive.firebase.Firebase
 import dev.gitlive.firebase.auth.auth
 import org.koin.core.module.dsl.singleOf
 import org.koin.core.module.dsl.viewModel
+import org.koin.dsl.bind
 import org.koin.dsl.module
 
 /**
@@ -34,7 +39,19 @@ val authModule = module {
     single { Firebase.auth }
 
     // Data 層 - AuthManager（Repository 層 - 後端認證）
-    single { AuthManager(getAll<AuthProvider>().toSet()) }
+    single {
+        AuthManager(getAll<AuthProvider>().toSet())
+    }
+
+    // Data 層 - AnonymousAuthProvider（跨平台通用）
+    single {
+        AnonymousAuthProvider(auth = get())
+    } bind AuthProvider::class
+
+    // Data 層 - EmailPasswordAuthProvider
+    single {
+        EmailPasswordAuthProvider(auth = get())
+    } bind AuthProvider::class
 
     // Domain 層 - UseCases
     single {
@@ -42,6 +59,14 @@ val authModule = module {
     }
 
     singleOf(::SignOutUseCase)
+
+    singleOf(::GetCurrentUserUseCase)
+
+    single {
+        SignUpUseCase(
+            emailPasswordAuthProvider = get<EmailPasswordAuthProvider>()
+        )
+    }
 
     // Presentation 層 - ViewModel
     // 使用 parametersOf 接收 UIClients Map

@@ -18,10 +18,7 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.toRoute
 import com.linli.authentication.ProviderType
 import com.linli.authentication.domain.SignInUIClient
-import com.linli.authentication.presentation.SignInScreen
-import com.linli.authentication.presentation.SignInViewModel
-import com.linli.authentication.presentation.onAppleClick
-import com.linli.authentication.presentation.onGoogleClick
+import com.linli.authentication.domain.usecase.GetCurrentUserUseCase
 import com.linli.blackcatnews.presentation.viewmodel.ArticleDetailViewModel
 import com.linli.blackcatnews.presentation.viewmodel.FavoritesViewModel
 import com.linli.blackcatnews.presentation.viewmodel.HomeViewModel
@@ -33,6 +30,7 @@ import com.linli.blackcatnews.ui.screens.FavoritesScreen
 import com.linli.blackcatnews.ui.screens.HomeScreen
 import com.linli.blackcatnews.ui.screens.SearchScreen
 import com.linli.blackcatnews.ui.screens.SettingsScreen
+import com.linli.blackcatnews.ui.screens.SignInScreen
 import org.koin.compose.koinInject
 import org.koin.compose.viewmodel.koinViewModel
 import org.koin.core.parameter.parametersOf
@@ -56,6 +54,13 @@ fun AppNavigation() {
     val navController = rememberNavController()
     val currentBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = currentBackStackEntry?.destination?.route
+
+    // Check if user is already authenticated
+    val getCurrentUserUseCase: GetCurrentUserUseCase = koinInject()
+    val isAuthenticated = getCurrentUserUseCase.isAuthenticated()
+
+    // Determine start destination based on authentication state
+    val startDestination = if (isAuthenticated) HomeRoute else SignInRoute
 
     Scaffold(
         topBar = {
@@ -105,20 +110,13 @@ fun AppNavigation() {
     ) { innerPadding ->
         NavHost(
             navController = navController,
-            startDestination = SignInRoute,  // 固定起始路由
+            startDestination = startDestination,
             modifier = Modifier.padding(innerPadding)
         ) {
             // 登入頁面
             composable<SignInRoute> {
-                val uiClients = rememberSignInUIClients()
-                val signInViewModel: SignInViewModel = koinViewModel { parametersOf(uiClients) }
-
                 SignInScreen(
-                    vm = signInViewModel,
-                    onAppleClick = { signInViewModel.onAppleClick() },
-                    onGoogleClick = { signInViewModel.onGoogleClick() },
-                    onFacebookClick = { },
-                    onNavigateHome = {
+                    onNavigateToHome = {
                         navController.navigate(HomeRoute) {
                             popUpTo(SignInRoute) {
                                 inclusive = true
@@ -182,7 +180,18 @@ fun AppNavigation() {
 
             // 設定頁面
             composable<SettingsRoute> {
-                SettingsScreen(viewModel = koinInject())
+                SettingsScreen(
+                    viewModel = koinInject(),
+                    onNavigateToSignIn = {
+                        navController.navigate(SignInRoute) {
+                            // Clear entire back stack when signing out
+                            popUpTo(0) {
+                                inclusive = true
+                            }
+                            launchSingleTop = true
+                        }
+                    }
+                )
             }
 
             // 搜尋頁面

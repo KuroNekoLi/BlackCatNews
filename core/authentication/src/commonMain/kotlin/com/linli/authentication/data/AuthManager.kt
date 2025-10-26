@@ -14,11 +14,25 @@ class AuthManager(
 ) {
     /**
      * 使用指定的供應商類型和憑證登入
+     *
+     * @param type 認證供應商類型
+     * @param credential 認證憑證（匿名登入時為 null）
      */
-    suspend fun signIn(type: ProviderType, credential: AuthCredential): Result<UserSession> {
+    suspend fun signIn(type: ProviderType, credential: AuthCredential?): Result<UserSession> {
         val provider = providers.firstOrNull { it.type == type }
             ?: return Result.failure(AuthError.NoProviderFound)
-        return provider.signIn(credential)
+
+        // 對於需要憑證的 provider（Google, Apple 等），必須提供憑證
+        // 對於匿名登入，credential 為 null，但 AnonymousAuthProvider 會忽略它
+        return if (credential != null) {
+            provider.signIn(credential)
+        } else if (type == ProviderType.Anonymous) {
+            // 匿名登入不需要憑證，創建一個空憑證
+            val emptyCredential = AuthCredential(idToken = "", accessToken = null)
+            provider.signIn(emptyCredential)
+        } else {
+            Result.failure(IllegalArgumentException("$type 登入需要提供憑證"))
+        }
     }
 
     /**

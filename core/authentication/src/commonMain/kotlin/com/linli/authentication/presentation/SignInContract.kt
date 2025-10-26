@@ -23,6 +23,12 @@ sealed interface SignInAction {
     data object ClickApple : SignInAction
     data object ClickGoogle : SignInAction
     data class ClickFacebook(val credential: AuthCredential) : SignInAction
+    data object ClickAnonymous : SignInAction  // 匿名登入
+
+    // Email/Password 登入
+    data class ClickEmailSignIn(val email: String, val password: String) : SignInAction
+    data class ClickEmailSignUp(val email: String, val password: String) : SignInAction
+
     data object DismissError : SignInAction
 }
 

@@ -7,7 +7,8 @@ enum class ProviderType {
     Apple,
     Google,
     Facebook,
-    EmailPassword
+    EmailPassword,
+    Anonymous
 }
 
 /**
