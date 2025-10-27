@@ -4,7 +4,10 @@ import com.linli.authentication.data.AnonymousAuthProvider
 import com.linli.authentication.data.AuthManager
 import com.linli.authentication.data.AuthProvider
 import com.linli.authentication.data.EmailPasswordAuthProvider
+import com.linli.authentication.domain.usecase.CheckEmailVerificationUseCase
 import com.linli.authentication.domain.usecase.GetCurrentUserUseCase
+import com.linli.authentication.domain.usecase.SendEmailVerificationUseCase
+import com.linli.authentication.domain.usecase.SendPasswordResetEmailUseCase
 import com.linli.authentication.domain.usecase.SignInUseCase
 import com.linli.authentication.domain.usecase.SignOutUseCase
 import com.linli.authentication.domain.usecase.SignUpUseCase
@@ -61,6 +64,12 @@ val authModule = module {
     singleOf(::SignOutUseCase)
 
     singleOf(::GetCurrentUserUseCase)
+
+    singleOf(::SendEmailVerificationUseCase)
+
+    singleOf(::SendPasswordResetEmailUseCase)
+
+    singleOf(::CheckEmailVerificationUseCase)
 
     single {
         SignUpUseCase(

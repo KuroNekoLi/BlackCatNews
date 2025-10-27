@@ -23,6 +23,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
@@ -42,6 +43,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -60,6 +62,7 @@ import blackcatnews.composeapp.generated.resources.Res
 import blackcatnews.composeapp.generated.resources.bg_login
 import blackcatnews.composeapp.generated.resources.icon_apple
 import blackcatnews.composeapp.generated.resources.icon_google_logo
+import com.linli.authentication.domain.usecase.SendPasswordResetEmailUseCase
 import com.linli.authentication.platform
 import com.linli.authentication.presentation.SignInEffect
 import com.linli.authentication.presentation.SignInViewModel
@@ -69,8 +72,10 @@ import com.linli.authentication.presentation.onEmailSignIn
 import com.linli.authentication.presentation.onEmailSignUp
 import com.linli.authentication.presentation.onGoogleClick
 import com.linli.blackcatnews.navigation.rememberSignInUIClients
+import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.ui.tooling.preview.Preview
+import org.koin.compose.koinInject
 import org.koin.compose.viewmodel.koinViewModel
 import org.koin.core.parameter.parametersOf
 
@@ -113,9 +118,6 @@ fun SignInScreen(
             onAppleSignIn = {
                 viewModel.onAppleClick()
             },
-            onForgotPassword = {
-                // TODO: Implement forgot password functionality
-            },
             onRegister = { email, password ->
                 viewModel.onEmailSignUp(email, password)
             },
@@ -136,7 +138,6 @@ fun SignInContentScreen(
     onGoogleSignIn: () -> Unit,
     onAnonymousSignIn: () -> Unit,
     onAppleSignIn: () -> Unit,
-    onForgotPassword: () -> Unit,
     onRegister: (email: String, password: String) -> Unit,
     isLoading: Boolean = false
 ) {
@@ -145,6 +146,7 @@ fun SignInContentScreen(
     var passwordVisible by rememberSaveable { mutableStateOf(false) }
     var emailError by rememberSaveable { mutableStateOf<String?>(null) }
     var passwordError by rememberSaveable { mutableStateOf<String?>(null) }
+    var showForgotPasswordDialog by remember { mutableStateOf(false) }
 
     val passwordFocusRequester = remember { FocusRequester() }
 
@@ -162,6 +164,13 @@ fun SignInContentScreen(
         if (validate()) {
             onEmailSignIn(email, password)
         }
+    }
+
+    if (showForgotPasswordDialog) {
+        ForgotPasswordDialog(
+            onDismiss = { showForgotPasswordDialog = false },
+            initialEmail = email
+        )
     }
 
     Column(
@@ -281,7 +290,7 @@ fun SignInContentScreen(
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
                     TextButton(
-                        onClick = onForgotPassword,
+                        onClick = { showForgotPasswordDialog = true },
                         contentPadding = PaddingValues(0.dp),
                         enabled = !isLoading
                     ) {
@@ -388,6 +397,119 @@ fun SignInContentScreen(
     }
 }
 
+@Composable
+fun ForgotPasswordDialog(
+    onDismiss: () -> Unit,
+    initialEmail: String = ""
+) {
+    var email by remember { mutableStateOf(initialEmail) }
+    var emailError by remember { mutableStateOf<String?>(null) }
+    var isLoading by remember { mutableStateOf(false) }
+    var successMessage by remember { mutableStateOf<String?>(null) }
+
+    val sendPasswordResetEmailUseCase: SendPasswordResetEmailUseCase = koinInject()
+    val scope = rememberCoroutineScope()
+
+    fun validateEmail(): Boolean {
+        val isValid = email.isValidEmail()
+        emailError = if (!isValid) "請輸入有效的電子郵件地址" else null
+        return isValid
+    }
+
+    fun sendResetEmail() {
+        if (!validateEmail()) return
+
+        isLoading = true
+        scope.launch {
+            val result = sendPasswordResetEmailUseCase(email)
+            isLoading = false
+
+            result.fold(
+                onSuccess = {
+                    successMessage = "密碼重設信已寄出，請檢查您的信箱"
+                },
+                onFailure = { error ->
+                    emailError = error.message ?: "寄送失敗，請稍後再試"
+                }
+            )
+        }
+    }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("忘記密碼") },
+        text = {
+            Column {
+                if (successMessage != null) {
+                    Text(
+                        text = successMessage!!,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                } else {
+                    Text(
+                        text = "請輸入您的電子郵件地址，我們將寄送密碼重設連結給您。",
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                    Spacer(Modifier.height(16.dp))
+                    OutlinedTextField(
+                        value = email,
+                        onValueChange = {
+                            email = it
+                            if (emailError != null) emailError = null
+                        },
+                        label = { Text("電子郵件") },
+                        placeholder = { Text("name@example.com") },
+                        isError = emailError != null,
+                        supportingText = { if (emailError != null) Text(emailError!!) },
+                        singleLine = true,
+                        enabled = !isLoading,
+                        keyboardOptions = KeyboardOptions(
+                            keyboardType = KeyboardType.Email,
+                            imeAction = ImeAction.Done
+                        ),
+                        keyboardActions = KeyboardActions(
+                            onDone = { sendResetEmail() }
+                        ),
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+            }
+        },
+        confirmButton = {
+            if (successMessage != null) {
+                TextButton(onClick = onDismiss) {
+                    Text("確定")
+                }
+            } else {
+                Button(
+                    onClick = { sendResetEmail() },
+                    enabled = !isLoading
+                ) {
+                    if (isLoading) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(20.dp),
+                            color = MaterialTheme.colorScheme.onPrimary
+                        )
+                    } else {
+                        Text("發送")
+                    }
+                }
+            }
+        },
+        dismissButton = {
+            if (successMessage == null) {
+                TextButton(
+                    onClick = onDismiss,
+                    enabled = !isLoading
+                ) {
+                    Text("取消")
+                }
+            }
+        }
+    )
+}
+
 fun String.isValidEmail(): Boolean {
     return this.matches(Regex("^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}\$"))
 }
@@ -400,7 +522,6 @@ fun LoginScreenPreview() {
         onGoogleSignIn = {},
         onAnonymousSignIn = {},
         onAppleSignIn = {},
-        onForgotPassword = {},
         onRegister = { _, _ -> },
     )
 }

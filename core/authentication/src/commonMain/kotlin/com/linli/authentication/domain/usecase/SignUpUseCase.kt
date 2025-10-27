@@ -2,6 +2,8 @@ package com.linli.authentication.domain.usecase
 
 import com.linli.authentication.data.EmailPasswordAuthProvider
 import com.linli.authentication.domain.model.UserSession
+import dev.gitlive.firebase.Firebase
+import dev.gitlive.firebase.auth.auth
 
 /**
  * 註冊新帳號 Use Case
@@ -9,7 +11,8 @@ import com.linli.authentication.domain.model.UserSession
  * 職責：
  * 1. 驗證輸入（Email 格式、密碼長度）
  * 2. 呼叫 EmailPasswordAuthProvider 註冊
- * 3. 返回結果
+ * 3. 自動寄送信箱驗證信
+ * 4. 返回結果
  */
 class SignUpUseCase(
     private val emailPasswordAuthProvider: EmailPasswordAuthProvider
@@ -39,7 +42,20 @@ class SignUpUseCase(
         }
 
         // 2. 呼叫 Provider 執行註冊
-        return emailPasswordAuthProvider.signUp(email, password)
+        val result = emailPasswordAuthProvider.signUp(email, password)
+
+        // 3. 註冊成功後自動寄送驗證信
+        if (result.isSuccess) {
+            try {
+                Firebase.auth.currentUser?.sendEmailVerification()
+            } catch (e: Exception) {
+                // 註冊成功但寄信失敗，不影響註冊結果
+                // 使用者可以稍後手動重寄
+                println("註冊成功但寄送驗證信失敗: ${e.message}")
+            }
+        }
+
+        return result
     }
 
     /**
