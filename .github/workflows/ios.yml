@@ -28,39 +28,17 @@ jobs:
       # iOS Distribution 憑證（p12）
       IOS_DIST_CERT_BASE64: ${{ secrets.IOS_DIST_CERT_BASE64 }}
       IOS_DIST_CERT_PASSWORD: ${{ secrets.IOS_DIST_CERT_PASSWORD }}
-      
+
+      # 可選：出口合規（如需申報加密）
+      # EXPORT_COMPLIANCE_USES_ENCRYPTION: true
+      # EXPORT_COMPLIANCE_IS_EXEMPT: true
+      # EXPORT_COMPLIANCE_THIRD_PARTY: false
+      # EXPORT_COMPLIANCE_PROPRIETARY: false
+      # EXPORT_COMPLIANCE_AVAILABLE_ON_FRENCH_STORE: false
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Sanity-check ASC secrets (safe)
-        run: |
-          set -euo pipefail
-
-          # 顯示長度與前綴（前 8 碼），不輸出完整內容
-          echo "ASC_KEY_ID length: ${#ASC_KEY_ID}"
-          echo "ASC_KEY_ID head8: ${ASC_KEY_ID:0:8}"
-
-          echo "ASC_ISSUER_ID length: ${#ASC_ISSUER_ID}"
-          echo "ASC_ISSUER_ID head8: ${ASC_ISSUER_ID:0:8}"
-
-          if [ -n "${ASC_PRIVATE_KEY_BASE64:-}" ]; then
-            DECODED=$(echo "$ASC_PRIVATE_KEY_BASE64" | base64 -d 2>/dev/null || true)
-            echo "ASC_PRIVATE_KEY_BASE64 decoded length: ${#DECODED}"
-            echo "ASC_PRIVATE_KEY_BASE64 decoded head30:"
-            echo "$DECODED" | head -c 30
-            echo
-          elif [ -n "${ASC_PRIVATE_KEY:-}" ]; then
-            echo "ASC_PRIVATE_KEY length: ${#ASC_PRIVATE_KEY}"
-            echo "ASC_PRIVATE_KEY head30:"
-            echo "$ASC_PRIVATE_KEY" | head -c 30
-            echo
-          else
-            echo "❌ 未提供 ASC_PRIVATE_KEY 或 ASC_PRIVATE_KEY_BASE64"
-            exit 1
-          fi
 
       - name: Select Xcode 16
         uses: maxim-lobanov/setup-xcode@v1
@@ -73,19 +51,12 @@ jobs:
           distribution: temurin
           java-version: "17"
 
-      - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@v4
-        with:
-          gradle-home-cache-cleanup: true
-          cache-encryption-key: ${{ secrets.GRADLE_CACHE_ENCRYPTION_KEY }}
-
-      - name: Cache Konan
-        uses: actions/cache@v4
-        with:
-          path: ~/.konan
-          key: ${{ runner.os }}-konan-${{ hashFiles('**/gradle/libs.versions.toml', '**/build.gradle.kts', '**/gradle.properties') }}
-          restore-keys: |
-            ${{ runner.os }}-konan-
+      - name: Install Bundler dependencies
+        working-directory: iosApp/fastlane
+        run: |
+          gem install bundler --no-document
+          bundle config set path 'vendor/bundle'
+          bundle install
 
       - name: Cache Ruby gems
         uses: actions/cache@v4
@@ -95,17 +66,19 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-gems-
 
-      - name: Install Bundler dependencies
-        working-directory: iosApp/fastlane
-        run: |
-          gem install bundler --no-document
-          bundle config set path 'vendor/bundle'
-          bundle install
-
       - name: Prepare KMP Pods (CocoaPods if missing)
         run: |
           pod --version || sudo gem install cocoapods --no-document
           ./gradlew :composeApp:podInstall --no-daemon --stacktrace
+
+      - name: Generate composeApp Podspec
+        run : ./gradlew :composeApp:podspec --no-daemon --stacktrace
+
+      - name: Install Pods
+        run: |
+          cd iosApp
+          pod deintegrate || true
+          pod install --repo-update
 
       - name: Cache CocoaPods
         uses: actions/cache@v4
@@ -159,7 +132,6 @@ jobs:
           AUTOMATIC_RELEASE: ${{ steps.decide.outputs.auto }}
         run: |
           echo "lane=${{ steps.decide.outputs.lane }} submit=${{ env.SUBMIT_FOR_REVIEW }} auto=${{ env.AUTOMATIC_RELEASE }}"
-          # Fastlane 會呼叫 xcodebuild，xcodebuild 會自動執行 Build Phase 中的 Run Script
           BUNDLE_GEMFILE=fastlane/Gemfile bundle exec fastlane ${{ steps.decide.outputs.lane }}
 
       - name: Upload ipa artifact

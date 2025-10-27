@@ -60,8 +60,14 @@ kotlin {
         }
 
         // 引入 Google Sign-In SDK
-        pod("GoogleSignIn") {
-            version = "~> 7.0"
+        pod("GoogleSignIn") { version = "~> 9.0.0" }
+        pod("FirebaseCore") {
+            version = "~> 12.0.0"
+            linkOnly = true
+        }
+        pod("FirebaseAuth") {
+            version = "~> 12.0.0"
+            linkOnly = true
         }
     }
 

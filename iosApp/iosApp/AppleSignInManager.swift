@@ -2,26 +2,26 @@ import Foundation
 import AuthenticationServices
 import CryptoKit
 import UIKit
-import FirebaseAuth
 
 /// Apple Sign-In 結果資料模型
 @objcMembers
 public class AppleSignInResult: NSObject {
     public let idToken: String
     public let rawNonce: String
-    public let firebaseUid: String?
     public let email: String?
+    public let fullName: PersonNameComponents?
 
-    public init(idToken: String, rawNonce: String, firebaseUid: String? = nil, email: String? = nil) {
+    public init(idToken: String, rawNonce: String, email: String? = nil, fullName: PersonNameComponents? = nil) {
         self.idToken = idToken
         self.rawNonce = rawNonce
-        self.firebaseUid = firebaseUid
         self.email = email
+        self.fullName = fullName
     }
 }
 
 /// Apple Sign-In 管理器
-/// 負責處理原生 Apple Sign-In 流程並完成 Firebase 登入
+/// 負責處理原生 Apple Sign-In 流程
+/// Firebase 登入由 Kotlin 層處理
 @objcMembers
 public class AppleSignInManager: NSObject, ASAuthorizationControllerDelegate, ASAuthorizationControllerPresentationContextProviding {
 
@@ -31,25 +31,7 @@ public class AppleSignInManager: NSObject, ASAuthorizationControllerDelegate, AS
     private var completion: ((AppleSignInResult?, NSError?) -> Void)?
     private var currentNonce: String?
 
-    /// 完整的 Apple Sign-In + Firebase 登入流程
-    public func signInWithFirebase(completion: @escaping (AppleSignInResult?, NSError?) -> Void) {
-        self.completion = completion
-
-        let nonce = Self.randomNonceString()
-        self.currentNonce = nonce
-
-        let request = ASAuthorizationAppleIDProvider().createRequest()
-        request.requestedScopes = [.fullName, .email]
-        // Firebase 官方建議：nonce 需 sha256 後放到 request
-        request.nonce = Self.sha256(nonce)
-
-        let controller = ASAuthorizationController(authorizationRequests: [request])
-        controller.delegate = self
-        controller.presentationContextProvider = self
-        controller.performRequests()
-    }
-
-    /// 原有的方法（只获取 token，不登入 Firebase）
+    /// Apple Sign-In 流程（返回 token 和 nonce 給 Kotlin 層處理 Firebase 登入）
     public func signIn(completion: @escaping (AppleSignInResult?, NSError?) -> Void) {
         self.completion = completion
 
@@ -80,38 +62,15 @@ public class AppleSignInManager: NSObject, ASAuthorizationControllerDelegate, AS
             return
         }
 
-        // 建立 Firebase OAuth Credential - 使用正确的 API
-        let credential = OAuthProvider.credential(
-            providerID: AuthProviderID.apple,
+        // 返回資訊給 Kotlin 層處理 Firebase 登入
+        let result = AppleSignInResult(
             idToken: idTokenString,
-            rawNonce: nonce
+            rawNonce: nonce,
+            email: appleIDCredential.email,
+            fullName: appleIDCredential.fullName
         )
-
-        // 使用 Firebase 登入
-        Auth.auth().signIn(with: credential) { authResult, error in
-            if let error = error {
-                self.completion?(nil, error as NSError)
-                self.completion = nil
-                return
-            }
-
-            guard let user = authResult?.user else {
-                let err = NSError(domain: "AppleSignIn", code: -2, userInfo: [NSLocalizedDescriptionKey: "登入成功但無法取得使用者資訊"])
-                self.completion?(nil, err)
-                self.completion = nil
-                return
-            }
-
-            // 返回完整資訊（包含 Firebase UID）
-            let result = AppleSignInResult(
-                idToken: idTokenString,
-                rawNonce: nonce,
-                firebaseUid: user.uid,
-                email: user.email
-            )
-            self.completion?(result, nil)
-            self.completion = nil
-        }
+        completion?(result, nil)
+        completion = nil
     }
 
     public func authorizationController(controller: ASAuthorizationController, didCompleteWithError error: Error) {

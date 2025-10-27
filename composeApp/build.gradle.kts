@@ -33,7 +33,6 @@ kotlin {
     ).forEach { iosTarget ->
         iosTarget.binaries.framework {
             baseName = "ComposeApp"
-            isStatic = true
         }
     }
 
@@ -48,6 +47,25 @@ kotlin {
             baseName = "ComposeApp"
             isStatic = true
         }
+
+        // iOS 端連結原生 Firebase/Google SDK（GitLive 會使用這些原生套件）
+        pod("GoogleSignIn") { version = "~> 9.0.0" }
+        pod("FirebaseCore") {
+            version = "~> 12.0.0"
+            linkOnly = true
+        }
+        pod("FirebaseAuth") {
+            version = "~> 12.0.0"
+            linkOnly = true
+        }
+        pod("FirebaseAnalytics") {
+            version = "~> 12.0.0"
+            linkOnly = true
+        }
+        pod("FirebaseCrashlytics") {
+            version = "~> 12.0.0"
+            linkOnly = true
+        }
     }
 
     sourceSets {
@@ -56,6 +74,18 @@ kotlin {
             implementation(libs.androidx.activity.compose)
             implementation(libs.ktor.client.okhttp)
             implementation(libs.koin.android)
+
+            // Android 專用：Firebase Android SDK（與 GitLive 相容）
+            implementation(project.dependencies.platform(libs.firebase.bom))
+            implementation(libs.firebase.common)
+            implementation(libs.firebase.auth)
+            implementation(libs.firebase.analytics)
+            implementation(libs.firebase.crashlytics)
+
+            // 僅 Android 可用的 Lifecycle / ViewModel 與 Koin ViewModel 整合
+            implementation(libs.androidx.lifecycle.viewmodelCompose)
+            implementation(libs.androidx.lifecycle.runtimeCompose)
+            implementation(libs.koin.compose.viewmodel)
         }
         iosMain.dependencies {
             implementation(libs.ktor.client.darwin)
@@ -68,8 +98,6 @@ kotlin {
             implementation(compose.ui)
             implementation(compose.components.resources)
             implementation(compose.components.uiToolingPreview)
-            implementation(libs.androidx.lifecycle.viewmodelCompose)
-            implementation(libs.androidx.lifecycle.runtimeCompose)
             implementation(projects.shared)
             implementation(project(":core:authentication"))
             implementation(libs.ksoup)
@@ -84,7 +112,6 @@ kotlin {
             implementation(libs.kotlinx.datetime)
             implementation(libs.koin.core)
             implementation(libs.koin.compose)
-            implementation(libs.koin.compose.viewmodel)
             implementation(libs.room.runtime)
             implementation(libs.sqlite.bundled)
             // GitLive Firebase Kotlin SDK - 只使用需要的功能
@@ -101,13 +128,6 @@ kotlin {
 
 dependencies {
     debugImplementation(compose.uiTooling)
-
-    // Firebase BOM - 使用 platform 來管理所有 Firebase 依賴的版本
-    implementation(platform(libs.firebase.bom))
-    implementation(libs.firebase.common)
-    implementation(libs.firebase.auth)
-    implementation(libs.firebase.analytics)
-    implementation(libs.firebase.crashlytics)
 
     // Room KSP 編譯器 - 官方最佳實踐：每個 target 都要配置
     add("kspAndroid", libs.room.compiler)

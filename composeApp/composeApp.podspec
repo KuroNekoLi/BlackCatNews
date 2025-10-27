@@ -9,7 +9,11 @@ Pod::Spec.new do |spec|
     spec.vendored_frameworks      = 'build/cocoapods/framework/ComposeApp.framework'
     spec.libraries                = 'c++'
     spec.ios.deployment_target    = '15.0'
-                
+    spec.dependency 'FirebaseAnalytics', '~> 12.0.0'
+    spec.dependency 'FirebaseAuth', '~> 12.0.0'
+    spec.dependency 'FirebaseCore', '~> 12.0.0'
+    spec.dependency 'FirebaseCrashlytics', '~> 12.0.0'
+    spec.dependency 'GoogleSignIn', '~> 9.0.0'
                 
     if !Dir.exist?('build/cocoapods/framework/ComposeApp.framework') || Dir.empty?('build/cocoapods/framework/ComposeApp.framework')
         raise "
