@@ -2,14 +2,18 @@ name: Android Play Deploy (GPP)
 
 on:
   push:
-    branches: [ main ]          # 只有 main 才自動上傳到 internal
+    branches:
+      - main                    # merge 到 main 時部署到 production
+      - develop                 # push 到 develop 時部署到 beta
+      - 'feature/*'            # feature 分支 push 時只建置不部署
+      - 'bugfix/*'             # bugfix 分支 push 時只建置不部署
     tags:
       - 'android-alpha-v*'      # 封閉測試（如 android-alpha-v1.0.0）
       - 'android-beta-v*'       # 公開測試（如 android-beta-v1.0.0）
       - 'android-v*'            # 正式版（如 android-v1.0.0）
       - 'v*.*.*'                # 版本號 tag 也可觸發
   pull_request:
-    branches: [ main ]          # PR 到 main 時只建置驗證，不上傳
+    branches: [ main, develop ] # PR 時只建置驗證，不上傳
   workflow_dispatch: # 手動觸發：可選擇任意軌道
     inputs:
       track:
@@ -74,9 +78,19 @@ jobs:
             else
               TRACK="internal"   # 預設
             fi
+          elif [ "${{ github.event_name }}" == "push" ]; then
+            # Push 事件：根據分支決定軌道
+            BRANCH="${{ github.ref_name }}"
+            if [ "$BRANCH" == "main" ]; then
+              TRACK="production" # merge to main = production
+            elif [ "$BRANCH" == "develop" ]; then
+              TRACK="alpha"       # push to develop = alpha
+            else
+              TRACK="none"       # feature/bugfix 分支不部署
+            fi
           else
-            # Push to main：內部測試
-            TRACK="internal"
+            # Pull request：不部署
+            TRACK="none"
           fi
           echo "track=${TRACK}" >> $GITHUB_OUTPUT
           echo "📦 目標軌道: ${TRACK}"
@@ -101,7 +115,7 @@ jobs:
           ./gradlew :composeApp:bundleRelease --stacktrace
 
       - name: Publish to Play Console
-        if: github.event_name != 'pull_request'  # PR 時不上傳，只建置驗證
+        if: steps.track.outputs.track != 'none' && github.event_name != 'pull_request'
         id: publish
         continue-on-error: true
         run: |
@@ -110,7 +124,7 @@ jobs:
           ./gradlew :composeApp:publishReleaseBundle --track ${TRACK} --stacktrace
 
       - name: Retry with incremented version (if failed)
-        if: github.event_name != 'pull_request' && steps.publish.outcome == 'failure'
+        if: steps.track.outputs.track != 'none' && github.event_name != 'pull_request' && steps.publish.outcome == 'failure'
         run: |
           echo "⚠️  上傳失敗，可能是版本號衝突"
           echo "🔄 重新建置並遞增版本號..."

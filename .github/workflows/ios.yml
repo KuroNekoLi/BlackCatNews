@@ -2,11 +2,17 @@ name: iOS CI/CD (Fastlane)
 
 on:
   push:
-    branches: [ main ]            # merge 到 main → TestFlight
+    branches:
+      - main                      # merge 到 main → release (送審)
+      - develop                   # push 到 develop → beta (TestFlight)
+      - 'feature/*'              # feature 分支只建置不部署
+      - 'bugfix/*'               # bugfix 分支只建置不部署
     tags:
       - 'ios-alpha-v*'            # 封閉測試（可選）
       - 'ios-beta-v*'             # 公開測試
       - 'ios-v*'                  # 正式送審/上架
+  pull_request:
+    branches: [ main, develop ]   # PR 時只建置驗證
   workflow_dispatch:
     inputs:
       lane:
@@ -95,29 +101,58 @@ jobs:
         run: |
           REF='${{ github.ref_name }}'
           if [[ '${{ github.event_name }}' == 'push' && '${{ github.ref_type }}' == 'branch' ]]; then
-            LANE='beta'
-            SUBMIT=false
-            AUTO_RELEASE=false
+            BRANCH="${{ github.ref_name }}"
+            if [[ "$BRANCH" == 'main' ]]; then
+              # merge to main = release (送審)
+              LANE='release'
+              SUBMIT=true
+              AUTO_RELEASE=false
+              DEPLOY=true
+            elif [[ "$BRANCH" == 'develop' ]]; then
+              # push to develop = beta
+              LANE='beta'
+              SUBMIT=false
+              AUTO_RELEASE=false
+              DEPLOY=true
+            else
+              # feature/bugfix 分支只建置
+              LANE='beta'
+              SUBMIT=false
+              AUTO_RELEASE=false
+              DEPLOY=false
+            fi
           elif [[ '${{ github.ref_type }}' == 'tag' && "$REF" == ios-v* ]]; then
             LANE='release'
             SUBMIT=true
             AUTO_RELEASE=false
+            DEPLOY=true
           elif [[ '${{ github.ref_type }}' == 'tag' && "$REF" == ios-beta-v* ]]; then
             LANE='beta'
             SUBMIT=false
             AUTO_RELEASE=false
+            DEPLOY=true
           elif [[ '${{ github.ref_type }}' == 'tag' && "$REF" == ios-alpha-v* ]]; then
             LANE='beta'
             SUBMIT=false
             AUTO_RELEASE=false
+            DEPLOY=true
+          elif [[ '${{ github.event_name }}' == 'pull_request' ]]; then
+            # PR 只建置不部署
+            LANE='beta'
+            SUBMIT=false
+            AUTO_RELEASE=false
+            DEPLOY=false
           else
             LANE='${{ github.event.inputs.lane || 'beta' }}'
             SUBMIT=false
             AUTO_RELEASE=false
+            DEPLOY=true
           fi
           echo "lane=$LANE" >> $GITHUB_OUTPUT
           echo "submit=$SUBMIT" >> $GITHUB_OUTPUT
           echo "auto=$AUTO_RELEASE" >> $GITHUB_OUTPUT
+          echo "deploy=$DEPLOY" >> $GITHUB_OUTPUT
+          echo "📦 Lane: $LANE, Submit: $SUBMIT, Deploy: $DEPLOY"
 
       - name: Bump build number (CFBundleVersion)
         run: |
@@ -126,6 +161,7 @@ jobs:
           grep CURRENT_PROJECT_VERSION iosApp/Configuration/Config.xcconfig
 
       - name: Build and upload via Fastlane
+        if: steps.decide.outputs.deploy == 'true'
         working-directory: iosApp
         env:
           SUBMIT_FOR_REVIEW: ${{ steps.decide.outputs.submit }}
@@ -133,6 +169,15 @@ jobs:
         run: |
           echo "lane=${{ steps.decide.outputs.lane }} submit=${{ env.SUBMIT_FOR_REVIEW }} auto=${{ env.AUTOMATIC_RELEASE }}"
           BUNDLE_GEMFILE=fastlane/Gemfile bundle exec fastlane ${{ steps.decide.outputs.lane }}
+
+      - name: Build only (no deploy)
+        if: steps.decide.outputs.deploy == 'false'
+        working-directory: iosApp
+        run: |
+          echo "🔨 Building only (no deployment)"
+          # 只執行建置，可以用 gym 或 xcodebuild
+          BUNDLE_GEMFILE=fastlane/Gemfile bundle exec fastlane build_only || \
+          xcodebuild -workspace iosApp.xcworkspace -scheme iosApp -configuration Release -archivePath build/iosApp.xcarchive archive
 
       - name: Upload ipa artifact
         if: always()
