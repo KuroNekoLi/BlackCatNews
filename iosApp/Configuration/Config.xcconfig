@@ -10,3 +10,9 @@ PRODUCT_BUNDLE_IDENTIFIER=com.linli.blackcatnews
 
 CURRENT_PROJECT_VERSION=1
 MARKETING_VERSION=1.0.1
+
+// Google Sign-In 配置
+// Debug configuration
+REVERSED_CLIENT_ID[config=Debug] = com.googleusercontent.apps.181914763371-4i1ekkidl3it9bn5jfukq0318am9ppn4
+// Release configuration  
+REVERSED_CLIENT_ID[config=Release] = com.googleusercontent.apps.181914763371-ujrkpnn8jdtmgn5neih2lcnd49gb3t84
