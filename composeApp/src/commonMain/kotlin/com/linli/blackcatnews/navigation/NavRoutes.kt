@@ -11,6 +11,10 @@ import kotlinx.serialization.Serializable
 @Serializable
 object SignInRoute
 
+// 註冊路由
+@Serializable
+object RegisterRoute
+
 // 底部導航的主要路由
 @Serializable
 object HomeRoute

@@ -28,6 +28,7 @@ import com.linli.blackcatnews.ui.screens.ArticleDetailScreen
 import com.linli.blackcatnews.ui.screens.CategoriesScreen
 import com.linli.blackcatnews.ui.screens.FavoritesScreen
 import com.linli.blackcatnews.ui.screens.HomeScreen
+import com.linli.blackcatnews.ui.screens.RegisterScreen
 import com.linli.blackcatnews.ui.screens.SearchScreen
 import com.linli.blackcatnews.ui.screens.SettingsScreen
 import com.linli.blackcatnews.ui.screens.SignInScreen
@@ -123,6 +124,28 @@ fun AppNavigation() {
                             }
                             launchSingleTop = true
                         }
+                    },
+                    onNavigateToRegister = {
+                        navController.navigate(RegisterRoute) {
+                            launchSingleTop = true
+                        }
+                    }
+                )
+            }
+
+            // 註冊頁面
+            composable<RegisterRoute> {
+                RegisterScreen(
+                    onNavigateToHome = {
+                        navController.navigate(HomeRoute) {
+                            popUpTo(SignInRoute) {
+                                inclusive = true
+                            }
+                            launchSingleTop = true
+                        }
+                    },
+                    onNavigateToSignIn = {
+                        navController.navigateUp()
                     }
                 )
             }

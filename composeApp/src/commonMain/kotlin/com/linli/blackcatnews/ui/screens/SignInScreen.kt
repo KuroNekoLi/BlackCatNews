@@ -69,7 +69,6 @@ import com.linli.authentication.presentation.SignInViewModel
 import com.linli.authentication.presentation.onAnonymousClick
 import com.linli.authentication.presentation.onAppleClick
 import com.linli.authentication.presentation.onEmailSignIn
-import com.linli.authentication.presentation.onEmailSignUp
 import com.linli.authentication.presentation.onGoogleClick
 import com.linli.blackcatnews.navigation.rememberSignInUIClients
 import kotlinx.coroutines.launch
@@ -82,7 +81,8 @@ import org.koin.core.parameter.parametersOf
 @Composable
 fun SignInScreen(
     modifier: Modifier = Modifier,
-    onNavigateToHome: () -> Unit
+    onNavigateToHome: () -> Unit,
+    onNavigateToRegister: () -> Unit
 ) {
     val signInClients = rememberSignInUIClients()
     val viewModel: SignInViewModel = koinViewModel {
@@ -118,9 +118,7 @@ fun SignInScreen(
             onAppleSignIn = {
                 viewModel.onAppleClick()
             },
-            onRegister = { email, password ->
-                viewModel.onEmailSignUp(email, password)
-            },
+            onRegister = onNavigateToRegister,
             isLoading = state.isLoading
         )
 
@@ -138,7 +136,7 @@ fun SignInContentScreen(
     onGoogleSignIn: () -> Unit,
     onAnonymousSignIn: () -> Unit,
     onAppleSignIn: () -> Unit,
-    onRegister: (email: String, password: String) -> Unit,
+    onRegister: () -> Unit,
     isLoading: Boolean = false
 ) {
     var email by rememberSaveable { mutableStateOf("") }
@@ -297,11 +295,7 @@ fun SignInContentScreen(
                         Text("忘記密碼？")
                     }
                     TextButton(
-                        onClick = {
-                            if (validate()) {
-                                onRegister(email, password)
-                            }
-                        },
+                        onClick = onRegister,
                         contentPadding = PaddingValues(0.dp),
                         enabled = !isLoading
                     ) {
@@ -522,6 +516,6 @@ fun LoginScreenPreview() {
         onGoogleSignIn = {},
         onAnonymousSignIn = {},
         onAppleSignIn = {},
-        onRegister = { _, _ -> },
+        onRegister = { },
     )
 }
