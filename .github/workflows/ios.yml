@@ -69,28 +69,6 @@ jobs:
       - name: Ensure CocoaPods Installed
         run: pod --version || sudo gem install cocoapods --no-document
 
-      # KMP：只跑 podInstall（需要時會自動產生/更新 podspec）
-      - name: Prepare KMP Pods (podInstall)
-        run: ./gradlew :composeApp:podInstall --no-daemon --stacktrace
-
-      # 先還原 CocoaPods 快取，再視情況安裝
-      - name: Cache CocoaPods
-        id: pods-cache
-        uses: actions/cache@v4
-        with:
-          path: |
-            iosApp/Pods
-            ~/.cocoapods
-          key: ${{ runner.os }}-pods-${{ hashFiles('iosApp/Podfile.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-pods-
-
-      - name: Install Pods
-        if: steps.pods-cache.outputs.cache-hit != 'true'
-        run: |
-          cd iosApp
-          # 首次或 Pod 版本更新時才更新 Specs，以加速一般情況
-          pod install --repo-update
 
       # 依 ref 決定要不要部署（main=release、develop=beta、feature/bugfix=build only、tag 亦可部署）
       - name: Decide lane and flags by ref

@@ -48,16 +48,6 @@ kotlin {
             isStatic = true
         }
 
-        // iOS 端連結原生 Firebase/Google SDK（GitLive 會使用這些原生套件）
-        pod("GoogleSignIn") { version = "~> 9.0.0" }
-        pod("FirebaseCore") {
-            version = "~> 12.0.0"
-            linkOnly = true
-        }
-        pod("FirebaseAuth") {
-            version = "~> 12.0.0"
-            linkOnly = true
-        }
         pod("FirebaseAnalytics") {
             version = "~> 12.0.0"
             linkOnly = true
