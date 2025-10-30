@@ -3,16 +3,16 @@ name: iOS CI/CD (Fastlane)
 on:
   push:
     branches:
-      - main                      # merge 到 main → release (送審)
-      - develop                   # push 到 develop → beta (TestFlight)
-      - 'feature/*'              # feature 分支只建置不部署
-      - 'bugfix/*'               # bugfix 分支只建置不部署
+      - main
+      - develop
+      - 'feature/*'
+      - 'bugfix/*'
     tags:
-      - 'ios-alpha-v*'            # 封閉測試（可選）
-      - 'ios-beta-v*'             # 公開測試
-      - 'ios-v*'                  # 正式送審/上架
+      - 'ios-alpha-v*'
+      - 'ios-beta-v*'
+      - 'ios-v*'
   pull_request:
-    branches: [ main, develop ]   # PR 時只建置驗證
+    branches: [ main, develop ]
   workflow_dispatch:
     inputs:
       lane:
@@ -25,22 +25,18 @@ jobs:
     runs-on: macos-15
 
     env:
-      # App Store Connect API Key（唯一認證路徑）
+      # App Store Connect API Key（擇一提供：ASC_PRIVATE_KEY 或 ASC_PRIVATE_KEY_BASE64）
       ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
       ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
       ASC_PRIVATE_KEY: ${{ secrets.ASC_PRIVATE_KEY }}
-      ASC_PRIVATE_KEY_BASE64: ${{ secrets.ASC_PRIVATE_KEY_BASE64 }} # 可選，若私鑰以 base64 存放
+      ASC_PRIVATE_KEY_BASE64: ${{ secrets.ASC_PRIVATE_KEY_BASE64 }}
 
       # iOS Distribution 憑證（p12）
       IOS_DIST_CERT_BASE64: ${{ secrets.IOS_DIST_CERT_BASE64 }}
       IOS_DIST_CERT_PASSWORD: ${{ secrets.IOS_DIST_CERT_PASSWORD }}
 
-      # 可選：出口合規（如需申報加密）
-      # EXPORT_COMPLIANCE_USES_ENCRYPTION: true
-      # EXPORT_COMPLIANCE_IS_EXEMPT: true
-      # EXPORT_COMPLIANCE_THIRD_PARTY: false
-      # EXPORT_COMPLIANCE_PROPRIETARY: false
-      # EXPORT_COMPLIANCE_AVAILABLE_ON_FRENCH_STORE: false
+      #（可選）你的 Apple Team ID，供 Fastlane update_code_signing_settings 使用
+      APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
 
     steps:
       - name: Checkout
@@ -51,42 +47,35 @@ jobs:
         with:
           xcode-version: '16.*'
 
-      - name: Set up Java
+      - name: Set up Java 17
         uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: "17"
+          java-version: '17'
 
-      - name: Install Bundler dependencies
-        working-directory: iosApp/fastlane
-        run: |
-          gem install bundler --no-document
-          bundle config set path 'vendor/bundle'
-          bundle install
+      # Gradle 官方快取（相依與 build cache）
+      - name: Set up Gradle (with cache)
+        uses: gradle/actions/setup-gradle@v4
 
-      - name: Cache Ruby gems
-        uses: actions/cache@v4
+      # Ruby + Bundler 快取（取代手動安裝與獨立 gems cache）
+      - name: Setup Ruby & bundle (with cache)
+        uses: ruby/setup-ruby@v1
         with:
-          path: iosApp/fastlane/vendor/bundle
-          key: ${{ runner.os }}-gems-${{ hashFiles('iosApp/fastlane/Gemfile.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-gems-
+          ruby-version: '3.3'
+          bundler-cache: true
+          working-directory: iosApp/fastlane
 
-      - name: Prepare KMP Pods (CocoaPods if missing)
-        run: |
-          pod --version || sudo gem install cocoapods --no-document
-          ./gradlew :composeApp:podInstall --no-daemon --stacktrace
+      # CocoaPods（若 runner 尚未裝，安裝一次）
+      - name: Ensure CocoaPods Installed
+        run: pod --version || sudo gem install cocoapods --no-document
 
-      - name: Generate composeApp Podspec
-        run : ./gradlew :composeApp:podspec --no-daemon --stacktrace
+      # KMP：只跑 podInstall（需要時會自動產生/更新 podspec）
+      - name: Prepare KMP Pods (podInstall)
+        run: ./gradlew :composeApp:podInstall --no-daemon --stacktrace
 
-      - name: Install Pods
-        run: |
-          cd iosApp
-          pod deintegrate || true
-          pod install --repo-update
-
+      # 先還原 CocoaPods 快取，再視情況安裝
       - name: Cache CocoaPods
+        id: pods-cache
         uses: actions/cache@v4
         with:
           path: |
@@ -96,70 +85,49 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-pods-
 
+      - name: Install Pods
+        if: steps.pods-cache.outputs.cache-hit != 'true'
+        run: |
+          cd iosApp
+          # 首次或 Pod 版本更新時才更新 Specs，以加速一般情況
+          pod install --repo-update
+
+      # 依 ref 決定要不要部署（main=release、develop=beta、feature/bugfix=build only、tag 亦可部署）
       - name: Decide lane and flags by ref
         id: decide
+        shell: bash
         run: |
           REF='${{ github.ref_name }}'
           if [[ '${{ github.event_name }}' == 'push' && '${{ github.ref_type }}' == 'branch' ]]; then
             BRANCH="${{ github.ref_name }}"
             if [[ "$BRANCH" == 'main' ]]; then
-              # merge to main = release (送審)
-              LANE='release'
-              SUBMIT=true
-              AUTO_RELEASE=false
-              DEPLOY=true
+              LANE='release'; SUBMIT=true;  AUTO_RELEASE=false; DEPLOY=true
             elif [[ "$BRANCH" == 'develop' ]]; then
-              # push to develop = beta
-              LANE='beta'
-              SUBMIT=false
-              AUTO_RELEASE=false
-              DEPLOY=true
+              LANE='beta';    SUBMIT=false; AUTO_RELEASE=false; DEPLOY=true
             else
-              # feature/bugfix 分支只建置
-              LANE='beta'
-              SUBMIT=false
-              AUTO_RELEASE=false
-              DEPLOY=false
+              LANE='beta';    SUBMIT=false; AUTO_RELEASE=false; DEPLOY=false
             fi
           elif [[ '${{ github.ref_type }}' == 'tag' && "$REF" == ios-v* ]]; then
-            LANE='release'
-            SUBMIT=true
-            AUTO_RELEASE=false
-            DEPLOY=true
+            LANE='release'; SUBMIT=true;  AUTO_RELEASE=false; DEPLOY=true
           elif [[ '${{ github.ref_type }}' == 'tag' && "$REF" == ios-beta-v* ]]; then
-            LANE='beta'
-            SUBMIT=false
-            AUTO_RELEASE=false
-            DEPLOY=true
+            LANE='beta';    SUBMIT=false; AUTO_RELEASE=false; DEPLOY=true
           elif [[ '${{ github.ref_type }}' == 'tag' && "$REF" == ios-alpha-v* ]]; then
-            LANE='beta'
-            SUBMIT=false
-            AUTO_RELEASE=false
-            DEPLOY=true
+            LANE='beta';    SUBMIT=false; AUTO_RELEASE=false; DEPLOY=true
           elif [[ '${{ github.event_name }}' == 'pull_request' ]]; then
-            # PR 只建置不部署
-            LANE='beta'
-            SUBMIT=false
-            AUTO_RELEASE=false
-            DEPLOY=false
+            LANE='beta';    SUBMIT=false; AUTO_RELEASE=false; DEPLOY=false
           else
             LANE='${{ github.event.inputs.lane || 'beta' }}'
-            SUBMIT=false
-            AUTO_RELEASE=false
-            DEPLOY=true
+            SUBMIT=false; AUTO_RELEASE=false; DEPLOY=true
           fi
-          echo "lane=$LANE" >> $GITHUB_OUTPUT
+          echo "lane=$LANE"   >> $GITHUB_OUTPUT
           echo "submit=$SUBMIT" >> $GITHUB_OUTPUT
           echo "auto=$AUTO_RELEASE" >> $GITHUB_OUTPUT
           echo "deploy=$DEPLOY" >> $GITHUB_OUTPUT
           echo "📦 Lane: $LANE, Submit: $SUBMIT, Deploy: $DEPLOY"
 
-      - name: Bump build number (CFBundleVersion)
-        run: |
-          echo "Bumping build to $GITHUB_RUN_NUMBER"
-          /usr/bin/sed -i '' -E "s/^CURRENT_PROJECT_VERSION=.*/CURRENT_PROJECT_VERSION=${GITHUB_RUN_NUMBER}/" iosApp/Configuration/Config.xcconfig
-          grep CURRENT_PROJECT_VERSION iosApp/Configuration/Config.xcconfig
 
+
+      # 真的要部署（main/develop 或 tag）
       - name: Build and upload via Fastlane
         if: steps.decide.outputs.deploy == 'true'
         working-directory: iosApp
@@ -170,12 +138,12 @@ jobs:
           echo "lane=${{ steps.decide.outputs.lane }} submit=${{ env.SUBMIT_FOR_REVIEW }} auto=${{ env.AUTOMATIC_RELEASE }}"
           BUNDLE_GEMFILE=fastlane/Gemfile bundle exec fastlane ${{ steps.decide.outputs.lane }}
 
+      # 只建置不部署（feature/bugfix、PR）
       - name: Build only (no deploy)
         if: steps.decide.outputs.deploy == 'false'
         working-directory: iosApp
         run: |
           echo "🔨 Building only (no deployment)"
-          # 只執行建置，可以用 gym 或 xcodebuild
           BUNDLE_GEMFILE=fastlane/Gemfile bundle exec fastlane build_only || \
           xcodebuild -workspace iosApp.xcworkspace -scheme iosApp -configuration Release -archivePath build/iosApp.xcarchive archive
 

@@ -8,109 +8,174 @@ platform :ios do
   desc "Build ipa for App Store distribution"
   lane :build do
     # 🔧 [新增步驟 1] 先生成 composeApp 的 podspec
-    sh "../../gradlew :composeApp:podspec", log: true
+    sh File.expand_path('../../gradlew', __dir__) + ' :composeApp:podInstall', log: true
 
     # 🔧從 Fastlane 的相對層執行 pod install
     sh "bundle exec pod install --project-directory=.. --repo-update", log: true
 
     # 僅使用 App Store Connect API Key（不使用 Apple ID 路徑）
-    unless ENV["ASC_KEY_ID"] && ENV["ASC_ISSUER_ID"] && ENV["ASC_PRIVATE_KEY"]
+    unless ENV["ASC_KEY_ID"] && ENV["ASC_ISSUER_ID"] && (ENV["ASC_PRIVATE_KEY"] || ENV["ASC_PRIVATE_KEY_BASE64"])
       UI.user_error!("缺少 App Store Connect API 金鑰設定：請提供 ASC_KEY_ID、ASC_ISSUER_ID、ASC_PRIVATE_KEY")
     end
     puts "🔑 使用 App Store Connect API Key 認證"
     api_key = app_store_connect_api_key(
       key_id: ENV["ASC_KEY_ID"],
       issuer_id: ENV["ASC_ISSUER_ID"],
-      key_content: ENV["ASC_PRIVATE_KEY"],
-      is_key_content_base64: ENV["ASC_PRIVATE_KEY_BASE64"] == "true"
+      key_content: ENV["ASC_PRIVATE_KEY_BASE64"].to_s.empty? ? ENV["ASC_PRIVATE_KEY"] : ENV["ASC_PRIVATE_KEY_BASE64"],
+      is_key_content_base64: !ENV["ASC_PRIVATE_KEY_BASE64"].to_s.empty?
     )
 
-    # 使用手動簽章（匯入 p12 到臨時 keychain + 下載 App Store 描述檔）
-    keychain_name = "fastlane_tmp_keychain"
-    keychain_password = SecureRandom.uuid
-    puts "🔐 創建臨時 keychain: #{keychain_name}"
-    keychain_path = File.expand_path("~/Library/Keychains/#{keychain_name}-db")
-    create_keychain(
-      name: keychain_name,
-      password: keychain_password,
-      default_keychain: true,
-      unlock: true,
-      timeout: 3600,
-      lock_when_sleeps: false
-    )
-    keychain_candidates = [
-      File.expand_path("~/Library/Keychains/#{keychain_name}-db"),
-      File.expand_path("~/Library/Keychains/#{keychain_name}.keychain-db"),
-      File.expand_path("~/Library/Keychains/#{keychain_name}.keychain")
-    ]
-    detected_path = keychain_candidates.find { |p| File.exist?(p) }
-    keychain_path = detected_path || keychain_path
+    # ===== Auto-manage MARKETING_VERSION (CFBundleShortVersionString) and CFBundleVersion =====
+    # Prefer xcconfig as the source of truth, fallback to xcodeproj if needed
+    project_path  = File.expand_path('../iosApp.xcodeproj', __dir__)
+    xcconfig_path = File.expand_path('../Configuration/Config.xcconfig', __dir__)
 
-    unless (ENV["IOS_DIST_CERT_BASE64"] || ENV["IOS_DIST_CERT_PATH"]) && ENV["IOS_DIST_CERT_PASSWORD"]
-      UI.user_error!("缺少發行憑證（p12）設定：請提供 IOS_DIST_CERT_BASE64（或 IOS_DIST_CERT_PATH）與 IOS_DIST_CERT_PASSWORD")
+    def parse_ver(v)
+      v.to_s.strip.split('.').map(&:to_i)
     end
-    cert_path = ENV["IOS_DIST_CERT_PATH"]
-    if cert_path.nil? || cert_path.empty?
-      cert_path = File.join(Dir.pwd, "dist_cert.p12")
-      File.binwrite(cert_path, Base64.decode64(ENV["IOS_DIST_CERT_BASE64"]))
+    def cmp_ver(a, b)
+      ax = parse_ver(a); bx = parse_ver(b)
+      (0..2).each do |i|
+        (ax[i] ||= 0); (bx[i] ||= 0)
+        return ax[i] <=> bx[i] if ax[i] != bx[i]
+      end
+      0
     end
-    cert_password = ENV["IOS_DIST_CERT_PASSWORD"]
-    puts "🔏 匯入 Distribution 憑證到臨時 keychain"
-    import_certificate(
-      certificate_path: cert_path,
-      certificate_password: cert_password,
-      keychain_path: keychain_path,
-      keychain_password: keychain_password
-    )
+    def bump_patch(v)
+      a = parse_ver(v)
+      a[0] ||= 1; a[1] ||= 0; a[2] ||= 0
+      a[2] += 1
+      "%d.%d.%d" % a[0..2]
+    end
 
-    sigh(
-      api_key: api_key,
-      app_identifier: "com.linli.blackcatnews",
-      force: true
-    )
-    profile_uuid = lane_context[SharedValues::SIGH_UUID]
-    profile_name = lane_context[SharedValues::SIGH_NAME]
-    puts "📋 使用描述檔: #{profile_name} (#{profile_uuid})"
+    current_from_xcconfig = nil
+    if File.exist?(xcconfig_path)
+      text = File.read(xcconfig_path)
+      m = text.match(/^\s*MARKETING_VERSION\s*=\s*([0-9.]+)\s*$/)
+      current_from_xcconfig = m && m[1]
+    end
+    current_from_proj = (get_version_number(xcodeproj: project_path) rescue nil)
 
-    # 將 iosApp 主 target 的 Release 設為手動簽章（避免 CI 需要 Apple ID/Development Profile）
-    update_code_signing_settings(
-      use_automatic_signing: false,
-      path: "iosApp.xcodeproj",
-      targets: ["iosApp"],
-      build_configurations: ["Release"],
-      team_id: ENV["APPLE_TEAM_ID"],
-      code_sign_identity: "Apple Distribution",
-      profile_name: profile_name
-    )
+    base_version = if current_from_xcconfig && current_from_proj
+      cmp_ver(current_from_xcconfig, current_from_proj) >= 0 ? current_from_xcconfig : current_from_proj
+    else
+      current_from_xcconfig || current_from_proj || "1.0.0"
+    end
 
-    export_opts = {
-      method: "app-store",
-      signingStyle: "manual",
-      provisioningProfiles: {
-        "com.linli.blackcatnews" => profile_name
+    # If triggered by tag like ios-vX.Y.Z or ios-beta-vX.Y.Z, respect tag version; else bump patch
+    ref_type = ENV['GITHUB_REF_TYPE'].to_s
+    ref_name = ENV['GITHUB_REF_NAME'].to_s
+    desired_version = nil
+    if ref_type == 'tag' && ref_name =~ /^ios-(?:beta-)?v(\d+\.\d+\.\d+)$/
+      desired_version = Regexp.last_match(1)
+    else
+      desired_version = bump_patch(base_version)
+    end
+    desired_version = bump_patch(base_version) if cmp_ver(desired_version, base_version) <= 0
+
+    UI.message("📌 MARKETING_VERSION: base=#{base_version} → set to #{desired_version}")
+    # Write back to xcconfig (do not commit)
+    if File.exist?(xcconfig_path)
+      sh %Q{/usr/bin/sed -i '' -E "s/^\\s*MARKETING_VERSION\\s*=.*/MARKETING_VERSION=#{desired_version}/" "#{xcconfig_path}"}
+    end
+
+    # Compute CFBundleVersion from TestFlight latest build for this marketing version (only increases when actually uploading)
+    begin
+      latest_tf_build = latest_testflight_build_number(
+        app_identifier: 'com.linli.blackcatnews',
+        version: desired_version,
+        api_key: api_key
+      )
+      next_build = latest_tf_build.to_i + 1
+      UI.message("🔢 Set CFBundleVersion to #{next_build} (latest TestFlight build for #{desired_version} was #{latest_tf_build})")
+      increment_build_number(build_number: next_build, xcodeproj: project_path)
+    rescue => e
+      UI.important("⚠️ Could not fetch latest TestFlight build: #{e.message}. Fallback CFBundleVersion=1")
+      increment_build_number(build_number: 1, xcodeproj: project_path)
+    end
+    # ===== End auto-manage versioning =====
+
+    begin
+      # 使用手動簽章（匯入 p12 到臨時 keychain + 下載 App Store 描述檔）
+      keychain_name = "fastlane_manual_tmp"
+      keychain_password = SecureRandom.uuid
+      puts "🔐 創建臨時 keychain: #{keychain_name}"
+      keychain_path = File.expand_path("~/Library/Keychains/#{keychain_name}-db")
+      create_keychain(
+        name: keychain_name,
+        password: keychain_password,
+        default_keychain: true,
+        unlock: true,
+        timeout: 3600,
+        lock_when_sleeps: false,
+        require_create: true
+      )
+
+      unless (ENV["IOS_DIST_CERT_BASE64"] || ENV["IOS_DIST_CERT_PATH"]) && ENV["IOS_DIST_CERT_PASSWORD"]
+        UI.user_error!("缺少發行憑證（p12）設定：請提供 IOS_DIST_CERT_BASE64（或 IOS_DIST_CERT_PATH）與 IOS_DIST_CERT_PASSWORD")
+      end
+      cert_path = ENV["IOS_DIST_CERT_PATH"]
+      if cert_path.nil? || cert_path.empty?
+        cert_path = File.join(Dir.pwd, "dist_cert.p12")
+        File.binwrite(cert_path, Base64.decode64(ENV["IOS_DIST_CERT_BASE64"]))
+      end
+      cert_password = ENV["IOS_DIST_CERT_PASSWORD"]
+      puts "🔏 匯入 Distribution 憑證到臨時 keychain"
+      import_certificate(
+        certificate_path: cert_path,
+        certificate_password: cert_password,
+        keychain_path: keychain_path,
+        keychain_password: keychain_password
+      )
+
+      sigh(
+        api_key: api_key,
+        app_identifier: "com.linli.blackcatnews",
+        force: true
+      )
+      profile_uuid = lane_context[SharedValues::SIGH_UUID]
+      profile_name = lane_context[SharedValues::SIGH_NAME]
+      puts "📋 使用描述檔: #{profile_name} (#{profile_uuid})"
+
+      # 將 iosApp 主 target 的 Release 設為手動簽章（避免 CI 需要 Apple ID/Development Profile）
+      update_code_signing_settings(
+        use_automatic_signing: false,
+        path: File.expand_path('../iosApp.xcodeproj', __dir__),
+        targets: ["iosApp"],
+        build_configurations: ["Release"],
+        team_id: ENV["APPLE_TEAM_ID"],
+        code_sign_identity: "Apple Distribution",
+        profile_name: profile_name
+      )
+
+      export_opts = {
+        method: "app-store",
+        signingStyle: "manual",
+        provisioningProfiles: {
+          "com.linli.blackcatnews" => profile_name
+        }
       }
-    }
-    xcargs = [
-      "-allowProvisioningUpdates",
-      "OTHER_CODE_SIGN_FLAGS='--keychain #{keychain_path}'"
-    ].join(" ")
+      xcargs = [
+        "-allowProvisioningUpdates",
+        "OTHER_CODE_SIGN_FLAGS='--keychain #{keychain_path}'"
+      ].join(" ")
 
-    gym(
-      workspace: "iosApp.xcworkspace",
-      scheme: "iosApp",
-      configuration: "Release",
-      export_method: "app-store",
-      clean: true,
-      include_bitcode: false,
-      export_options: export_opts,
-      xcargs: xcargs,
-      output_directory: ".",
-      output_name: "BlackCatNews"
-    )
-
-    # 清理臨時 keychain
-    puts "🗑️ 刪除臨時 keychain: #{keychain_name}"
-    delete_keychain(name: keychain_name)
+      gym(
+        workspace: File.expand_path('../iosApp.xcworkspace', __dir__),
+        scheme: "iosApp",
+        configuration: "Release",
+        export_method: "app-store",
+        clean: true,
+        include_bitcode: false,
+        export_options: export_opts,
+        xcargs: xcargs,
+        output_directory: File.expand_path('..', __dir__),
+        output_name: "BlackCatNews"
+      )
+    ensure
+      puts "🗑️ 刪除臨時 keychain: #{keychain_name}"
+      delete_keychain(name: keychain_name)
+    end
   end
 
   desc "Upload to TestFlight"
@@ -121,8 +186,8 @@ platform :ios do
     api_key = app_store_connect_api_key(
       key_id: ENV["ASC_KEY_ID"],
       issuer_id: ENV["ASC_ISSUER_ID"],
-      key_content: ENV["ASC_PRIVATE_KEY"],
-      is_key_content_base64: ENV["ASC_PRIVATE_KEY_BASE64"] == "true"
+      key_content: ENV["ASC_PRIVATE_KEY_BASE64"].to_s.empty? ? ENV["ASC_PRIVATE_KEY"] : ENV["ASC_PRIVATE_KEY_BASE64"],
+      is_key_content_base64: !ENV["ASC_PRIVATE_KEY_BASE64"].to_s.empty?
     )
     pilot(
       api_key: api_key,
@@ -160,8 +225,8 @@ platform :ios do
     api_key = app_store_connect_api_key(
       key_id: ENV["ASC_KEY_ID"],
       issuer_id: ENV["ASC_ISSUER_ID"],
-      key_content: ENV["ASC_PRIVATE_KEY"],
-      is_key_content_base64: ENV["ASC_PRIVATE_KEY_BASE64"] == "true"
+      key_content: ENV["ASC_PRIVATE_KEY_BASE64"].to_s.empty? ? ENV["ASC_PRIVATE_KEY"] : ENV["ASC_PRIVATE_KEY_BASE64"],
+      is_key_content_base64: !ENV["ASC_PRIVATE_KEY_BASE64"].to_s.empty?
     )
     begin
       deliver(
