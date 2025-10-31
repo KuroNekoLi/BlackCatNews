@@ -187,6 +187,8 @@ platform :ios do
       xcargs = [
         "-allowProvisioningUpdates",
         "OTHER_CODE_SIGN_FLAGS='--keychain #{keychain_path}'",
+        "MARKETING_VERSION=#{desired_version}",
+        "CURRENT_PROJECT_VERSION=#{next_build}",
         "-jobs 1"
       ].join(" ")
 
@@ -205,6 +207,21 @@ platform :ios do
         output_directory: File.expand_path('..', __dir__),
         output_name: "BlackCatNews"
       )
+      # ✅ Verify version embedded in IPA matches what we set
+      begin
+        ipa_path = File.expand_path('..', __dir__) + "/BlackCatNews.ipa"
+        sh %Q{
+          tmpdir=$(mktemp -d) &&
+          unzip -q "#{ipa_path}" -d "$tmpdir" &&
+          IPA_VER=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$tmpdir/Payload/BlackCatNews.app/Info.plist") &&
+          IPA_BUILD=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleVersion' "$tmpdir/Payload/BlackCatNews.app/Info.plist") &&
+          echo "📦 IPA CFBundleShortVersionString=$IPA_VER CFBundleVersion=$IPA_BUILD" &&
+          test "$IPA_VER" = "#{desired_version}" || (echo "❌ IPA version mismatch. expected #{desired_version}, got $IPA_VER" ; exit 1) &&
+          test "$IPA_BUILD" = "#{next_build}" || (echo "❌ IPA build mismatch. expected #{next_build}, got $IPA_BUILD" ; exit 1)
+        }
+      rescue => e
+        UI.user_error!("IPA version verification failed: #{e.message}")
+      end
     ensure
       puts "🗑️ 刪除臨時 keychain: #{keychain_name}"
       delete_keychain(name: keychain_name)
@@ -365,7 +382,7 @@ platform :ios do
             signingStyle: "manual",
             provisioningProfiles: { "com.linli.blackcatnews" => profile_name }
           },
-          xcargs: "-allowProvisioningUpdates OTHER_CODE_SIGN_FLAGS='--keychain #{keychain_path}' -jobs 1",
+          xcargs: "-allowProvisioningUpdates OTHER_CODE_SIGN_FLAGS='--keychain #{keychain_path}' MARKETING_VERSION=#{new_ver} CURRENT_PROJECT_VERSION=#{next_build} -jobs 1",
           output_directory: File.expand_path('..', __dir__),
           output_name: "BlackCatNews"
         )
