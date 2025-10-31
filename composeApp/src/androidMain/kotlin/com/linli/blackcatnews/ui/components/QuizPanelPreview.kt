@@ -232,7 +232,8 @@ private fun QuizPanelEmptyPreview() {
 private fun getSampleQuizQuestions(): List<QuizQuestion> = listOf(
     QuizQuestion(
         id = "1",
-        question = "What is the main topic of the article?",
+        questionEnglish = "What is the main topic of the article?",
+        questionChinese = "本文的主題是什麼？",
         options = listOf(
             "Technology trends",
             "Climate change",
@@ -241,11 +242,13 @@ private fun getSampleQuizQuestions(): List<QuizQuestion> = listOf(
         ),
         correctAnswerIndex = 0,
         correctAnswerKey = "A",
-        explanation = "The article focuses on technology trends and their impact on society."
+        explanationEnglish = "The article focuses on technology trends and their impact on society.",
+        explanationChinese = "本文著重於科技趨勢及其社會影響。"
     ),
     QuizQuestion(
         id = "2",
-        question = "According to the author, what should we do?",
+        questionEnglish = "According to the author, what should we do?",
+        questionChinese = "作者認為我們應該怎麼做？",
         options = listOf(
             "Wait and see",
             "Take immediate action",
@@ -254,14 +257,16 @@ private fun getSampleQuizQuestions(): List<QuizQuestion> = listOf(
         ),
         correctAnswerIndex = 1,
         correctAnswerKey = "B",
-        explanation = "The author emphasizes the need for immediate action to address current challenges."
+        explanationEnglish = "The author emphasizes the need for immediate action to address current challenges.",
+        explanationChinese = "作者強調應立即採取行動應對當前挑戰。"
     )
 )
 
 private fun getLongQuizQuestions(): List<QuizQuestion> = listOf(
     QuizQuestion(
         id = "1",
-        question = "What is artificial intelligence primarily used for in healthcare?",
+        questionEnglish = "What is artificial intelligence primarily used for in healthcare?",
+        questionChinese = "人工智慧在醫療領域主要用於什麼？",
         options = listOf(
             "Diagnostic assistance and treatment planning",
             "Replacing doctors completely",
@@ -270,11 +275,13 @@ private fun getLongQuizQuestions(): List<QuizQuestion> = listOf(
         ),
         correctAnswerIndex = 0,
         correctAnswerKey = "A",
-        explanation = "AI is primarily used to assist with diagnostics and treatment planning."
+        explanationEnglish = "AI is primarily used to assist with diagnostics and treatment planning.",
+        explanationChinese = "AI 主要用於協助診斷及治療規劃。"
     ),
     QuizQuestion(
         id = "2",
-        question = "Which technology enables machines to learn from data?",
+        questionEnglish = "Which technology enables machines to learn from data?",
+        questionChinese = "哪項技術可讓機器從數據學習？",
         options = listOf(
             "Basic programming",
             "Machine learning",
@@ -283,11 +290,13 @@ private fun getLongQuizQuestions(): List<QuizQuestion> = listOf(
         ),
         correctAnswerIndex = 1,
         correctAnswerKey = "B",
-        explanation = "Machine learning allows machines to learn and improve from data."
+        explanationEnglish = "Machine learning allows machines to learn and improve from data.",
+        explanationChinese = "機器學習允許機器從數據中學習與進步。"
     ),
     QuizQuestion(
         id = "3",
-        question = "What is the main benefit of AI in medical imaging?",
+        questionEnglish = "What is the main benefit of AI in medical imaging?",
+        questionChinese = "AI 在醫學影像的最大好處是什麼？",
         options = listOf(
             "Faster image processing",
             "Cheaper equipment",
@@ -296,11 +305,13 @@ private fun getLongQuizQuestions(): List<QuizQuestion> = listOf(
         ),
         correctAnswerIndex = 2,
         correctAnswerKey = "C",
-        explanation = "AI significantly enhances accuracy in detecting medical conditions from images."
+        explanationEnglish = "AI significantly enhances accuracy in detecting medical conditions from images.",
+        explanationChinese = "AI 大幅提升醫學影像診斷的準確性。"
     ),
     QuizQuestion(
         id = "4",
-        question = "How does AI contribute to personalized medicine?",
+        questionEnglish = "How does AI contribute to personalized medicine?",
+        questionChinese = "AI 如何促進個人化醫療？",
         options = listOf(
             "By analyzing individual patient data",
             "By using the same treatment for everyone",
@@ -309,14 +320,16 @@ private fun getLongQuizQuestions(): List<QuizQuestion> = listOf(
         ),
         correctAnswerIndex = 0,
         correctAnswerKey = "A",
-        explanation = "AI analyzes individual patient data to create personalized treatment plans."
+        explanationEnglish = "AI analyzes individual patient data to create personalized treatment plans.",
+        explanationChinese = "AI 透過分析個人資料設計專屬治療方案。"
     )
 )
 
 private fun getSingleQuizQuestion(): List<QuizQuestion> = listOf(
     QuizQuestion(
         id = "single",
-        question = "What does AI stand for in technology?",
+        questionEnglish = "What does AI stand for in technology?",
+        questionChinese = "AI 在科技領域代表什麼？",
         options = listOf(
             "Automated Intelligence",
             "Artificial Intelligence",
@@ -325,6 +338,7 @@ private fun getSingleQuizQuestion(): List<QuizQuestion> = listOf(
         ),
         correctAnswerIndex = 1,
         correctAnswerKey = "B",
-        explanation = "AI stands for Artificial Intelligence, referring to machine systems that can perform tasks typically requiring human intelligence."
+        explanationEnglish = "AI stands for Artificial Intelligence, referring to machine systems that can perform tasks typically requiring human intelligence.",
+        explanationChinese = "AI 指的是人工智慧，是指能執行人類智能任務的機器系統。"
     )
 )

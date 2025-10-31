@@ -5,23 +5,29 @@ import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.MenuBook
 import androidx.compose.material.icons.filled.School
+import androidx.compose.material.icons.filled.Send
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -29,6 +35,7 @@ import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberModalBottomSheetState
@@ -41,6 +48,9 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.linli.blackcatnews.domain.model.GlossaryItem
@@ -76,6 +86,7 @@ fun QuizPanel(
     rememberModalBottomSheetState(skipPartiallyExpanded = true)
     listOf("重點單字", "文法說明", "句型說明", "片語／習語")
     rememberCoroutineScope()
+    var currentIndex by remember { mutableStateOf(0) }
 
     Column(
         modifier = modifier
@@ -110,8 +121,7 @@ fun QuizPanel(
         ) {
             Card(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .heightIn(max = 350.dp),
+                    .fillMaxWidth(),
                 colors = CardDefaults.cardColors(
                     containerColor = MaterialTheme.colorScheme.surface
                 ),
@@ -122,76 +132,217 @@ fun QuizPanel(
                         .fillMaxWidth()
                         .padding(16.dp)
                 ) {
-                    // 測驗標題
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
+                    // 測驗標題（漸層區塊 + 右側重置）
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(MaterialTheme.shapes.medium)
+                            .background(
+                                Brush.horizontalGradient(
+                                    listOf(
+                                        MaterialTheme.colorScheme.primaryContainer,
+                                        MaterialTheme.colorScheme.secondaryContainer
+                                    )
+                                )
+                            )
+                            .padding(horizontal = 16.dp, vertical = 12.dp)
                     ) {
-                        Text(
-                            text = "✅ 閱讀測驗",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold
-                        )
-                        if (isSubmitted) {
-                            TextButton(onClick = onReset) {
-                                Text("重新測驗")
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(
+                                    imageVector = Icons.Filled.MenuBook,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.onPrimaryContainer
+                                )
+                                Spacer(Modifier.size(8.dp))
+                                Text(
+                                    text = "閱讀測驗",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.onPrimaryContainer
+                                )
+                                Spacer(Modifier.size(10.dp))
+                                Surface(
+                                    color = MaterialTheme.colorScheme.surface,
+                                    tonalElevation = 2.dp,
+                                    shape = CircleShape,
+                                    border = BorderStroke(
+                                        1.dp,
+                                        MaterialTheme.colorScheme.outlineVariant
+                                    )
+                                ) {
+                                    val answeredCount = userAnswers.size
+                                    Text(
+                                        text = "${answeredCount}/${quiz.size}",
+                                        modifier = Modifier.padding(
+                                            horizontal = 10.dp,
+                                            vertical = 4.dp
+                                        ),
+                                        style = MaterialTheme.typography.labelLarge
+                                    )
+                                }
+                            }
+                            if (isSubmitted) {
+                                TextButton(onClick = onReset) { Text("重新測驗") }
                             }
                         }
                     }
 
                     HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
 
-                    // 題目列表（可滾動）
-                    Column(
-                        modifier = Modifier
-                            .weight(1f)
-                            .verticalScroll(rememberScrollState()),
-                        verticalArrangement = Arrangement.spacedBy(16.dp)
-                    ) {
-                        quiz.forEachIndexed { index, question ->
-                            QuizQuestionItem(
-                                questionNumber = index + 1,
-                                question = question,
-                                selectedAnswer = userAnswers[index],
-                                onAnswerSelected = { answerIndex ->
-                                    if (!isSubmitted) {
-                                        userAnswers[index] = answerIndex
+                    // 題目導覽：圓形題號列（更友善的定位與跳題）
+                    if (quiz.isNotEmpty()) {
+                        LazyRow(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(10.dp),
+                            contentPadding = PaddingValues(vertical = 4.dp)
+                        ) {
+                            itemsIndexed(quiz) { index, _ ->
+                                val answered = userAnswers.containsKey(index)
+                                val isCorrect =
+                                    answered && userAnswers[index] == quiz[index].correctAnswerIndex
+                                val bg = when {
+                                    isSubmitted && isCorrect -> MaterialTheme.colorScheme.primaryContainer
+                                    isSubmitted && !isCorrect && answered -> MaterialTheme.colorScheme.errorContainer
+                                    index == currentIndex -> MaterialTheme.colorScheme.secondaryContainer
+                                    else -> MaterialTheme.colorScheme.surfaceVariant
+                                }
+                                val fg = when {
+                                    isSubmitted && isCorrect -> MaterialTheme.colorScheme.onPrimaryContainer
+                                    isSubmitted && !isCorrect && answered -> MaterialTheme.colorScheme.onErrorContainer
+                                    index == currentIndex -> MaterialTheme.colorScheme.onSecondaryContainer
+                                    else -> MaterialTheme.colorScheme.onSurfaceVariant
+                                }
+                                Surface(
+                                    modifier = Modifier
+                                        .size(40.dp)
+                                        .clip(CircleShape)
+                                        .clickable { currentIndex = index },
+                                    shape = CircleShape,
+                                    color = bg,
+                                    border = BorderStroke(
+                                        1.dp,
+                                        MaterialTheme.colorScheme.outlineVariant
+                                    )
+                                ) {
+                                    Box(contentAlignment = Alignment.Center) {
+                                        Text(
+                                            text = "${index + 1}",
+                                            color = fg,
+                                            style = MaterialTheme.typography.labelLarge,
+                                            fontWeight = FontWeight.Bold
+                                        )
                                     }
-                                },
-                                isSubmitted = isSubmitted
-                            )
+                                }
+                            }
                         }
+                        Spacer(modifier = Modifier.height(8.dp))
+                        // 顏色圖例
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(16.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            LegendDot(MaterialTheme.colorScheme.secondaryContainer, "目前題")
+                            LegendDot(MaterialTheme.colorScheme.primaryContainer, "答對")
+                            LegendDot(MaterialTheme.colorScheme.errorContainer, "答錯")
+                            LegendDot(MaterialTheme.colorScheme.surfaceVariant, "未作答")
+                        }
+                        Spacer(modifier = Modifier.height(8.dp))
+                    }
+
+                    // 單題顯示（不再整頁直向捲動）
+                    if (quiz.isNotEmpty()) {
+                        val question = quiz[currentIndex]
+                        QuizQuestionItem(
+                            questionNumber = currentIndex + 1,
+                            question = question,
+                            selectedAnswer = userAnswers[currentIndex],
+                            onAnswerSelected = { answerIndex ->
+                                if (!isSubmitted) {
+                                    userAnswers[currentIndex] = answerIndex
+                                }
+                            },
+                            isSubmitted = isSubmitted
+                        )
+
+                        // 解析區塊（提交後顯示）
+                        if (isSubmitted) {
+                            Spacer(modifier = Modifier.height(12.dp))
+                            Surface(
+                                shape = MaterialTheme.shapes.medium,
+                                color = MaterialTheme.colorScheme.tertiaryContainer,
+                                tonalElevation = 1.dp,
+                            ) {
+                                Column(
+                                    modifier = Modifier.padding(12.dp),
+                                    verticalArrangement = Arrangement.spacedBy(6.dp)
+                                ) {
+                                    Text(
+                                        text = "題目中文：",
+                                        style = MaterialTheme.typography.labelLarge.copy(color = MaterialTheme.colorScheme.onTertiaryContainer)
+                                    )
+                                    Text(
+                                        text = question.questionChinese.orEmpty(),
+                                        style = MaterialTheme.typography.bodyLarge,
+                                        color = MaterialTheme.colorScheme.onTertiaryContainer
+                                    )
+                                    val hasEn = question.explanationEnglish?.isNotBlank() == true
+                                    val hasZh = question.explanationChinese?.isNotBlank() == true
+                                    if (hasEn || hasZh) {
+                                        Spacer(modifier = Modifier.height(6.dp))
+                                        Row(verticalAlignment = Alignment.CenterVertically) {
+                                            Icon(
+                                                imageVector = Icons.Filled.School,
+                                                contentDescription = null,
+                                                tint = MaterialTheme.colorScheme.onTertiaryContainer
+                                            )
+                                            Spacer(Modifier.size(6.dp))
+                                            Text(
+                                                text = "解析：",
+                                                style = MaterialTheme.typography.labelLarge.copy(
+                                                    color = MaterialTheme.colorScheme.onTertiaryContainer
+                                                )
+                                            )
+                                        }
+                                        if (hasEn) {
+                                            Text(
+                                                text = question.explanationEnglish.orEmpty(),
+                                                style = MaterialTheme.typography.bodyLarge,
+                                                color = MaterialTheme.colorScheme.onTertiaryContainer
+                                            )
+                                        }
+                                        if (hasZh) {
+                                            Text(
+                                                text = question.explanationChinese.orEmpty(),
+                                                style = MaterialTheme.typography.bodyMedium,
+                                                color = MaterialTheme.colorScheme.onTertiaryContainer
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    } else {
+                        Text("目前沒有題目", style = MaterialTheme.typography.bodyLarge)
                     }
 
                     Spacer(modifier = Modifier.height(8.dp))
 
-                    // 送出按鈕
                     if (!isSubmitted) {
                         Button(
                             onClick = onSubmit,
                             modifier = Modifier.fillMaxWidth(),
-                            enabled = userAnswers.size == quiz.size
+                            enabled = userAnswers.size == quiz.size,
+                            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
                         ) {
+                            Icon(Icons.Filled.Send, contentDescription = null)
+                            Spacer(Modifier.size(8.dp))
                             Text("送出答案")
-                        }
-                    } else {
-                        // 顯示分數
-                        val correctCount = quiz.indices.count { index ->
-                            userAnswers[index] == quiz[index].correctAnswerIndex
-                        }
-                        Card(
-                            modifier = Modifier.fillMaxWidth(),
-                            colors = CardDefaults.cardColors(
-                                containerColor = MaterialTheme.colorScheme.primaryContainer
-                            )
-                        ) {
-                            Text(
-                                text = "✨ 得分：$correctCount / ${quiz.size}",
-                                modifier = Modifier.padding(16.dp),
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Bold
-                            )
                         }
                     }
                 }
@@ -220,6 +371,24 @@ fun QuizPanel(
                 )
             }
         }
+    }
+}
+
+@Composable
+private fun LegendDot(colorBg: Color, label: String) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Surface(
+            modifier = Modifier.size(12.dp),
+            shape = CircleShape,
+            color = colorBg,
+            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
+        ) {}
+        Spacer(Modifier.size(6.dp))
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
     }
 }
 
@@ -440,7 +609,8 @@ private fun QuizPanelEmptyPreview() {
 private fun getSampleQuizQuestions(): List<QuizQuestion> = listOf(
     QuizQuestion(
         id = "1",
-        question = "What is the main topic of the article?",
+        questionEnglish = "What is the main topic of the article?",
+        questionChinese = "本文的主題是什麼？",
         options = listOf(
             "Technology trends",
             "Climate change",
@@ -449,11 +619,13 @@ private fun getSampleQuizQuestions(): List<QuizQuestion> = listOf(
         ),
         correctAnswerIndex = 0,
         correctAnswerKey = "A",
-        explanation = "The article focuses on technology trends and their impact on society."
+        explanationEnglish = "The article focuses on technology trends and their impact on society.",
+        explanationChinese = "本文著重於科技趨勢及其社會影響。"
     ),
     QuizQuestion(
         id = "2",
-        question = "According to the author, what should we do?",
+        questionEnglish = "According to the author, what should we do?",
+        questionChinese = "作者認為我們應該怎麼做？",
         options = listOf(
             "Wait and see",
             "Take immediate action",
@@ -462,14 +634,16 @@ private fun getSampleQuizQuestions(): List<QuizQuestion> = listOf(
         ),
         correctAnswerIndex = 1,
         correctAnswerKey = "B",
-        explanation = "The author emphasizes the need for immediate action to address current challenges."
+        explanationEnglish = "The author emphasizes the need for immediate action to address current challenges.",
+        explanationChinese = "作者強調應立即採取行動應對當前挑戰。"
     )
 )
 
 private fun getLongQuizQuestions(): List<QuizQuestion> = listOf(
     QuizQuestion(
         id = "1",
-        question = "What is artificial intelligence primarily used for in healthcare?",
+        questionEnglish = "What is artificial intelligence primarily used for in healthcare?",
+        questionChinese = "人工智慧在醫療領域主要用於什麼？",
         options = listOf(
             "Diagnostic assistance and treatment planning",
             "Replacing doctors completely",
@@ -478,11 +652,13 @@ private fun getLongQuizQuestions(): List<QuizQuestion> = listOf(
         ),
         correctAnswerIndex = 0,
         correctAnswerKey = "A",
-        explanation = "AI is primarily used to assist with diagnostics and treatment planning."
+        explanationEnglish = "AI is primarily used to assist with diagnostics and treatment planning.",
+        explanationChinese = "AI 主要用於協助診斷及治療規劃。"
     ),
     QuizQuestion(
         id = "2",
-        question = "Which technology enables machines to learn from data?",
+        questionEnglish = "Which technology enables machines to learn from data?",
+        questionChinese = "哪項技術可讓機器從數據學習？",
         options = listOf(
             "Basic programming",
             "Machine learning",
@@ -491,11 +667,13 @@ private fun getLongQuizQuestions(): List<QuizQuestion> = listOf(
         ),
         correctAnswerIndex = 1,
         correctAnswerKey = "B",
-        explanation = "Machine learning allows machines to learn and improve from data."
+        explanationEnglish = "Machine learning allows machines to learn and improve from data.",
+        explanationChinese = "機器學習允許機器從數據中學習與進步。"
     ),
     QuizQuestion(
         id = "3",
-        question = "What is the main benefit of AI in medical imaging?",
+        questionEnglish = "What is the main benefit of AI in medical imaging?",
+        questionChinese = "AI 在醫學影像的最大好處是什麼？",
         options = listOf(
             "Faster image processing",
             "Cheaper equipment",
@@ -504,11 +682,13 @@ private fun getLongQuizQuestions(): List<QuizQuestion> = listOf(
         ),
         correctAnswerIndex = 2,
         correctAnswerKey = "C",
-        explanation = "AI significantly enhances accuracy in detecting medical conditions from images."
+        explanationEnglish = "AI significantly enhances accuracy in detecting medical conditions from images.",
+        explanationChinese = "AI 大幅提升醫學影像診斷的準確性。"
     ),
     QuizQuestion(
         id = "4",
-        question = "How does AI contribute to personalized medicine?",
+        questionEnglish = "How does AI contribute to personalized medicine?",
+        questionChinese = "AI 如何促進個人化醫療？",
         options = listOf(
             "By analyzing individual patient data",
             "By using the same treatment for everyone",
@@ -517,14 +697,16 @@ private fun getLongQuizQuestions(): List<QuizQuestion> = listOf(
         ),
         correctAnswerIndex = 0,
         correctAnswerKey = "A",
-        explanation = "AI analyzes individual patient data to create personalized treatment plans."
+        explanationEnglish = "AI analyzes individual patient data to create personalized treatment plans.",
+        explanationChinese = "AI 透過分析個人資料設計專屬治療方案。"
     )
 )
 
 private fun getSingleQuizQuestion(): List<QuizQuestion> = listOf(
     QuizQuestion(
         id = "single",
-        question = "What does AI stand for in technology?",
+        questionEnglish = "What does AI stand for in technology?",
+        questionChinese = "AI 在科技領域代表什麼？",
         options = listOf(
             "Automated Intelligence",
             "Artificial Intelligence",
@@ -533,6 +715,7 @@ private fun getSingleQuizQuestion(): List<QuizQuestion> = listOf(
         ),
         correctAnswerIndex = 1,
         correctAnswerKey = "B",
-        explanation = "AI stands for Artificial Intelligence, referring to machine systems that can perform tasks typically requiring human intelligence."
+        explanationEnglish = "AI stands for Artificial Intelligence, referring to machine systems that can perform tasks typically requiring human intelligence.",
+        explanationChinese = "AI 指的是人工智慧，是指能執行人類智能任務的機器系統。"
     )
 )

@@ -272,8 +272,9 @@ private fun getSampleArticleData(): SampleArticleData = SampleArticleData(
     quiz = Quiz(
         questions = listOf(
             QuizQuestion(
-                id = "q1",
-                question = "What is the primary advantage of AI in medical imaging?",
+                id = "1",
+                questionEnglish = "What is the primary advantage of AI in medical imaging?",
+                questionChinese = "AI在醫學成像中的主要優點是什麼？",
                 options = listOf(
                     "Enhanced diagnostic precision and reduced interpretation time",
                     "Completely replacing human radiologists",
@@ -282,11 +283,13 @@ private fun getSampleArticleData(): SampleArticleData = SampleArticleData(
                 ),
                 correctAnswerIndex = 0,
                 correctAnswerKey = "A",
-                explanation = "AI in medical imaging primarily enhances diagnostic precision and reduces interpretation time while working alongside human professionals."
+                explanationEnglish = "AI in medical imaging primarily enhances diagnostic precision and reduces interpretation time while working alongside human professionals.",
+                explanationChinese = "AI在醫學成像中主要提高診斷精度和減少解釋時間，同時與人類專業人員合作。"
             ),
             QuizQuestion(
-                id = "q2",
-                question = "How does AI contribute to personalized medicine?",
+                id = "2",
+                questionEnglish = "How does AI contribute to personalized medicine?",
+                questionChinese = "AI如何為個人化醫療做出貢獻？",
                 options = listOf(
                     "By making all treatments the same for everyone",
                     "By analyzing patient data to recommend tailored treatment plans",
@@ -295,7 +298,8 @@ private fun getSampleArticleData(): SampleArticleData = SampleArticleData(
                 ),
                 correctAnswerIndex = 1,
                 correctAnswerKey = "B",
-                explanation = "AI contributes to personalized medicine by analyzing vast amounts of patient data to recommend treatment plans tailored to individual patients."
+                explanationEnglish = "AI contributes to personalized medicine by analyzing vast amounts of patient data to recommend treatment plans tailored to individual patients.",
+                explanationChinese = "AI通過分析大量患者數據推薦個性化的治療計劃，為個人化醫療做出貢獻。"
             )
         )
     ),

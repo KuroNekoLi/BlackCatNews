@@ -129,11 +129,13 @@ data class Quiz(
 @Serializable
 data class QuizQuestion(
     val id: String,
-    val question: String,
+    val questionEnglish: String,        // 英文題目
+    val questionChinese: String?,       // 中文題目
     val options: List<String>,
     val correctAnswerIndex: Int,
     val correctAnswerKey: String,
-    val explanation: String
+    val explanationEnglish: String?,    // 英文解釋
+    val explanationChinese: String?     // 中文解釋
 )
 
 /**

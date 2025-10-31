@@ -300,11 +300,13 @@ object ArticleMapper {
     private fun ComprehensionQuestionEntity.toDomain(): QuizQuestion {
         return QuizQuestion(
             id = id,
-            question = questionEnglish,
+            questionEnglish = questionEnglish,
+            questionChinese = questionChinese,
             options = options,
             correctAnswerIndex = correctAnswerIndex,
             correctAnswerKey = correctAnswerKey,
-            explanation = explanationChinese ?: explanationEnglish.orEmpty()
+            explanationEnglish = explanationEnglish,
+            explanationChinese = explanationChinese
         )
     }
 
