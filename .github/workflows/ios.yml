@@ -42,6 +42,15 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Cache Kotlin/Native (.konan)
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.konan
+          key: ${{ runner.os }}-konan-${{ hashFiles('**/gradle.properties','**/gradle/libs.versions.toml','**/build.gradle.kts','**/settings.gradle.kts') }}
+          restore-keys: |
+            ${{ runner.os }}-konan-
+
       - name: Select Xcode 16
         uses: maxim-lobanov/setup-xcode@v1
         with:
@@ -64,6 +73,26 @@ jobs:
           ruby-version: '3.3'
           bundler-cache: true
           working-directory: iosApp/fastlane
+
+      - name: Cache CocoaPods
+        uses: actions/cache@v4
+        with:
+          path: |
+            iosApp/Pods
+            ~/Library/Caches/CocoaPods
+            ~/.cocoapods
+          key: ${{ runner.os }}-pods-${{ hashFiles('iosApp/Podfile.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-pods-
+
+      - name: Cache Xcode DerivedData
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/Library/Developer/Xcode/DerivedData
+          key: ${{ runner.os }}-xcode-deriveddata-${{ hashFiles('iosApp/Podfile.lock','iosApp/**/*.swift','iosApp/**/*.m','iosApp/**/*.h','iosApp/*.xcodeproj/project.pbxproj','iosApp/*.xcworkspace/contents.xcworkspacedata') }}
+          restore-keys: |
+            ${{ runner.os }}-xcode-deriveddata-
 
       # CocoaPods（若 runner 尚未裝，安裝一次）
       - name: Ensure CocoaPods Installed
