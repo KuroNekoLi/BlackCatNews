@@ -5,73 +5,145 @@ require "spaceship"
 default_platform(:ios)
 
 platform :ios do
+  # ===== 共用配置 =====
+  BUNDLE_ID = "com.linli.blackcatnews"
+  TARGET_NAME = "iosApp"
+  OUTPUT_NAME = "BlackCatNews"
 
-  desc "Build ipa for App Store distribution"
-  lane :build do
-    # Resolve absolute paths to avoid running Gradle from iosApp/fastlane
-    root_dir = File.expand_path('../..', __dir__)         # repo root
-    gradlew  = File.join(root_dir, 'gradlew')             # wrapper at repo root
-    ios_proj_dir = File.expand_path('..', __dir__)        # iosApp directory
+  before_all do
+    @root_dir = File.expand_path('../..', __dir__)
+    @gradlew = File.join(@root_dir, 'gradlew')
+    @ios_proj_dir = File.expand_path('..', __dir__)
+    @project_path = File.join(@ios_proj_dir, "#{TARGET_NAME}.xcodeproj")
+    @workspace_path = File.join(@ios_proj_dir, "#{TARGET_NAME}.xcworkspace")
+    @xcconfig_path = File.join(@ios_proj_dir, 'Configuration/Config.xcconfig')
+  end
 
-    # 🔧 [新增步驟 1] 先生成 composeApp 的 podspec 與 dummy frameworks
-    sh %Q{#{gradlew} -p "#{root_dir}" :composeApp:podspec :core:authentication:podspec :composeApp:generateDummyFramework :core:authentication:generateDummyFramework --no-daemon --stacktrace}, log: true
+  # ===== 私有輔助方法 =====
+  private_lane :validate_api_key_env do
+    required = ["ASC_KEY_ID", "ASC_ISSUER_ID"]
+    required << (ENV["ASC_PRIVATE_KEY"] || ENV["ASC_PRIVATE_KEY_BASE64"] ? nil : "ASC_PRIVATE_KEY")
+    missing = required.compact.reject { |k| ENV[k] }
+    UI.user_error!("缺少 App Store Connect API 金鑰：#{missing.join(', ')}") unless missing.empty?
+  end
 
-    # 🔧從 Fastlane 的相對層執行 pod install
-    sh %Q{bundle exec pod install --project-directory="#{ios_proj_dir}" --repo-update}, log: true
-
-    # 僅使用 App Store Connect API Key（不使用 Apple ID 路徑）
-    unless ENV["ASC_KEY_ID"] && ENV["ASC_ISSUER_ID"] && (ENV["ASC_PRIVATE_KEY"] || ENV["ASC_PRIVATE_KEY_BASE64"])
-      UI.user_error!("缺少 App Store Connect API 金鑰設定：請提供 ASC_KEY_ID、ASC_ISSUER_ID、ASC_PRIVATE_KEY")
-    end
-    puts "🔑 使用 App Store Connect API Key 認證"
-    api_key = app_store_connect_api_key(
+  private_lane :get_api_key do
+    validate_api_key_env
+    UI.message("🔑 使用 App Store Connect API Key 認證")
+    app_store_connect_api_key(
       key_id: ENV["ASC_KEY_ID"],
       issuer_id: ENV["ASC_ISSUER_ID"],
       key_content: ENV["ASC_PRIVATE_KEY_BASE64"].to_s.empty? ? ENV["ASC_PRIVATE_KEY"] : ENV["ASC_PRIVATE_KEY_BASE64"],
       is_key_content_base64: !ENV["ASC_PRIVATE_KEY_BASE64"].to_s.empty?
     )
+  end
 
-    # ===== Auto-manage MARKETING_VERSION (CFBundleShortVersionString) and CFBundleVersion =====
-    # Prefer xcconfig as the source of truth, fallback to xcodeproj if needed
-    project_path  = File.expand_path('../iosApp.xcodeproj', __dir__)
-    workspace_path = File.expand_path('../iosApp.xcworkspace', __dir__)
-    xcconfig_path = File.expand_path('../Configuration/Config.xcconfig', __dir__)
+  private_lane :generate_podspec do
+    UI.message("🔧 生成 podspec 和 dummy frameworks")
+    sh %Q{#{@gradlew} -p "#{@root_dir}" :composeApp:podspec :core:authentication:podspec :composeApp:generateDummyFramework :core:authentication:generateDummyFramework --no-daemon --stacktrace}, log: true
+    sh %Q{bundle exec pod install --project-directory="#{@ios_proj_dir}" --repo-update}, log: true
+  end
 
-    def parse_ver(v)
-      v.to_s.strip.split('.').map(&:to_i)
+  private_lane :create_temp_keychain do |options|
+    name = options[:name] || "fastlane_manual_tmp"
+    password = SecureRandom.uuid
+    path = File.expand_path("~/Library/Keychains/#{name}-db")
+
+    UI.message("🔐 創建臨時 keychain: #{name}")
+    create_keychain(
+      name: name,
+      password: password,
+      default_keychain: true,
+      unlock: true,
+      timeout: 3600,
+      lock_when_sleeps: false,
+      require_create: true
+    )
+
+    { name: name, password: password, path: path }
+  end
+
+  private_lane :import_distribution_cert do |options|
+    unless (ENV["IOS_DIST_CERT_BASE64"] || ENV["IOS_DIST_CERT_PATH"]) && ENV["IOS_DIST_CERT_PASSWORD"]
+      UI.user_error!("缺少發行憑證設定：需要 IOS_DIST_CERT_BASE64 或 IOS_DIST_CERT_PATH，以及 IOS_DIST_CERT_PASSWORD")
     end
-    def cmp_ver(a, b)
-      ax = parse_ver(a); bx = parse_ver(b)
-      (0..2).each do |i|
-        (ax[i] ||= 0); (bx[i] ||= 0)
-        return ax[i] <=> bx[i] if ax[i] != bx[i]
+
+    cert_path = ENV["IOS_DIST_CERT_PATH"]
+    if cert_path.to_s.empty?
+      cert_path = File.join(Dir.pwd, options[:filename] || "dist_cert.p12")
+      File.binwrite(cert_path, Base64.decode64(ENV["IOS_DIST_CERT_BASE64"]))
+    end
+
+    UI.message("🔏 匯入 Distribution 憑證到臨時 keychain")
+    import_certificate(
+      certificate_path: cert_path,
+      certificate_password: ENV["IOS_DIST_CERT_PASSWORD"],
+      keychain_path: options[:keychain_path],
+      keychain_password: options[:keychain_password]
+    )
+  end
+
+  private_lane :setup_code_signing do |options|
+    api_key = options[:api_key]
+
+    sigh(
+      api_key: api_key,
+      app_identifier: BUNDLE_ID,
+      force: true
+    )
+
+    profile_uuid = lane_context[SharedValues::SIGH_UUID]
+    profile_name = lane_context[SharedValues::SIGH_NAME]
+    UI.message("📋 使用描述檔: #{profile_name} (#{profile_uuid})")
+
+    update_code_signing_settings(
+      use_automatic_signing: false,
+      path: @project_path,
+      targets: [TARGET_NAME],
+      build_configurations: ["Release"],
+      team_id: ENV["APPLE_TEAM_ID"],
+      code_sign_identity: "Apple Distribution",
+      profile_name: profile_name
+    )
+
+    profile_name
+  end
+
+  # ===== 版本管理輔助方法 =====
+  private_lane :parse_version do |options|
+    version = options[:version]
+    version.to_s.strip.split('.').map(&:to_i)
+  end
+
+  private_lane :compare_versions do |options|
+    a = options[:a]
+    b = options[:b]
+    ax = parse_version(version: a)
+    bx = parse_version(version: b)
+    result = 0
+    (0..2).each do |i|
+      ai = ax[i] || 0
+      bi = bx[i] || 0
+      if ai != bi
+        result = (ai <=> bi)
+        break
       end
-      0
     end
-    def bump_patch(v)
-      a = parse_ver(v)
-      a[0] ||= 1; a[1] ||= 0; a[2] ||= 0
-      a[2] += 1
-      "%d.%d.%d" % a[0..2]
-    end
+    result
+  end
 
-    current_from_proj = (get_version_number(xcodeproj: project_path, target: "iosApp") rescue nil)
-    base_version = current_from_proj || "1.0.0"
+  private_lane :bump_patch_version do |options|
+    version = options[:version]
+    parts = parse_version(version: version)
+    parts[0] ||= 1
+    parts[1] ||= 0
+    parts[2] ||= 0
+    parts[2] += 1
+    "%d.%d.%d" % parts[0..2]
+  end
 
-    # If triggered by tag like ios-vX.Y.Z or ios-beta-vX.Y.Z, respect tag version; else bump patch
-    ref_type = ENV['GITHUB_REF_TYPE'].to_s
-    ref_name = ENV['GITHUB_REF_NAME'].to_s
-    desired_version = nil
-    if ref_type == 'tag' && ref_name =~ /^ios-(?:beta-)?v(\d+\.\d+\.\d+)$/
-      desired_version = Regexp.last_match(1)
-    else
-      desired_version = bump_patch(base_version)
-    end
-
-    # 🔍 同步檢查 App Store 已核準的版本（live 版）- 使用正確的 Token 建立方式
+  private_lane :get_live_app_store_version do
     begin
-      require 'spaceship'
-      # 🔧 修正：使用 Token.create 而非 from_api_key
       token = Spaceship::ConnectAPI::Token.create(
         key_id: ENV["ASC_KEY_ID"],
         issuer_id: ENV["ASC_ISSUER_ID"],
@@ -79,368 +151,261 @@ platform :ios do
         is_key_content_base64: !ENV["ASC_PRIVATE_KEY_BASE64"].to_s.empty?
       )
       Spaceship::ConnectAPI.token = token
-      app = Spaceship::ConnectAPI::App.find('com.linli.blackcatnews')
-      live = app.get_live_app_store_version
-      approved_version = live&.version_string
-      if approved_version && cmp_ver(desired_version, approved_version) <= 0
-        UI.important("⚠️ Current approved App Store version is #{approved_version}; bumping above it.")
-        desired_version = bump_patch(approved_version)
-      end
+      app = Spaceship::ConnectAPI::App.find(BUNDLE_ID)
+      app.get_live_app_store_version&.version_string
     rescue => e
-      UI.important("⚠️ Unable to query live App Store version: #{e.message} — will proceed with desired_version=#{desired_version}")
-    end
-
-    # 確保仍然 >= 專案中的版本
-    desired_version = bump_patch(base_version) if cmp_ver(desired_version, base_version) <= 0
-
-    UI.message("📌 MARKETING_VERSION: base=#{base_version} → set to #{desired_version}")
-    UI.message("📌 MARKETING_VERSION will be set to #{desired_version} at build time only (not writing to Config.xcconfig)")
-
-    # Also sync xcodeproj marketing version for consistency (xcconfig remains source of truth)
-    begin
-      increment_version_number(
-        xcodeproj: project_path,
-        version_number: desired_version
-      )
-    rescue => e
-      UI.important("⚠️ Could not update xcodeproj MARKETING_VERSION: #{e.message}. Proceeding with xcconfig value.")
-    end
-
-    # Compute CFBundleVersion from TestFlight latest build for this marketing version (only increases when actually uploading)
-    begin
-      latest_tf_build = latest_testflight_build_number(
-        app_identifier: 'com.linli.blackcatnews',
-        version: desired_version,
-        api_key: api_key
-      )
-      next_build = latest_tf_build.to_i + 1
-      UI.message("🔢 Set CFBundleVersion to #{next_build} (latest TestFlight build for #{desired_version} was #{latest_tf_build})")
-
-      # Update CFBundleVersion (CURRENT_PROJECT_VERSION) directly in the Xcode project
-      increment_build_number(build_number: next_build, xcodeproj: project_path)
-    rescue => e
-      UI.important("⚠️ Could not fetch latest TestFlight build: #{e.message}. Fallback CFBundleVersion=1")
-      increment_build_number(build_number: 1, xcodeproj: project_path)
-    end
-    # ===== End auto-manage versioning =====
-
-    begin
-      # 使用手動簽章（匯入 p12 到臨時 keychain + 下載 App Store 描述檔）
-      keychain_name = "fastlane_manual_tmp"
-      keychain_password = SecureRandom.uuid
-      puts "🔐 創建臨時 keychain: #{keychain_name}"
-      keychain_path = File.expand_path("~/Library/Keychains/#{keychain_name}-db")
-      create_keychain(
-        name: keychain_name,
-        password: keychain_password,
-        default_keychain: true,
-        unlock: true,
-        timeout: 3600,
-        lock_when_sleeps: false,
-        require_create: true
-      )
-
-      unless (ENV["IOS_DIST_CERT_BASE64"] || ENV["IOS_DIST_CERT_PATH"]) && ENV["IOS_DIST_CERT_PASSWORD"]
-        UI.user_error!("缺少發行憑證（p12）設定：請提供 IOS_DIST_CERT_BASE64（或 IOS_DIST_CERT_PATH）與 IOS_DIST_CERT_PASSWORD")
-      end
-      cert_path = ENV["IOS_DIST_CERT_PATH"]
-      if cert_path.nil? || cert_path.empty?
-        cert_path = File.join(Dir.pwd, "dist_cert.p12")
-        File.binwrite(cert_path, Base64.decode64(ENV["IOS_DIST_CERT_BASE64"]))
-      end
-      cert_password = ENV["IOS_DIST_CERT_PASSWORD"]
-      puts "🔏 匯入 Distribution 憑證到臨時 keychain"
-      import_certificate(
-        certificate_path: cert_path,
-        certificate_password: cert_password,
-        keychain_path: keychain_path,
-        keychain_password: keychain_password
-      )
-
-      sigh(
-        api_key: api_key,
-        app_identifier: "com.linli.blackcatnews",
-        force: true
-      )
-      profile_uuid = lane_context[SharedValues::SIGH_UUID]
-      profile_name = lane_context[SharedValues::SIGH_NAME]
-      puts "📋 使用描述檔: #{profile_name} (#{profile_uuid})"
-
-      # 將 iosApp 主 target 的 Release 設為手動簽章（避免 CI 需要 Apple ID/Development Profile）
-      update_code_signing_settings(
-        use_automatic_signing: false,
-        path: File.expand_path('../iosApp.xcodeproj', __dir__),
-        targets: ["iosApp"],
-        build_configurations: ["Release"],
-        team_id: ENV["APPLE_TEAM_ID"],
-        code_sign_identity: "Apple Distribution",
-        profile_name: profile_name
-      )
-
-      export_opts = {
-        method: "app-store",
-        signingStyle: "manual",
-        provisioningProfiles: {
-          "com.linli.blackcatnews" => profile_name
-        }
-      }
-      xcargs = [
-        "-allowProvisioningUpdates",
-        "OTHER_CODE_SIGN_FLAGS='--keychain #{keychain_path}'",
-        "MARKETING_VERSION=#{desired_version}",
-        "CURRENT_PROJECT_VERSION=#{next_build}",
-        "-jobs 1"
-      ].join(" ")
-
-      sh %Q{#{gradlew} --stop || true}
-      sh %Q{rm -rf "#{root_dir}/.gradle/configuration-cache"}
-
-      gym(
-        workspace: File.expand_path('../iosApp.xcworkspace', __dir__),
-        scheme: "iosApp",
-        configuration: "Release",
-        export_method: "app-store",
-        clean: true,
-        include_bitcode: false,
-        export_options: export_opts,
-        xcargs: xcargs,
-        output_directory: File.expand_path('..', __dir__),
-        output_name: "BlackCatNews"
-      )
-      # ✅ Verify version embedded in IPA matches what we set
-      begin
-        ipa_path = File.expand_path('..', __dir__) + "/BlackCatNews.ipa"
-        sh %Q{
-          tmpdir=$(mktemp -d) &&
-          unzip -q "#{ipa_path}" -d "$tmpdir" &&
-          IPA_VER=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$tmpdir/Payload/BlackCatNews.app/Info.plist") &&
-          IPA_BUILD=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleVersion' "$tmpdir/Payload/BlackCatNews.app/Info.plist") &&
-          echo "📦 IPA CFBundleShortVersionString=$IPA_VER CFBundleVersion=$IPA_BUILD" &&
-          test "$IPA_VER" = "#{desired_version}" || (echo "❌ IPA version mismatch. expected #{desired_version}, got $IPA_VER" ; exit 1) &&
-          test "$IPA_BUILD" = "#{next_build}" || (echo "❌ IPA build mismatch. expected #{next_build}, got $IPA_BUILD" ; exit 1)
-        }
-      rescue => e
-        UI.user_error!("IPA version verification failed: #{e.message}")
-      end
-    ensure
-      puts "🗑️ 刪除臨時 keychain: #{keychain_name}"
-      delete_keychain(name: keychain_name)
+      UI.important("⚠️ 無法查詢 App Store 已核准版本：#{e.message}")
+      nil
     end
   end
 
-  desc "Upload to TestFlight with automatic version bump on Invalid Pre-Release Train"
+  private_lane :calculate_next_version do |options|
+    current_version = options[:current] || "1.0.0"
+
+    # 檢查是否由 tag 觸發
+    ref_type = ENV['GITHUB_REF_TYPE'].to_s
+    ref_name = ENV['GITHUB_REF_NAME'].to_s
+
+    if ref_type == 'tag' && ref_name =~ /^ios-(?:beta-)?v(\d+\.\d+\.\d+)$/
+      desired = Regexp.last_match(1)
+    else
+      desired = bump_patch_version(version: current_version)
+    end
+
+    # 確保高於 App Store 已核准版本
+    if (live_version = get_live_app_store_version)
+      if compare_versions(a: desired, b: live_version) <= 0
+        UI.important("⚠️ App Store 已核准版本為 #{live_version}，自動提升版本號")
+        desired = bump_patch_version(version: live_version)
+      end
+    end
+
+    # 確保高於專案當前版本
+    if compare_versions(a: desired, b: current_version) <= 0
+      desired = bump_patch_version(version: current_version)
+    end
+
+    desired
+  end
+
+  private_lane :update_version_and_build do |options|
+    api_key = options[:api_key]
+    version = options[:version]
+
+    UI.message("📌 設定 MARKETING_VERSION: #{version} (僅在建置時設定，不寫入 Config.xcconfig)")
+
+    begin
+      increment_version_number(xcodeproj: @project_path, version_number: version)
+    rescue => e
+      UI.important("⚠️ 無法更新 xcodeproj MARKETING_VERSION：#{e.message}")
+    end
+
+    begin
+      latest_build = latest_testflight_build_number(
+        app_identifier: BUNDLE_ID,
+        version: version,
+        api_key: api_key
+      )
+      next_build = latest_build.to_i + 1
+      UI.message("🔢 設定 CFBundleVersion: #{next_build} (TestFlight 最新 build 為 #{latest_build})")
+      increment_build_number(build_number: next_build, xcodeproj: @project_path)
+      next_build
+    rescue => e
+      UI.important("⚠️ 無法讀取 TestFlight build：#{e.message}，使用 build=1")
+      increment_build_number(build_number: 1, xcodeproj: @project_path)
+      1
+    end
+  end
+
+  private_lane :clean_gradle_cache do
+    sh %Q{#{@gradlew} --stop || true}
+    sh %Q{rm -rf "#{@root_dir}/.gradle/configuration-cache"}
+  end
+
+  private_lane :build_ipa do |options|
+    keychain_path = options[:keychain_path]
+    profile_name = options[:profile_name]
+    version = options[:version]
+    build_number = options[:build_number]
+
+    gym(
+      workspace: @workspace_path,
+      scheme: TARGET_NAME,
+      configuration: "Release",
+      export_method: "app-store",
+      clean: true,
+      include_bitcode: false,
+      export_options: {
+        method: "app-store",
+        signingStyle: "manual",
+        provisioningProfiles: { BUNDLE_ID => profile_name }
+      },
+      xcargs: [
+        "-allowProvisioningUpdates",
+        "OTHER_CODE_SIGN_FLAGS='--keychain #{keychain_path}'",
+        "MARKETING_VERSION=#{version}",
+        "CURRENT_PROJECT_VERSION=#{build_number}",
+        "-jobs 1"
+      ].join(" "),
+      output_directory: @ios_proj_dir,
+      output_name: OUTPUT_NAME
+    )
+  end
+
+  private_lane :verify_ipa_version do |options|
+    version = options[:version]
+    build_number = options[:build_number]
+    ipa_path = File.join(@ios_proj_dir, "#{OUTPUT_NAME}.ipa")
+
+    UI.message("✅ 驗證 IPA 版本資訊")
+    begin
+      sh %Q{
+        tmpdir=$(mktemp -d) &&
+        unzip -q "#{ipa_path}" -d "$tmpdir" &&
+        IPA_VER=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$tmpdir/Payload/#{OUTPUT_NAME}.app/Info.plist") &&
+        IPA_BUILD=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleVersion' "$tmpdir/Payload/#{OUTPUT_NAME}.app/Info.plist") &&
+        echo "📦 IPA 版本資訊：CFBundleShortVersionString=$IPA_VER CFBundleVersion=$IPA_BUILD" &&
+        test "$IPA_VER" = "#{version}" || (echo "❌ IPA 版本不符。預期 #{version}，實際 $IPA_VER" ; exit 1) &&
+        test "$IPA_BUILD" = "#{build_number}" || (echo "❌ IPA build 號不符。預期 #{build_number}，實際 $IPA_BUILD" ; exit 1)
+      }
+      UI.success("✅ IPA 版本驗證通過")
+    rescue => e
+      UI.user_error!("❌ IPA 版本驗證失敗：#{e.message}")
+    end
+  end
+
+  # ===== 主要 Lanes =====
+  desc "Build ipa for App Store distribution"
+  lane :build do
+    generate_podspec
+
+    api_key = get_api_key
+
+    # 計算版本號
+    current_version = get_version_number(xcodeproj: @project_path, target: TARGET_NAME) rescue "1.0.0"
+    desired_version = calculate_next_version(current: current_version)
+
+    UI.message("📌 版本管理：#{current_version} → #{desired_version}")
+
+    build_number = update_version_and_build(api_key: api_key, version: desired_version)
+
+    # 設定簽章
+    keychain = create_temp_keychain
+    begin
+      import_distribution_cert(
+        keychain_path: keychain[:path],
+        keychain_password: keychain[:password]
+      )
+
+      profile_name = setup_code_signing(api_key: api_key)
+
+      clean_gradle_cache
+      build_ipa(
+        keychain_path: keychain[:path],
+        profile_name: profile_name,
+        version: desired_version,
+        build_number: build_number
+      )
+
+      verify_ipa_version(version: desired_version, build_number: build_number)
+    ensure
+      UI.message("🗑️ 清理臨時 keychain: #{keychain[:name]}")
+      delete_keychain(name: keychain[:name])
+    end
+  end
+
+  desc "Upload to TestFlight with automatic version bump on conflict"
   lane :beta do
     build
 
-    api_key = app_store_connect_api_key(
-      key_id: ENV["ASC_KEY_ID"],
-      issuer_id: ENV["ASC_ISSUER_ID"],
-      key_content: ENV["ASC_PRIVATE_KEY_BASE64"].to_s.empty? ? ENV["ASC_PRIVATE_KEY"] : ENV["ASC_PRIVATE_KEY_BASE64"],
-      is_key_content_base64: !ENV["ASC_PRIVATE_KEY_BASE64"].to_s.empty?
-    )
-
-    workspace_path = File.expand_path('../iosApp.xcworkspace', __dir__)
-    project_path   = File.expand_path('../iosApp.xcodeproj', __dir__)
-    xcconfig_path  = File.expand_path('../Configuration/Config.xcconfig', __dir__)
-    gradlew        = File.join(File.expand_path('../..', __dir__), 'gradlew')
-    repo_root      = File.expand_path('../..', __dir__)
+    api_key = get_api_key
 
     begin
-      # 第一次嘗試上傳
-       version = (Actions.lane_context[SharedValues::VERSION_NUMBER] rescue nil) || ENV["MARKETING_VERSION"] || "unknown"
-       UI.message("🔁 嘗試上傳版本 #{version} …")
+      version = get_version_number(xcodeproj: @project_path, target: TARGET_NAME) rescue "unknown"
+      UI.message("🚀 上傳至 TestFlight (版本 #{version})")
+
       pilot(
         api_key: api_key,
-        ipa: "BlackCatNews.ipa",
+        ipa: "#{OUTPUT_NAME}.ipa",
         skip_waiting_for_build_processing: false
       )
-    rescue => ex  # 🔧 修正：改為捕獲所有例外
-      msg = ex.message.to_s
-      if msg =~ /(Invalid Pre-Release Train|CFBundleShortVersionString|already been used|409)/
-        UI.important("⛽️ 自動補救：偵測到版本列車關閉或版本號相同，將自動 bump patch 並重建上傳")
+    rescue => ex
+      if ex.message =~ /(Invalid Pre-Release Train|CFBundleShortVersionString|already been used|409)/
+        UI.important("⛽️ 偵測到版本衝突，自動 bump 並重試")
 
-        # ---- 讀取目前版本並 +0.0.1 ----
-        def parse_ver(v)
-          v.to_s.strip.split('.').map(&:to_i)
-        end
-        def bump_patch(v)
-          a = parse_ver(v)
-          a[0] ||= 1; a[1] ||= 0; a[2] ||= 0
-          a[2] += 1
-          "%d.%d.%d" % a[0..2]
-        end
-        def cmp_ver(a, b)
-          ax = parse_ver(a); bx = parse_ver(b)
-          (0..2).each do |i|
-            (ax[i] ||= 0); (bx[i] ||= 0)
-            return ax[i] <=> bx[i] if ax[i] != bx[i]
-          end
-          0
-        end
+        current_ver = get_version_number(xcodeproj: @project_path, target: TARGET_NAME) rescue "1.0.0"
+        new_ver = calculate_next_version(current: current_ver)
 
-         current_ver = (
-           get_version_number(xcodeproj: project_path, target: "iosApp") rescue
-           (Actions.lane_context[SharedValues::VERSION_NUMBER] rescue "1.0.0")
-         )
-        new_ver = bump_patch(current_ver)
+        UI.message("📌 版本更新：#{current_ver} → #{new_ver}")
 
-        # 🔍 檢查 App Store 已核准版本，確保新版本高於它 - 使用正確的 Token 建立方式
+        build_number = update_version_and_build(api_key: api_key, version: new_ver)
+
+        # 重建
+        clean_gradle_cache
+        generate_podspec
+
+        keychain = create_temp_keychain(name: "fastlane_manual_tmp_retry")
         begin
-          require 'spaceship'
-          # 🔧 修正：使用 Token.create 而非 from_api_key
-          token = Spaceship::ConnectAPI::Token.create(
-            key_id: ENV["ASC_KEY_ID"],
-            issuer_id: ENV["ASC_ISSUER_ID"],
-            key: ENV["ASC_PRIVATE_KEY_BASE64"].to_s.empty? ? ENV["ASC_PRIVATE_KEY"] : ENV["ASC_PRIVATE_KEY_BASE64"],
-            is_key_content_base64: !ENV["ASC_PRIVATE_KEY_BASE64"].to_s.empty?
+          import_distribution_cert(
+            keychain_path: keychain[:path],
+            keychain_password: keychain[:password],
+            filename: "dist_cert_retry.p12"
           )
-          Spaceship::ConnectAPI.token = token
-          app = Spaceship::ConnectAPI::App.find('com.linli.blackcatnews')
-          live = app.get_live_app_store_version
-          approved_version = live&.version_string
-          if approved_version && cmp_ver(new_ver, approved_version) <= 0
-            UI.important("⚠️ App Store 已核准版本為 #{approved_version}，必須高於此版本")
-            new_ver = bump_patch(approved_version)
-            UI.message("📌 調整為 #{new_ver}")
-          end
-        rescue => e
-          UI.important("⚠️ 無法查詢 App Store 版本：#{e.message}")
-        end
 
-        UI.message("📌 將 MARKETING_VERSION 從 #{current_ver} → #{new_ver}")
-
-        # 更新 xcconfig 為真實來源，再同步到 xcodeproj
-        UI.message("📌 MARKETING_VERSION will be set to #{new_ver} at build time only (not writing to Config.xcconfig)")
-        begin
-          increment_version_number(xcodeproj: project_path, version_number: new_ver)
-        rescue => e
-          UI.important("⚠️ 無法更新 xcodeproj MARKETING_VERSION：#{e.message}，但繼續執行。")
-        end
-
-        # 重新計算並遞增 CFBundleVersion（以 TestFlight 上該版本最新 build + 1）
-        begin
-          latest_tf_build = latest_testflight_build_number(
-            app_identifier: 'com.linli.blackcatnews',
+          profile_name = lane_context[SharedValues::SIGH_NAME]
+          build_ipa(
+            keychain_path: keychain[:path],
+            profile_name: profile_name,
             version: new_ver,
-            api_key: api_key
+            build_number: build_number
           )
-          next_build = latest_tf_build.to_i + 1
-          increment_build_number(build_number: next_build, xcodeproj: project_path)
-          UI.message("🔢 設定 CFBundleVersion 為 #{next_build}")
-        rescue => e
-          UI.important("⚠️ 無法讀取 TestFlight build：#{e.message}，回退到 build=1")
-          increment_build_number(build_number: 1, xcodeproj: project_path)
+
+          UI.message("🚀 重新上傳新版本 #{new_ver}")
+          pilot(
+            api_key: api_key,
+            ipa: "#{OUTPUT_NAME}.ipa",
+            skip_waiting_for_build_processing: false
+          )
+        ensure
+          delete_keychain(name: keychain[:name])
         end
-
-        # ---- 重新產生 podspec / 清理 Gradle 快取 ----
-        sh %Q{#{gradlew} --stop || true}
-        sh %Q{rm -rf "#{repo_root}/.gradle/configuration-cache"}
-        sh %Q{#{gradlew} -p "#{repo_root}" :composeApp:podspec :composeApp:generateDummyFramework --no-daemon --stacktrace}, log: true
-
-        # ---- 重新建立臨時 keychain 並匯入憑證（因 build lane 已清除）----
-        keychain_name = "fastlane_manual_tmp_retry"
-        keychain_password = SecureRandom.uuid
-        create_keychain(
-          name: keychain_name,
-          password: keychain_password,
-          default_keychain: true,
-          unlock: true,
-          timeout: 3600,
-          lock_when_sleeps: false,
-          require_create: true
-        )
-        keychain_path = File.expand_path("~/Library/Keychains/#{keychain_name}-db")
-
-        unless (ENV["IOS_DIST_CERT_BASE64"] || ENV["IOS_DIST_CERT_PATH"]) && ENV["IOS_DIST_CERT_PASSWORD"]
-          UI.user_error!("缺少發行憑證（p12）設定：請提供 IOS_DIST_CERT_BASE64（或 IOS_DIST_CERT_PATH）與 IOS_DIST_CERT_PASSWORD")
-        end
-        cert_path = ENV["IOS_DIST_CERT_PATH"]
-        if cert_path.nil? || cert_path.empty?
-          cert_path = File.join(Dir.pwd, "dist_cert_retry.p12")
-          File.binwrite(cert_path, Base64.decode64(ENV["IOS_DIST_CERT_BASE64"]))
-        end
-        import_certificate(
-          certificate_path: cert_path,
-          certificate_password: ENV["IOS_DIST_CERT_PASSWORD"],
-          keychain_path: keychain_path,
-          keychain_password: keychain_password
-        )
-
-        # 使用前一次 sigh 下載的描述檔名稱
-        profile_name = lane_context[SharedValues::SIGH_NAME]
-
-        # ---- 重新打包 ipa ----
-        gym(
-          workspace: workspace_path,
-          scheme: "iosApp",
-          configuration: "Release",
-          export_method: "app-store",
-          clean: true,
-          include_bitcode: false,
-          export_options: {
-            method: "app-store",
-            signingStyle: "manual",
-            provisioningProfiles: { "com.linli.blackcatnews" => profile_name }
-          },
-          xcargs: "-allowProvisioningUpdates OTHER_CODE_SIGN_FLAGS='--keychain #{keychain_path}' MARKETING_VERSION=#{new_ver} CURRENT_PROJECT_VERSION=#{next_build} -jobs 1",
-          output_directory: File.expand_path('..', __dir__),
-          output_name: "BlackCatNews"
-        )
-
-        # ---- 再次上傳 ----
-        UI.message("🚀 重新上傳新版本 #{new_ver}")
-        pilot(
-          api_key: api_key,
-          ipa: "BlackCatNews.ipa",
-          skip_waiting_for_build_processing: false
-        )
-
-        # 清理臨時 keychain（重試用）
-        delete_keychain(name: keychain_name)
       else
         raise ex
       end
     end
   end
 
-  desc "Upload to App Store Connect (不自動送審)"
+  desc "Upload to App Store Connect"
   lane :release do
     build
 
-    # 讀取環境變數控制送審與上架
-    submit_for_review = ENV["SUBMIT_FOR_REVIEW"] == "true"
-    automatic_release = ENV["AUTOMATIC_RELEASE"] == "true"
+    api_key = get_api_key
 
-    # 出口合規資訊（Export Compliance）
-    # 預設假設未使用需申報的加密（大多數僅使用 HTTPS 的 app 可設為 false）
-    # 可用環境變數覆寫：
-    #   EXPORT_COMPLIANCE_USES_ENCRYPTION, EXPORT_COMPLIANCE_IS_EXEMPT,
-    #   EXPORT_COMPLIANCE_THIRD_PARTY, EXPORT_COMPLIANCE_PROPRIETARY,
-    #   EXPORT_COMPLIANCE_AVAILABLE_ON_FRENCH_STORE
-    uses_encryption = (ENV["EXPORT_COMPLIANCE_USES_ENCRYPTION"] || "false") == "true"
+    # 讀取環境變數
+    submit = ENV["SUBMIT_FOR_REVIEW"] == "true"
+    auto_release = ENV["AUTOMATIC_RELEASE"] == "true"
+
+    # Export Compliance
+    uses_encryption = ENV["EXPORT_COMPLIANCE_USES_ENCRYPTION"] == "true"
     submission_info = { export_compliance_uses_encryption: uses_encryption }
+
     if uses_encryption
-      submission_info[:export_compliance_is_exempt] = ENV["EXPORT_COMPLIANCE_IS_EXEMPT"] == "true"
-      submission_info[:export_compliance_contains_third_party_cryptography] = ENV["EXPORT_COMPLIANCE_THIRD_PARTY"] == "true"
-      submission_info[:export_compliance_contains_proprietary_cryptography] = ENV["EXPORT_COMPLIANCE_PROPRIETARY"] == "true"
+      submission_info.merge!(
+        export_compliance_is_exempt: ENV["EXPORT_COMPLIANCE_IS_EXEMPT"] == "true",
+        export_compliance_contains_third_party_cryptography: ENV["EXPORT_COMPLIANCE_THIRD_PARTY"] == "true",
+        export_compliance_contains_proprietary_cryptography: ENV["EXPORT_COMPLIANCE_PROPRIETARY"] == "true"
+      )
       if ENV.key?("EXPORT_COMPLIANCE_AVAILABLE_ON_FRENCH_STORE")
         submission_info[:export_compliance_available_on_french_store] = ENV["EXPORT_COMPLIANCE_AVAILABLE_ON_FRENCH_STORE"] == "true"
       end
     end
 
-    # 僅使用 API Key 上傳並（可選）送審
-    api_key = app_store_connect_api_key(
-      key_id: ENV["ASC_KEY_ID"],
-      issuer_id: ENV["ASC_ISSUER_ID"],
-      key_content: ENV["ASC_PRIVATE_KEY_BASE64"].to_s.empty? ? ENV["ASC_PRIVATE_KEY"] : ENV["ASC_PRIVATE_KEY_BASE64"],
-      is_key_content_base64: !ENV["ASC_PRIVATE_KEY_BASE64"].to_s.empty?
-    )
     begin
       deliver(
         api_key: api_key,
-        ipa: "BlackCatNews.ipa",
-        submit_for_review: submit_for_review,
-        automatic_release: automatic_release,
+        ipa: "#{OUTPUT_NAME}.ipa",
+        submit_for_review: submit,
+        automatic_release: auto_release,
         submission_information: submission_info,
         skip_metadata: true,
         skip_screenshots: true,
@@ -450,12 +415,12 @@ platform :ios do
       )
     rescue => ex
       if ex.message.include?("A relationship value is not acceptable for the current resource state")
-        UI.important("[自動重試] Build 尚未 ready for submission，sleep 5 分鐘後再嘗試僅送審 submit_for_review")
+        UI.important("Build 尚未就緒，等待 5 分鐘後重試")
         sleep(300)
         deliver(
           api_key: api_key,
-          submit_for_review: submit_for_review,
-          automatic_release: automatic_release,
+          submit_for_review: submit,
+          automatic_release: auto_release,
           submission_information: submission_info,
           skip_binary_upload: true,
           skip_metadata: true,
