@@ -94,13 +94,7 @@ platform :ios do
     desired_version = bump_patch(base_version) if cmp_ver(desired_version, base_version) <= 0
 
     UI.message("📌 MARKETING_VERSION: base=#{base_version} → set to #{desired_version}")
-    # Update MARKETING_VERSION in xcconfig (source of truth)
-    if File.exist?(xcconfig_path)
-      sh %Q{/usr/bin/sed -i '' -E "s/^\\s*MARKETING_VERSION\\s*=.*/MARKETING_VERSION=#{desired_version}/" "#{xcconfig_path}"}
-      UI.message("📝 Wrote MARKETING_VERSION=#{desired_version} to #{xcconfig_path}")
-    else
-      UI.important("⚠️ xcconfig not found at #{xcconfig_path}; relying on xcodeproj value only")
-    end
+    UI.message("📌 MARKETING_VERSION will be set to #{desired_version} at build time only (not writing to Config.xcconfig)")
 
     # Also sync xcodeproj marketing version for consistency (xcconfig remains source of truth)
     begin
@@ -299,10 +293,7 @@ platform :ios do
         UI.message("📌 將 MARKETING_VERSION 從 #{current_ver} → #{new_ver}")
 
         # 更新 xcconfig 為真實來源，再同步到 xcodeproj
-        if File.exist?(xcconfig_path)
-          sh %Q{/usr/bin/sed -i '' -E "s/^\\s*MARKETING_VERSION\\s*=.*/MARKETING_VERSION=#{new_ver}/" "#{xcconfig_path}"}
-          UI.message("📝 已寫入 MARKETING_VERSION=#{new_ver} 至 #{xcconfig_path}")
-        end
+        UI.message("📌 MARKETING_VERSION will be set to #{new_ver} at build time only (not writing to Config.xcconfig)")
         begin
           increment_version_number(xcodeproj: project_path, version_number: new_ver)
         rescue => e
