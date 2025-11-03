@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.runtime.Composable
@@ -78,17 +79,20 @@ fun ArticleDetailScreen(
             Spacer(modifier = Modifier.height(16.dp))
 
             // 文章內容
-            Column(
-                modifier = Modifier.padding(horizontal = 16.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
-                article.content.paragraphs.forEach { paragraph ->
-                    BilingualTextView(
-                        paragraph = paragraph,
-                        readingMode = readingMode
-                    )
+            SelectionContainer {
+                Column(
+                    modifier = Modifier.padding(horizontal = 16.dp),
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    article.content.paragraphs.forEach { paragraph ->
+                        BilingualTextView(
+                            paragraph = paragraph,
+                            readingMode = readingMode
+                        )
+                    }
                 }
             }
+
 
             Spacer(modifier = Modifier.height(32.dp))
         }
