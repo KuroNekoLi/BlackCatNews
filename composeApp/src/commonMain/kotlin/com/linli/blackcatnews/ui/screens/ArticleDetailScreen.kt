@@ -23,9 +23,13 @@ import androidx.compose.ui.unit.dp
 import com.linli.blackcatnews.domain.model.BilingualContent
 import com.linli.blackcatnews.domain.model.BilingualParagraph
 import com.linli.blackcatnews.domain.model.BilingualText
+import com.linli.blackcatnews.domain.model.GlossaryItem
+import com.linli.blackcatnews.domain.model.GrammarPoint
+import com.linli.blackcatnews.domain.model.PhraseIdiom
 import com.linli.blackcatnews.domain.model.Quiz
 import com.linli.blackcatnews.domain.model.QuizQuestion
 import com.linli.blackcatnews.domain.model.ReadingMode
+import com.linli.blackcatnews.domain.model.SentencePattern
 import com.linli.blackcatnews.presentation.viewmodel.ArticleDetailViewModel
 import com.linli.blackcatnews.ui.components.ArticleHeader
 import com.linli.blackcatnews.ui.components.BilingualTextView
@@ -100,6 +104,10 @@ fun ArticleDetailScreen(
                 userAnswers.clear()
                 isQuizSubmitted = false
             },
+            glossary = article.glossary,
+            grammarPoints = article.grammarPoints,
+            sentencePatterns = article.sentencePatterns,
+            phrases = article.phrases,
             modifier = Modifier.align(Alignment.BottomEnd)
         )
     }
@@ -163,6 +171,10 @@ private fun ArticleDetailScreenLayoutPreview() {
                     userAnswers.clear()
                     isQuizSubmitted.value = false
                 },
+                glossary = sampleArticle.glossary,
+                grammarPoints = sampleArticle.grammarPoints,
+                sentencePatterns = sampleArticle.sentencePatterns,
+                phrases = sampleArticle.phrases,
                 modifier = Modifier.align(Alignment.BottomEnd)
             )
         }
@@ -218,7 +230,11 @@ private data class SampleArticleData(
     val source: String,
     val publishTime: String,
     val imageUrl: String?,
-    val quiz: Quiz?
+    val quiz: Quiz?,
+    val glossary: List<GlossaryItem>,
+    val grammarPoints: List<GrammarPoint>,
+    val sentencePatterns: List<SentencePattern>,
+    val phrases: List<PhraseIdiom>
 )
 
 private fun getSampleArticleData(): SampleArticleData = SampleArticleData(
@@ -281,6 +297,46 @@ private fun getSampleArticleData(): SampleArticleData = SampleArticleData(
                 correctAnswerKey = "B",
                 explanation = "AI contributes to personalized medicine by analyzing vast amounts of patient data to recommend treatment plans tailored to individual patients."
             )
+        )
+    ),
+    glossary = listOf(
+        GlossaryItem(
+            word = "hysterectomy",
+            partOfSpeech = "noun",
+            translation = "子宮切除術",
+            pronunciation = null,
+            definitionEnglish = "A surgical operation to remove all or part of the uterus.",
+            definitionChinese = "一種移除全部或部分子宮的外科手術。",
+            exampleEnglish = "The patient underwent a hysterectomy due to severe health issues.",
+            exampleChinese = "患者因嚴重健康問題接受了子宮切除術。",
+            audioUrl = null
+        )
+    ),
+    grammarPoints = listOf(
+        GrammarPoint(
+            rule = "Passive Voice",
+            explanationEnglish = "The passive voice is used when the focus is on the action or when the subject is unknown or irrelevant.",
+            explanationChinese = "被動語態用於當重點在於動作或當主語未知或不相關時。",
+            exampleEnglish = "The report was published by the committee.",
+            exampleChinese = "報告由委員會發布。"
+        )
+    ),
+    sentencePatterns = listOf(
+        SentencePattern(
+            patternEnglish = "It is (adjective) that...",
+            explanationEnglish = "This pattern is used to express opinions or judgments.",
+            explanationChinese = "此句型用於表達意見或判斷。",
+            exampleEnglish = "It is surprising that the issue was not addressed earlier.",
+            exampleChinese = "令人驚訝的是，這個問題沒有早些解決。"
+        )
+    ),
+    phrases = listOf(
+        PhraseIdiom(
+            phraseEnglish = "under caution",
+            explanationEnglish = "A formal warning given by police to someone suspected of a crime.",
+            explanationChinese = "警方對涉嫌犯罪的人給予的正式警告。",
+            exampleEnglish = "The suspect was interviewed under caution by the police.",
+            exampleChinese = "嫌疑人被警方在警告下進行了面試。"
         )
     )
 )

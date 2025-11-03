@@ -19,25 +19,35 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.MenuBook
+import androidx.compose.material.icons.filled.MenuBook
+import androidx.compose.material.icons.filled.School
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.linli.blackcatnews.domain.model.GlossaryItem
+import com.linli.blackcatnews.domain.model.GrammarPoint
+import com.linli.blackcatnews.domain.model.PhraseIdiom
 import com.linli.blackcatnews.domain.model.QuizQuestion
+import com.linli.blackcatnews.domain.model.SentencePattern
 import com.linli.blackcatnews.ui.theme.AppTheme
 import org.jetbrains.compose.ui.tooling.preview.Preview
 
@@ -45,6 +55,7 @@ import org.jetbrains.compose.ui.tooling.preview.Preview
  * 測驗面板組件
  * 右下角可展開的測驗區域
  */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun QuizPanel(
     isExpanded: Boolean,
@@ -54,14 +65,43 @@ fun QuizPanel(
     isSubmitted: Boolean,
     onSubmit: () -> Unit,
     onReset: () -> Unit,
+    glossary: List<GlossaryItem> = emptyList(),
+    grammarPoints: List<GrammarPoint> = emptyList(),
+    sentencePatterns: List<SentencePattern> = emptyList(),
+    phrases: List<PhraseIdiom> = emptyList(),
     modifier: Modifier = Modifier
 ) {
+    // 狀態：學習輔助 bottom sheet 展開、tab切換
+    var isLearnSheetOpen by remember { mutableStateOf(false) }
+    rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    listOf("重點單字", "文法說明", "句型說明", "片語／習語")
+    rememberCoroutineScope()
+
     Column(
         modifier = modifier
             .fillMaxWidth()
             .padding(16.dp),
         horizontalAlignment = Alignment.End
     ) {
+        // 學習輔助 FloatingActionButton
+        FloatingActionButton(
+            onClick = { isLearnSheetOpen = true },
+            modifier = Modifier.size(56.dp).padding(bottom = 6.dp)
+        ) {
+            Icon(
+                imageVector = Icons.Filled.School,
+                contentDescription = "學習輔助"
+            )
+        }
+        // 使用獨立LearningBottomSheet Composable
+        LearningBottomSheet(
+            isOpen = isLearnSheetOpen,
+            onDismiss = { isLearnSheetOpen = false },
+            glossary = glossary,
+            grammarPoints = grammarPoints,
+            sentencePatterns = sentencePatterns,
+            phrases = phrases
+        )
         // 展開的測驗內容
         AnimatedVisibility(
             visible = isExpanded,
@@ -173,15 +213,11 @@ fun QuizPanel(
                 )
             } else {
                 Icon(
-                    imageVector = Icons.AutoMirrored.Filled.MenuBook,
+                    imageVector = Icons.Filled.MenuBook,
                     contentDescription = "開啟測驗",
                     tint = MaterialTheme.colorScheme.onPrimaryContainer,
                     modifier = Modifier.size(32.dp)
                 )
-//                Image(
-//                    painter = painterResource(Res.drawable.icon_book),
-//                    contentDescription = "開啟測驗",
-//                )
             }
         }
     }
