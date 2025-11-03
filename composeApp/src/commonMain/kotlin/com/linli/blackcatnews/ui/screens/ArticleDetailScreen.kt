@@ -71,7 +71,8 @@ fun ArticleDetailScreen(
                 publishTime = article.publishTime,
                 imageUrl = article.imageUrl,
                 readingMode = readingMode,
-                onReadingModeChange = { readingMode = it }
+                onReadingModeChange = { readingMode = it },
+                onBackClick = onBackClick
             )
 
             Spacer(modifier = Modifier.height(16.dp))
@@ -138,7 +139,8 @@ private fun ArticleDetailScreenLayoutPreview() {
                     publishTime = sampleArticle.publishTime,
                     imageUrl = sampleArticle.imageUrl,
                     readingMode = readingMode.value,
-                    onReadingModeChange = { readingMode.value = it }
+                    onReadingModeChange = { readingMode.value = it },
+                    onBackClick = { /* 預覽中不需要實際操作 */ }
                 )
 
                 Spacer(modifier = Modifier.height(16.dp))
@@ -201,7 +203,8 @@ private fun ArticleDetailReadingModesPreview() {
                 publishTime = sampleArticle.publishTime,
                 imageUrl = sampleArticle.imageUrl,
                 readingMode = readingMode.value,
-                onReadingModeChange = { readingMode.value = it }
+                onReadingModeChange = { readingMode.value = it },
+                onBackClick = { /* 預覽中不需要實際操作 */ }
             )
 
             Spacer(modifier = Modifier.height(16.dp))

@@ -18,6 +18,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.linli.blackcatnews.domain.model.BilingualText
 import com.linli.blackcatnews.domain.model.ReadingMode
+import com.linli.blackcatnews.ui.common.BackIcon
+import com.linli.blackcatnews.ui.theme.AppTheme
+import org.jetbrains.compose.ui.tooling.preview.Preview
 
 /**
  * 文章頭部組件
@@ -31,6 +34,7 @@ fun ArticleHeader(
     imageUrl: String?,
     readingMode: ReadingMode,
     onReadingModeChange: (ReadingMode) -> Unit,
+    onBackClick: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     Column(
@@ -38,12 +42,19 @@ fun ArticleHeader(
             .fillMaxWidth()
             .padding(16.dp)
     ) {
-        // 模式切換按鈕組
-        ReadingModeSelector(
-            currentMode = readingMode,
-            onModeChange = onReadingModeChange,
-            modifier = Modifier.fillMaxWidth()
-        )
+        // 頂部布局：返回按鈕和閱讀模式切換器
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            BackIcon(onBackClick = onBackClick)
+
+            // 模式切換按鈕
+            ReadingModeSelector(
+                currentMode = readingMode,
+                onModeChange = onReadingModeChange
+            )
+        }
 
         Spacer(modifier = Modifier.height(16.dp))
 
@@ -115,6 +126,72 @@ fun ArticleHeader(
 
 // Sample data for testing
 internal fun getSampleBilingualText(): BilingualText = BilingualText(
+    english = "Revolutionary AI Technology Transforms Healthcare Industry",
+    chinese = "革命性AI技術改變醫療保健行業"
+)
+
+
+@Preview(showBackground = true, name = "Article Header - English Only")
+@Composable
+private fun ArticleHeaderEnglishPreview() {
+    AppTheme {
+        ArticleHeader(
+            title = getSampleTitle(),
+            source = "BBC News",
+            publishTime = "2024年1月15日",
+            imageUrl = null,
+            readingMode = ReadingMode.ENGLISH_ONLY,
+            onReadingModeChange = {}
+        )
+    }
+}
+
+@Preview(showBackground = true, name = "Article Header - Chinese Only")
+@Composable
+private fun ArticleHeaderChinesePreview() {
+    AppTheme {
+        ArticleHeader(
+            title = getSampleTitle(),
+            source = "BBC News",
+            publishTime = "2024年1月15日",
+            imageUrl = null,
+            readingMode = ReadingMode.CHINESE_ONLY,
+            onReadingModeChange = {}
+        )
+    }
+}
+
+@Preview(showBackground = true, name = "Article Header - Bilingual Stack")
+@Composable
+private fun ArticleHeaderBilingualStackPreview() {
+    AppTheme {
+        ArticleHeader(
+            title = getSampleTitle(),
+            source = "CNN",
+            publishTime = "2024年1月15日",
+            imageUrl = null,
+            readingMode = ReadingMode.STACKED,
+            onReadingModeChange = {}
+        )
+    }
+}
+
+@Preview(showBackground = true, name = "Article Header - Side by Side")
+@Composable
+private fun ArticleHeaderSideBySidePreview() {
+    AppTheme {
+        ArticleHeader(
+            title = getSampleTitle(),
+            source = "Reuters",
+            publishTime = "2024年1月15日",
+            imageUrl = null,
+            readingMode = ReadingMode.SIDE_BY_SIDE,
+            onReadingModeChange = {}
+        )
+    }
+}
+
+private fun getSampleTitle(): BilingualText = BilingualText(
     english = "Revolutionary AI Technology Transforms Healthcare Industry",
     chinese = "革命性AI技術改變醫療保健行業"
 )
