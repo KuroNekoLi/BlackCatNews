@@ -6,17 +6,17 @@ Pod::Spec.new do |spec|
     spec.authors                  = ''
     spec.license                  = ''
     spec.summary                  = 'Authentication module for BlackCatNews'
-    spec.vendored_frameworks      = 'build/cocoapods/framework/core:authenticationKit.framework'
+    spec.vendored_frameworks      = 'build/cocoapods/framework/CoreAuthenticationKit.framework'
     spec.libraries                = 'c++'
     spec.ios.deployment_target    = '15.0'
     spec.dependency 'FirebaseAuth', '~> 12.0.0'
     spec.dependency 'FirebaseCore', '~> 12.0.0'
     spec.dependency 'GoogleSignIn', '~> 9.0.0'
                 
-    if !Dir.exist?('build/cocoapods/framework/core:authenticationKit.framework') || Dir.empty?('build/cocoapods/framework/core:authenticationKit.framework')
+    if !Dir.exist?('build/cocoapods/framework/CoreAuthenticationKit.framework') || Dir.empty?('build/cocoapods/framework/CoreAuthenticationKit.framework')
         raise "
 
-        Kotlin framework 'core:authenticationKit' doesn't exist yet, so a proper Xcode project can't be generated.
+        Kotlin framework 'CoreAuthenticationKit' doesn't exist yet, so a proper Xcode project can't be generated.
         'pod install' should be executed after running ':generateDummyFramework' Gradle task:
 
             ./gradlew :core:authentication:generateDummyFramework
@@ -30,7 +30,7 @@ Pod::Spec.new do |spec|
                 
     spec.pod_target_xcconfig = {
         'KOTLIN_PROJECT_PATH' => ':core:authentication',
-        'PRODUCT_MODULE_NAME' => 'core:authenticationKit',
+        'PRODUCT_MODULE_NAME' => 'CoreAuthenticationKit',
     }
                 
     spec.script_phases = [
