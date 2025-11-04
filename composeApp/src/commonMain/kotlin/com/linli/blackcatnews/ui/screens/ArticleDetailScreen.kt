@@ -8,7 +8,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.runtime.Composable
@@ -23,6 +22,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.linli.blackcatnews.domain.model.BilingualContent
 import com.linli.blackcatnews.domain.model.BilingualParagraph
+import com.linli.blackcatnews.domain.model.BilingualParagraphType
 import com.linli.blackcatnews.domain.model.BilingualText
 import com.linli.blackcatnews.domain.model.GlossaryItem
 import com.linli.blackcatnews.domain.model.GrammarPoint
@@ -33,8 +33,10 @@ import com.linli.blackcatnews.domain.model.ReadingMode
 import com.linli.blackcatnews.domain.model.SentencePattern
 import com.linli.blackcatnews.presentation.viewmodel.ArticleDetailViewModel
 import com.linli.blackcatnews.ui.components.ArticleHeader
+import com.linli.blackcatnews.ui.components.ArticleWithWordTooltip
 import com.linli.blackcatnews.ui.components.BilingualTextView
 import com.linli.blackcatnews.ui.components.QuizPanel
+import com.linli.blackcatnews.ui.components.WordInfo
 import com.linli.blackcatnews.ui.theme.AppTheme
 import org.jetbrains.compose.ui.tooling.preview.Preview
 
@@ -57,12 +59,13 @@ fun ArticleDetailScreen(
     val userAnswers = remember { mutableStateMapOf<Int, Int>() }
     var isQuizSubmitted by remember { mutableStateOf(false) }
 
+    val scrollState = rememberScrollState()
     Box(modifier = modifier.fillMaxSize()) {
         // 主內容區域
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .verticalScroll(rememberScrollState())
+                .verticalScroll(scrollState)
                 .padding(bottom = if (isQuizExpanded) 400.dp else 80.dp) // 為測驗面板留出空間
         ) {
             // 文章標題區域
@@ -79,13 +82,41 @@ fun ArticleDetailScreen(
             Spacer(modifier = Modifier.height(16.dp))
 
             // 文章內容
-            SelectionContainer {
-                Column(
-                    modifier = Modifier.padding(horizontal = 16.dp),
-                    verticalArrangement = Arrangement.spacedBy(16.dp)
-                ) {
-                    article.content.paragraphs.forEach { paragraph ->
-                        BilingualTextView(
+            Column(
+                modifier = Modifier.padding(horizontal = 16.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                article.content.paragraphs.forEach { paragraph ->
+                    when (paragraph.type) {
+                        BilingualParagraphType.TEXT -> ArticleWithWordTooltip(
+                            paragraph = paragraph,
+                            readingMode = readingMode,
+                            onLookupWord = { word ->
+                                // Mock dictionary lookup for demonstration
+                                val glossaryItem = article.glossary.find {
+                                    it.word.equals(
+                                        word,
+                                        ignoreCase = true
+                                    )
+                                }
+                                if (glossaryItem != null) {
+                                    WordInfo(
+                                        word = glossaryItem.word,
+                                        definition = glossaryItem.definitionEnglish,
+                                        example = glossaryItem.exampleEnglish
+                                    )
+                                } else {
+                                    // Fallback mock definition
+                                    WordInfo(
+                                        word = word,
+                                        definition = "Sample definition for $word",
+                                        example = "This is an example sentence using the word '$word'."
+                                    )
+                                }
+                            }
+                        )
+
+                        else -> BilingualTextView(
                             paragraph = paragraph,
                             readingMode = readingMode
                         )
@@ -127,13 +158,14 @@ private fun ArticleDetailScreenLayoutPreview() {
         val userAnswers = remember { mutableStateMapOf<Int, Int>() }
         val isQuizSubmitted = remember { mutableStateOf(false) }
         val sampleArticle = getSampleArticleData()
+        val scrollState = rememberScrollState()
 
         Box(modifier = Modifier.fillMaxSize()) {
             // 主內容區域 - 模擬 ArticleDetailScreen 的佈局
             Column(
                 modifier = Modifier
                     .fillMaxSize()
-                    .verticalScroll(rememberScrollState())
+                    .verticalScroll(scrollState)
                     .padding(bottom = if (isQuizExpanded.value) 400.dp else 80.dp)
             ) {
                 // 文章標題區域
@@ -151,14 +183,43 @@ private fun ArticleDetailScreenLayoutPreview() {
 
                 // 文章內容
                 Column(
-                    modifier = Modifier.padding(horizontal = 16.dp),
                     verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
-                    sampleArticle.content.paragraphs.forEach { paragraph ->
-                        BilingualTextView(
-                            paragraph = paragraph,
-                            readingMode = readingMode.value
-                        )
+                    sampleArticle.content.paragraphs.take(2).forEach { paragraph ->
+                        when (paragraph.type) {
+                            BilingualParagraphType.TEXT -> ArticleWithWordTooltip(
+                                paragraph = paragraph,
+                                readingMode = readingMode.value,
+                                onLookupWord = { word ->
+                                    // Mock dictionary lookup for demonstration
+                                    val glossaryItem = sampleArticle.glossary.find {
+                                        it.word.equals(
+                                            word,
+                                            ignoreCase = true
+                                        )
+                                    }
+                                    if (glossaryItem != null) {
+                                        WordInfo(
+                                            word = glossaryItem.word,
+                                            definition = glossaryItem.definitionEnglish,
+                                            example = glossaryItem.exampleEnglish
+                                        )
+                                    } else {
+                                        // Fallback mock definition
+                                        WordInfo(
+                                            word = word,
+                                            definition = "Sample definition for $word",
+                                            example = "This is an example sentence using the word '$word'."
+                                        )
+                                    }
+                                }
+                            )
+
+                            else -> BilingualTextView(
+                                paragraph = paragraph,
+                                readingMode = readingMode.value
+                            )
+                        }
                     }
                 }
 
@@ -193,11 +254,12 @@ private fun ArticleDetailReadingModesPreview() {
     AppTheme {
         val readingMode = remember { mutableStateOf(ReadingMode.STACKED) }
         val sampleArticle = getSampleArticleData()
+        val scrollState = rememberScrollState()
 
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .verticalScroll(rememberScrollState())
+                .verticalScroll(scrollState)
                 .padding(16.dp)
         ) {
             // 文章標題區域
@@ -218,10 +280,40 @@ private fun ArticleDetailReadingModesPreview() {
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
                 sampleArticle.content.paragraphs.take(2).forEach { paragraph ->
-                    BilingualTextView(
-                        paragraph = paragraph,
-                        readingMode = readingMode.value
-                    )
+                    when (paragraph.type) {
+                        BilingualParagraphType.TEXT -> ArticleWithWordTooltip(
+                            paragraph = paragraph,
+                            readingMode = readingMode.value,
+                            onLookupWord = { word ->
+                                // Mock dictionary lookup for demonstration
+                                val glossaryItem = sampleArticle.glossary.find {
+                                    it.word.equals(
+                                        word,
+                                        ignoreCase = true
+                                    )
+                                }
+                                if (glossaryItem != null) {
+                                    WordInfo(
+                                        word = glossaryItem.word,
+                                        definition = glossaryItem.definitionEnglish,
+                                        example = glossaryItem.exampleEnglish
+                                    )
+                                } else {
+                                    // Fallback mock definition
+                                    WordInfo(
+                                        word = word,
+                                        definition = "Sample definition for $word",
+                                        example = "This is an example sentence using the word '$word'."
+                                    )
+                                }
+                            }
+                        )
+
+                        else -> BilingualTextView(
+                            paragraph = paragraph,
+                            readingMode = readingMode.value
+                        )
+                    }
                 }
             }
         }
@@ -254,22 +346,32 @@ private fun getSampleArticleData(): SampleArticleData = SampleArticleData(
             BilingualParagraph(
                 english = "The healthcare industry is experiencing a technological renaissance, with artificial intelligence (AI) at the forefront of this transformation. From diagnostic imaging to drug discovery, AI is reshaping how medical professionals approach patient care.",
                 chinese = "醫療保健行業正在經歷技術復興，人工智慧（AI）處於這一轉變的前沿。從診斷成像到藥物發現，AI正在重塑醫療專業人員處理患者護理的方式。",
-                order = 1
+                order = 1,
+                type = BilingualParagraphType.TEXT
+            ),
+            BilingualParagraph(
+                imageUrl = "https://example.com/ai-healthcare.jpg",
+                imageCaption = "AI in healthcare is revolutionizing patient care",
+                order = 2,
+                type = BilingualParagraphType.IMAGE
             ),
             BilingualParagraph(
                 english = "Machine learning algorithms can now analyze medical images with remarkable accuracy, often detecting conditions that might be missed by human eyes. Radiology departments worldwide are integrating AI tools to enhance diagnostic precision.",
                 chinese = "機器學習算法現在可以以驚人的準確性分析醫學影像，通常能檢測到人眼可能遺漏的病症。全世界的放射科都在整合AI工具以提高診斷精度。",
-                order = 2
+                order = 3,
+                type = BilingualParagraphType.TEXT
             ),
             BilingualParagraph(
                 english = "Personalized medicine is another area where AI excels. By analyzing vast amounts of patient data, including genetic information and medical history, AI systems can recommend tailored treatment plans.",
                 chinese = "個人化醫療是AI擅長的另一個領域。通過分析大量患者數據，包括基因信息和病史，AI系統可以推薦定制的治療計劃。",
-                order = 3
+                order = 4,
+                type = BilingualParagraphType.TEXT
             ),
             BilingualParagraph(
                 english = "The future promises even more exciting developments. AI-powered virtual assistants may soon help patients manage chronic conditions, while predictive analytics could identify health risks before symptoms appear.",
                 chinese = "未來承諾更令人興奮的發展。AI驅動的虛擬助手可能很快就會幫助患者管理慢性疾病，而預測分析可以在症狀出現之前識別健康風險。",
-                order = 4
+                order = 5,
+                type = BilingualParagraphType.TEXT
             )
         )
     ),
