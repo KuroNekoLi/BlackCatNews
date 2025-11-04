@@ -195,7 +195,7 @@ data class ComprehensionQuestionDto(
     val options: Map<String, String>,
 
     @SerialName("answer")
-    val answerKey: String,
+    val answerKey: String? = null,
 
     @SerialName("explanation_en")
     val explanationEnglish: String? = null,

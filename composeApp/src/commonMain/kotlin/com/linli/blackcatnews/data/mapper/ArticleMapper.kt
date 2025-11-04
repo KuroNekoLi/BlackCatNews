@@ -247,7 +247,7 @@ object ArticleMapper {
             questionChinese = questionChinese,
             options = options.toSortedMap().values.toList(),
             correctAnswerIndex = answerKeyLetterToIndex(),
-            correctAnswerKey = answerKey,
+            correctAnswerKey = answerKey ?: "",
             explanationEnglish = explanationEnglish,
             explanationChinese = explanationChinese
         )
@@ -315,7 +315,7 @@ object ArticleMapper {
     }
 
     private fun ComprehensionQuestionDto.answerKeyLetterToIndex(): Int {
-        val normalized = answerKey.trim().uppercase()
+        val normalized = answerKey?.trim()?.uppercase() ?: ""
         return normalized.firstOrNull()?.let { letter -> letter - 'A' } ?: -1
     }
 
