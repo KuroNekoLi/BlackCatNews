@@ -1,6 +1,7 @@
 package com.linli.blackcatnews.di
 
 import com.linli.authentication.authModule
+import com.linli.dictionary.di.dictionaryModule
 import org.koin.core.module.Module
 import org.koin.dsl.module
 
@@ -14,6 +15,8 @@ val appModule: Module = module {
         networkModule,
         repositoryModule,
         useCaseModule,
-        viewModelModule
+        viewModelModule,
+        // 字典模組
+        dictionaryModule
     )
 }

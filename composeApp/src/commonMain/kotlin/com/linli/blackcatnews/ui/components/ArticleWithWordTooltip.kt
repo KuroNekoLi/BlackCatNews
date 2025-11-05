@@ -1,8 +1,5 @@
 package com.linli.blackcatnews.ui.components
 
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -12,27 +9,20 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.selection.SelectionContainer
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
@@ -41,41 +31,32 @@ import androidx.compose.ui.layout.LayoutCoordinates
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.window.Popup
 import com.linli.blackcatnews.domain.model.BilingualParagraph
 import com.linli.blackcatnews.domain.model.BilingualParagraphType
 import com.linli.blackcatnews.domain.model.ReadingMode
+import com.linli.dictionary.presentation.DictionaryViewModel
 import kotlin.math.roundToInt
 
 /**
- * Data class representing a dictionary entry for a word
- */
-data class WordInfo(
-    val word: String,
-    val definition: String,
-    val example: String = ""
-)
-
-/**
- * A composable that displays bilingual text with word tooltip functionality.
- * - Short press: Shows a dictionary tooltip for the tapped word
- * - Long press: Maintains system text selection functionality
+ * 顯示帶有單字提示的文章內容，並整合字典功能。
+ * - 支援英文單字的彈出提示功能
+ * - 支援中英文不同閱讀模式切換
+ * - 直接使用 DictionaryViewModel 查詢單字
  *
- * @param paragraph The bilingual paragraph to display
- * @param readingMode The current reading mode (English only, Chinese only, or both)
- * @param onLookupWord Optional callback to lookup word definitions
- * @param modifier Modifier for the component
+ * @param paragraph 要顯示的文章段落
+ * @param readingMode 閱讀模式（英文、中文或英文中文對照）
+ * @param viewModel 字典視圖模型，用於查詢單字
+ * @param modifier 組件修飾用
  */
 @OptIn(ExperimentalComposeUiApi::class)
 @Composable
 fun ArticleWithWordTooltip(
     paragraph: BilingualParagraph,
     readingMode: ReadingMode,
-    onLookupWord: (String) -> WordInfo = { WordInfo(it, "Definition not found") },
+    viewModel: DictionaryViewModel,
     modifier: Modifier = Modifier
 ) {
     // Only apply tooltip functionality to text paragraphs
@@ -97,7 +78,9 @@ fun ArticleWithWordTooltip(
 
     // Currently selected word and its information
     var selectedWord by remember { mutableStateOf("") }
-    var wordInfo by remember { mutableStateOf<WordInfo?>(null) }
+
+    // Dictionary state
+    val dictionaryState = viewModel.state.collectAsState().value
 
     // Tooltip visibility and position
     var showTooltip by remember { mutableStateOf(false) }
@@ -132,7 +115,7 @@ fun ArticleWithWordTooltip(
                                             textCoordinates = textCoordinates,
                                             onWordSelected = { word ->
                                                 selectedWord = word
-                                                wordInfo = onLookupWord(word)
+                                                viewModel.lookupWord(word)
                                             },
                                             onTooltipPositioned = { position ->
                                                 tooltipOffset = position
@@ -208,7 +191,7 @@ fun ArticleWithWordTooltip(
                                                     textCoordinates = textCoordinates,
                                                     onWordSelected = { word ->
                                                         selectedWord = word
-                                                        wordInfo = onLookupWord(word)
+                                                        viewModel.lookupWord(word)
                                                     },
                                                     onTooltipPositioned = { position ->
                                                         tooltipOffset = position
@@ -300,7 +283,7 @@ fun ArticleWithWordTooltip(
                                                         textCoordinates = textCoordinates,
                                                         onWordSelected = { word ->
                                                             selectedWord = word
-                                                            wordInfo = onLookupWord(word)
+                                                            viewModel.lookupWord(word)
                                                         },
                                                         onTooltipPositioned = { position ->
                                                             tooltipOffset = position
@@ -353,15 +336,15 @@ fun ArticleWithWordTooltip(
             }
         }
 
-        // Word tooltip popup
-        if (showTooltip && wordInfo != null) {
-            WordTooltip(
-                wordInfo = wordInfo!!,
+        // 單字提示 Popup
+        if (showTooltip) {
+            DictionaryTooltip(
+                state = dictionaryState,
+                selectedWord = selectedWord,
                 offset = tooltipOffset,
                 onDismiss = { showTooltip = false },
                 onSaveWord = {
-                    // Handle saving word to vocabulary
-                    // Add implementation here if needed
+                    // TODO: 實作「加入生字本」功能，暫時只關閉提示框
                     showTooltip = false
                 }
             )
@@ -369,15 +352,17 @@ fun ArticleWithWordTooltip(
     }
 }
 
-
 /**
- * Handle a tap inside the English text container using Box-local coordinates.
+ * 處理 Box 內的點擊事件並計算點擊位置所對應的單字。
  *
- * @param offsetInBox The tap offset relative to the Box that received the gesture.
- * @param text The full text content.
- * @param textLayoutResult Layout result for the Text.
- * @param boxCoordinates Layout coordinates for the Box (Popup parent, used for local positioning).
- * @param textCoordinates Layout coordinates for the Text (used to convert between Box and text-local space).
+ * @param offsetInBox 點擊位置在 Box 內的相對座標。
+ * @param text 文章文字內容。
+ * @param textLayoutResult Text 的佈局結果，用於取得座標相關資料。
+ * @param boxCoordinates Box 的座標資訊。
+ * @param textCoordinates Text 的座標資訊。
+ * @param onWordSelected 選到單字時的回呼。
+ * @param onTooltipPositioned 計算好提示框座標時的回呼。
+ * @return 是否成功處理點擊事件。
  */
 private fun handleWordTapAbsolute(
     offsetInBox: Offset,
@@ -401,13 +386,13 @@ private fun handleWordTapAbsolute(
     // 2. 用 TextLayoutResult 判斷點到哪個字元 index
     val position = layout.getOffsetForPosition(tapInTextLocal)
 
-    // 3. 找出這個 index 所在的整個單字
+    // 3. 找出這個 index 所在的完整單字
     val word = findWordAt(text, position)
 
-    // 確認這是一個「像單字」的 token，可以依需求調整規則
+    // 粗略判斷為 "真的英文單字"
     if (word.isEmpty() ||
         !word.any { it.isLetter() } ||
-        !word.any { it.code < 128 } // 粗略判斷為英文單字（ASCII）
+        !word.any { it.code < 128 } // 英文
     ) {
         return false
     }
@@ -421,13 +406,13 @@ private fun handleWordTapAbsolute(
     // 5. 取字元 bounding box 的右上角當錨點（Text local）
     val anchorInTextLocal = Offset(charRect.right, charRect.top + 150f)
 
-    // 6. 將錨點從 Text local 轉成 Box local（Popup 的 offset 以 Box 為座標系）
+    // 6. Text local 轉 Box local(座標)
     val anchorInBoxLocal = boxCoords.localPositionOf(
         sourceCoordinates = textCoords,
         relativeToSource = anchorInTextLocal
     )
 
-    // 7. 在 Box 座標系中稍微往上移一點，避免蓋住文字本身
+    // 7. Box 座標系中略往上（不蓋住文字）
     val tooltipOffset = IntOffset(
         anchorInBoxLocal.x.roundToInt(),
         (anchorInBoxLocal.y - 24f).roundToInt()
@@ -438,111 +423,36 @@ private fun handleWordTapAbsolute(
 }
 
 /**
- * Tooltip component that displays word information
- */
-@Composable
-private fun WordTooltip(
-    wordInfo: WordInfo,
-    offset: IntOffset,
-    onDismiss: () -> Unit,
-    onSaveWord: () -> Unit
-) {
-    Popup(
-        offset = offset,
-        onDismissRequest = onDismiss
-    ) {
-        AnimatedVisibility(
-            visible = true,
-            enter = fadeIn(),
-            exit = fadeOut()
-        ) {
-            ElevatedCard(
-                modifier = Modifier.width(280.dp)
-            ) {
-                Column(modifier = Modifier.padding(16.dp)) {
-                    // Word and actions
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(
-                            text = wordInfo.word,
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold,
-                            modifier = Modifier.weight(1f)
-                        )
-
-                        // Add to vocabulary button
-                        IconButton(onClick = onSaveWord) {
-                            Icon(
-                                imageVector = Icons.Default.Add,
-                                contentDescription = "Add to vocabulary"
-                            )
-                        }
-
-                        // Close button
-                        IconButton(onClick = onDismiss) {
-                            Icon(
-                                imageVector = Icons.Default.Close,
-                                contentDescription = "Close tooltip"
-                            )
-                        }
-                    }
-
-                    Spacer(modifier = Modifier.height(8.dp))
-
-                    // Word definition
-                    Text(
-                        text = wordInfo.definition,
-                        style = MaterialTheme.typography.bodyMedium
-                    )
-
-                    // Example sentence if available
-                    if (wordInfo.example.isNotEmpty()) {
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Text(
-                            text = "Example: ${wordInfo.example}",
-                            style = MaterialTheme.typography.bodySmall,
-                            textAlign = TextAlign.Start,
-                            modifier = Modifier.fillMaxWidth()
-                        )
-                    }
-                }
-            }
-        }
-    }
-}
-
-/**
- * Finds the word at the specified index in the given text
+ * 於指定文字中查找指定索引所對應的完整單字。
+ *
+ * @param text 文字內容
+ * @param index 觸發查找的字元索引
+ * @return 找到的單字或空字串
  */
 private fun findWordAt(text: String, index: Int): String {
-    // Handle edge cases
     if (text.isEmpty() || index < 0 || index >= text.length) return ""
 
-    // Check if the character at index is part of a word
+    // 檢查該位置是否屬於單字內部
     if (!isWordCharacter(text[index])) return ""
 
-    // Find word boundaries
+    // 向左找單字起點
     var start = index
     var end = index
-
-    // Find start of word
     while (start > 0 && isWordCharacter(text[start - 1])) {
         start--
     }
-
-    // Find end of word
+    // 向右找單字結束
     while (end < text.length - 1 && isWordCharacter(text[end + 1])) {
         end++
     }
-
     return text.substring(start, end + 1)
 }
 
 /**
- * Determines if a character is part of a word
- * Words can contain letters, digits, apostrophes and hyphens
+ * 判斷字元是否屬於單字內容（字母、數字、撇號、連字號）
+ *
+ * @param char 欲判斷的字元
+ * @return 是否為單字的一部分
  */
 private fun isWordCharacter(char: Char): Boolean {
     return char.isLetterOrDigit() || char == '\'' || char == '-'

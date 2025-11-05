@@ -90,6 +90,7 @@ kotlin {
             implementation(compose.components.uiToolingPreview)
             implementation(projects.shared)
             implementation(project(":core:authentication"))
+            implementation(project(":feature:dictionary"))
             implementation(libs.ksoup)
             implementation(libs.coil.compose)
             implementation(libs.coil.network)

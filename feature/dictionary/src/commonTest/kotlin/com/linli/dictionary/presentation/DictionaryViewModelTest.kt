@@ -33,7 +33,6 @@ class DictionaryViewModelTest {
         viewModel = DictionaryViewModel(
             lookupWordUseCase = lookupWordUseCase,
             getRecentSearchesUseCase = getRecentSearchesUseCase,
-            coroutineScope = testScope
         )
     }
 

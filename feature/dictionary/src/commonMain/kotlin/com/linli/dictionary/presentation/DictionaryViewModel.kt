@@ -1,10 +1,10 @@
 package com.linli.dictionary.presentation
 
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
 import com.linli.dictionary.domain.model.Word
 import com.linli.dictionary.domain.usecase.GetRecentSearchesUseCase
 import com.linli.dictionary.domain.usecase.LookupWordUseCase
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.update
@@ -16,8 +16,7 @@ import kotlinx.coroutines.launch
 class DictionaryViewModel(
     private val lookupWordUseCase: LookupWordUseCase,
     private val getRecentSearchesUseCase: GetRecentSearchesUseCase,
-    private val coroutineScope: CoroutineScope = CoroutineScope(Dispatchers.Main)
-) {
+) : ViewModel() {
     // UI state for the dictionary screen
     private val _state = MutableStateFlow(DictionaryState())
     val state: StateFlow<DictionaryState> = _state
@@ -34,7 +33,7 @@ class DictionaryViewModel(
 
         _state.update { it.copy(isLoading = true, error = null) }
 
-        coroutineScope.launch {
+        viewModelScope.launch {
             lookupWordUseCase(word).fold(
                 onSuccess = { result ->
                     _state.update {
@@ -62,7 +61,7 @@ class DictionaryViewModel(
      * 從儲存庫載入最近的搜尋記錄。
      */
     private fun loadRecentSearches() {
-        coroutineScope.launch {
+        viewModelScope.launch {
             val recentSearches = getRecentSearchesUseCase()
             _state.update { it.copy(recentSearches = recentSearches) }
         }

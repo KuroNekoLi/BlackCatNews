@@ -1,5 +1,6 @@
 package com.linli.dictionary.di
 
+import com.linli.dictionary.data.local.DictionaryDataStore
 import com.linli.dictionary.data.remote.DefaultDictionaryApi
 import com.linli.dictionary.data.remote.DictionaryApi
 import com.linli.dictionary.data.repository.DictionaryRepositoryImpl
@@ -22,6 +23,12 @@ import org.koin.dsl.module
  * Koin module for the dictionary feature.
  */
 val dictionaryModule = module {
+    // Platform-specific DataStore implementation
+    single<DictionaryDataStore> {
+        // 使用平台特定的實現
+        getDataStoreForPlatform(this)
+    }
+
     // API
     single { createHttpClient() }
     singleOf(::DefaultDictionaryApi) { bind<DictionaryApi>() }
@@ -36,6 +43,11 @@ val dictionaryModule = module {
     // ViewModel
     factory { DictionaryViewModel(get(), get()) }
 }
+
+/**
+ * 根據當前平台返回對應的 DictionaryDataStore 實現
+ */
+expect fun getDataStoreForPlatform(scope: org.koin.core.scope.Scope): DictionaryDataStore
 
 /**
  * Creates an HTTP client with JSON serialization and logging.
