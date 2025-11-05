@@ -17,6 +17,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.linli.blackcatnews.domain.model.QuizQuestion
 import com.linli.blackcatnews.ui.theme.AppTheme
+import com.linli.blackcatnews.ui.theme.correctBg
+import com.linli.blackcatnews.ui.theme.correctFg
+import com.linli.blackcatnews.ui.theme.wrongBg
+import com.linli.blackcatnews.ui.theme.wrongFg
 import org.jetbrains.compose.ui.tooling.preview.Preview
 
 /**
@@ -57,15 +61,15 @@ fun QuizQuestionItem(
                     else MaterialTheme.colorScheme.surface
                 }
 
-                isCorrect -> Color(0xFF4CAF50).copy(alpha = 0.2f) // 綠色背景
-                isSelected && !isCorrect -> Color(0xFFE53935).copy(alpha = 0.2f) // 紅色背景
+                isCorrect -> correctBg // 綠色背景
+                isSelected && !isCorrect -> wrongBg // 紅色背景
                 else -> MaterialTheme.colorScheme.surface
             }
 
             val textColor = when {
                 !isSubmitted -> MaterialTheme.colorScheme.onSurface
-                isCorrect -> Color(0xFF2E7D32) // 深綠色文字
-                isSelected && !isCorrect -> Color(0xFFC62828) // 深紅色文字
+                isCorrect -> correctFg // 深綠色文字
+                isSelected && !isCorrect -> wrongFg // 深紅色文字
                 else -> MaterialTheme.colorScheme.onSurface
             }
 

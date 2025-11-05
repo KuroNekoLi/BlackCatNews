@@ -1,6 +1,10 @@
-package com.example.compose
+package com.linli.blackcatnews.ui.theme
 import androidx.compose.ui.graphics.Color
 
+val correctBg = Color(0xFF4CAF50).copy(alpha = 0.2f)
+val correctFg = Color(0xFF2E7D32)
+val wrongBg = Color(0xFFE53935).copy(alpha = 0.2f)
+val wrongFg = Color(0xFFC62828)
 val primaryLight = Color(0xFFA9003D)
 val onPrimaryLight = Color(0xFFFFFFFF)
 val primaryContainerLight = Color(0xFFD41051)

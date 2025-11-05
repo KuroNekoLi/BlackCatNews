@@ -3,10 +3,13 @@ package com.linli.blackcatnews.ui.components
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.window.Popup
+import com.linli.dictionary.domain.model.Word
 import com.linli.dictionary.presentation.DictionaryState
+import org.jetbrains.compose.ui.tooling.preview.Preview
 
 /**
  * 字典提示工具列。根據字典狀態顯示不同的內容：加載中、出錯或單字定義。
@@ -70,5 +73,82 @@ fun DictionaryTooltip(
                 }
             }
         }
+    }
+}
+
+/**
+ * 預覽用 Composable，顯示加載中狀態
+ */
+@Preview
+@Composable
+fun PreviewDictionaryTooltipLoading() {
+    MaterialTheme {
+        // 模擬加載中狀態
+        val loadingState = DictionaryState(isLoading = true)
+        DictionaryTooltip(
+            state = loadingState,
+            selectedWord = "loading",
+            offset = IntOffset(0, 0),
+            onDismiss = {},
+            onSaveWord = {}
+        )
+    }
+}
+
+/**
+ * 預覽用 Composable，顯示錯誤狀態
+ */
+@Preview
+@Composable
+fun PreviewDictionaryTooltipError() {
+    MaterialTheme {
+        // 模擬錯誤狀態
+        val errorState = DictionaryState(error = "無法連接到字典服務")
+        DictionaryTooltip(
+            state = errorState,
+            selectedWord = "error",
+            offset = IntOffset(0, 0),
+            onDismiss = {},
+            onSaveWord = {}
+        )
+    }
+}
+
+/**
+ * 預覽用 Composable，顯示成功查詢的狀態
+ */
+@Preview
+@Composable
+fun PreviewDictionaryTooltipSuccess() {
+    MaterialTheme {
+        // 模擬成功查詢的狀態
+        val word = Word(
+            word = "success",
+            pronunciations = Word.Pronunciations(
+                uk = "/sək'ses/",
+                us = "/sək'ses/"
+            ),
+            entries = listOf(
+                Word.Entry(
+                    partOfSpeech = "n.",
+                    definitions = listOf(
+                        Word.Definition(
+                            enDefinition = "success",
+                            zhDefinition = "成功、順利",
+                            examples = listOf("His new book was a great success.")
+                        )
+                    )
+                )
+            )
+        )
+
+        val successState = DictionaryState(word = word)
+        DictionaryTooltip(
+            state = successState,
+            selectedWord = "success",
+            offset = IntOffset(0, 0),
+            onDismiss = {},
+            onSaveWord = {}
+        )
     }
 }

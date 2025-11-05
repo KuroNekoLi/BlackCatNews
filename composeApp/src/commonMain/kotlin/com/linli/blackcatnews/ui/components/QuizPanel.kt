@@ -10,6 +10,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -17,11 +18,14 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.MenuBook
 import androidx.compose.material.icons.filled.School
@@ -59,6 +63,10 @@ import com.linli.blackcatnews.domain.model.PhraseIdiom
 import com.linli.blackcatnews.domain.model.QuizQuestion
 import com.linli.blackcatnews.domain.model.SentencePattern
 import com.linli.blackcatnews.ui.theme.AppTheme
+import com.linli.blackcatnews.ui.theme.correctBg
+import com.linli.blackcatnews.ui.theme.correctFg
+import com.linli.blackcatnews.ui.theme.wrongBg
+import com.linli.blackcatnews.ui.theme.wrongFg
 import org.jetbrains.compose.ui.tooling.preview.Preview
 
 /**
@@ -88,289 +96,305 @@ fun QuizPanel(
     rememberCoroutineScope()
     var currentIndex by remember { mutableStateOf(0) }
 
-    Column(
+    BoxWithConstraints(
         modifier = modifier
             .fillMaxWidth()
-            .padding(16.dp),
-        horizontalAlignment = Alignment.End
+            .padding(16.dp)
     ) {
-        // 學習輔助 FloatingActionButton
-        FloatingActionButton(
-            onClick = { isLearnSheetOpen = true },
-            modifier = Modifier.size(56.dp).padding(bottom = 6.dp)
+        val cardMaxHeight = maxHeight * 0.85f
+
+        Column(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalAlignment = Alignment.End
         ) {
-            Icon(
-                imageVector = Icons.Filled.School,
-                contentDescription = "學習輔助"
-            )
-        }
-        // 使用獨立LearningBottomSheet Composable
-        LearningBottomSheet(
-            isOpen = isLearnSheetOpen,
-            onDismiss = { isLearnSheetOpen = false },
-            glossary = glossary,
-            grammarPoints = grammarPoints,
-            sentencePatterns = sentencePatterns,
-            phrases = phrases
-        )
-        // 展開的測驗內容
-        AnimatedVisibility(
-            visible = isExpanded,
-            enter = expandVertically() + fadeIn(),
-            exit = shrinkVertically() + fadeOut()
-        ) {
-            Card(
-                modifier = Modifier
-                    .fillMaxWidth(),
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surface
-                ),
-                elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+            // 學習輔助 FloatingActionButton
+            FloatingActionButton(
+                onClick = { isLearnSheetOpen = true },
+                modifier = Modifier.size(56.dp).padding(bottom = 6.dp)
             ) {
-                Column(
+                Icon(
+                    imageVector = Icons.Filled.School,
+                    contentDescription = "學習輔助"
+                )
+            }
+            // 使用獨立LearningBottomSheet Composable
+            LearningBottomSheet(
+                isOpen = isLearnSheetOpen,
+                onDismiss = { isLearnSheetOpen = false },
+                glossary = glossary,
+                grammarPoints = grammarPoints,
+                sentencePatterns = sentencePatterns,
+                phrases = phrases
+            )
+            // 展開的測驗內容
+            AnimatedVisibility(
+                visible = isExpanded,
+                enter = expandVertically() + fadeIn(),
+                exit = shrinkVertically() + fadeOut()
+            ) {
+                Card(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(16.dp)
+                        .heightIn(max = cardMaxHeight),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.surface
+                    ),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
                 ) {
-                    // 測驗標題（漸層區塊 + 右側重置）
-                    Box(
+                    Column(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .clip(MaterialTheme.shapes.medium)
-                            .background(
-                                Brush.horizontalGradient(
-                                    listOf(
-                                        MaterialTheme.colorScheme.primaryContainer,
-                                        MaterialTheme.colorScheme.secondaryContainer
-                                    )
-                                )
-                            )
-                            .padding(horizontal = 16.dp, vertical = 12.dp)
+                            .padding(16.dp)
+                            .verticalScroll(rememberScrollState())
                     ) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Icon(
-                                    imageVector = Icons.Filled.MenuBook,
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.onPrimaryContainer
-                                )
-                                Spacer(Modifier.size(8.dp))
-                                Text(
-                                    text = "閱讀測驗",
-                                    style = MaterialTheme.typography.titleMedium,
-                                    fontWeight = FontWeight.Bold,
-                                    color = MaterialTheme.colorScheme.onPrimaryContainer
-                                )
-                                Spacer(Modifier.size(10.dp))
-                                Surface(
-                                    color = MaterialTheme.colorScheme.surface,
-                                    tonalElevation = 2.dp,
-                                    shape = CircleShape,
-                                    border = BorderStroke(
-                                        1.dp,
-                                        MaterialTheme.colorScheme.outlineVariant
+                        // 測驗標題（漸層區塊 + 右側重置）
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(MaterialTheme.shapes.medium)
+                                .background(
+                                    Brush.horizontalGradient(
+                                        listOf(
+                                            MaterialTheme.colorScheme.primaryContainer,
+                                            MaterialTheme.colorScheme.secondaryContainer
+                                        )
                                     )
-                                ) {
-                                    val answeredCount = userAnswers.size
+                                )
+                                .padding(horizontal = 16.dp, vertical = 12.dp)
+                        ) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(
+                                        imageVector = Icons.Filled.MenuBook,
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.onPrimaryContainer
+                                    )
+                                    Spacer(Modifier.size(8.dp))
                                     Text(
-                                        text = "${answeredCount}/${quiz.size}",
-                                        modifier = Modifier.padding(
-                                            horizontal = 10.dp,
-                                            vertical = 4.dp
-                                        ),
-                                        style = MaterialTheme.typography.labelLarge
+                                        text = "閱讀測驗",
+                                        style = MaterialTheme.typography.titleMedium,
+                                        fontWeight = FontWeight.Bold,
+                                        color = MaterialTheme.colorScheme.onPrimaryContainer
                                     )
-                                }
-                            }
-                            if (isSubmitted) {
-                                TextButton(onClick = onReset) { Text("重新測驗") }
-                            }
-                        }
-                    }
-
-                    HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
-
-                    // 題目導覽：圓形題號列（更友善的定位與跳題）
-                    if (quiz.isNotEmpty()) {
-                        LazyRow(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(10.dp),
-                            contentPadding = PaddingValues(vertical = 4.dp)
-                        ) {
-                            itemsIndexed(quiz) { index, _ ->
-                                val answered = userAnswers.containsKey(index)
-                                val isCorrect =
-                                    answered && userAnswers[index] == quiz[index].correctAnswerIndex
-                                val bg = when {
-                                    isSubmitted && isCorrect -> MaterialTheme.colorScheme.primaryContainer
-                                    isSubmitted && !isCorrect && answered -> MaterialTheme.colorScheme.errorContainer
-                                    index == currentIndex -> MaterialTheme.colorScheme.secondaryContainer
-                                    else -> MaterialTheme.colorScheme.surfaceVariant
-                                }
-                                val fg = when {
-                                    isSubmitted && isCorrect -> MaterialTheme.colorScheme.onPrimaryContainer
-                                    isSubmitted && !isCorrect && answered -> MaterialTheme.colorScheme.onErrorContainer
-                                    index == currentIndex -> MaterialTheme.colorScheme.onSecondaryContainer
-                                    else -> MaterialTheme.colorScheme.onSurfaceVariant
-                                }
-                                Surface(
-                                    modifier = Modifier
-                                        .size(40.dp)
-                                        .clip(CircleShape)
-                                        .clickable { currentIndex = index },
-                                    shape = CircleShape,
-                                    color = bg,
-                                    border = BorderStroke(
-                                        1.dp,
-                                        MaterialTheme.colorScheme.outlineVariant
-                                    )
-                                ) {
-                                    Box(contentAlignment = Alignment.Center) {
+                                    Spacer(Modifier.size(10.dp))
+                                    Surface(
+                                        color = MaterialTheme.colorScheme.surface,
+                                        tonalElevation = 2.dp,
+                                        shape = CircleShape,
+                                        border = BorderStroke(
+                                            1.dp,
+                                            MaterialTheme.colorScheme.outlineVariant
+                                        )
+                                    ) {
+                                        val answeredCount = userAnswers.size
                                         Text(
-                                            text = "${index + 1}",
-                                            color = fg,
-                                            style = MaterialTheme.typography.labelLarge,
-                                            fontWeight = FontWeight.Bold
+                                            text = "${answeredCount}/${quiz.size}",
+                                            modifier = Modifier.padding(
+                                                horizontal = 10.dp,
+                                                vertical = 4.dp
+                                            ),
+                                            style = MaterialTheme.typography.labelLarge
                                         )
                                     }
                                 }
+                                if (isSubmitted) {
+                                    TextButton(onClick = onReset) { Text("重新測驗") }
+                                }
                             }
                         }
-                        Spacer(modifier = Modifier.height(8.dp))
-                        // 顏色圖例
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(16.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            LegendDot(MaterialTheme.colorScheme.secondaryContainer, "目前題")
-                            LegendDot(MaterialTheme.colorScheme.primaryContainer, "答對")
-                            LegendDot(MaterialTheme.colorScheme.errorContainer, "答錯")
-                            LegendDot(MaterialTheme.colorScheme.surfaceVariant, "未作答")
-                        }
-                        Spacer(modifier = Modifier.height(8.dp))
-                    }
 
-                    // 單題顯示（不再整頁直向捲動）
-                    if (quiz.isNotEmpty()) {
-                        val question = quiz[currentIndex]
-                        QuizQuestionItem(
-                            questionNumber = currentIndex + 1,
-                            question = question,
-                            selectedAnswer = userAnswers[currentIndex],
-                            onAnswerSelected = { answerIndex ->
-                                if (!isSubmitted) {
-                                    userAnswers[currentIndex] = answerIndex
-                                }
-                            },
-                            isSubmitted = isSubmitted
-                        )
+                        HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
 
-                        // 解析區塊（提交後顯示）
-                        if (isSubmitted) {
-                            Spacer(modifier = Modifier.height(12.dp))
-                            Surface(
-                                shape = MaterialTheme.shapes.medium,
-                                color = MaterialTheme.colorScheme.tertiaryContainer,
-                                tonalElevation = 1.dp,
+                        // 題目導覽：圓形題號列（更友善的定位與跳題）
+                        if (quiz.isNotEmpty()) {
+                            val correctBg = correctBg
+                            val correctFg = correctFg
+                            val incorrectBg = wrongBg
+                            val incorrectFg = wrongFg
+                            LazyRow(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                                contentPadding = PaddingValues(vertical = 4.dp)
                             ) {
-                                Column(
-                                    modifier = Modifier.padding(12.dp),
-                                    verticalArrangement = Arrangement.spacedBy(6.dp)
-                                ) {
-                                    Text(
-                                        text = "題目中文：",
-                                        style = MaterialTheme.typography.labelLarge.copy(color = MaterialTheme.colorScheme.onTertiaryContainer)
-                                    )
-                                    Text(
-                                        text = question.questionChinese.orEmpty(),
-                                        style = MaterialTheme.typography.bodyLarge,
-                                        color = MaterialTheme.colorScheme.onTertiaryContainer
-                                    )
-                                    val hasEn = question.explanationEnglish?.isNotBlank() == true
-                                    val hasZh = question.explanationChinese?.isNotBlank() == true
-                                    if (hasEn || hasZh) {
-                                        Spacer(modifier = Modifier.height(6.dp))
-                                        Row(verticalAlignment = Alignment.CenterVertically) {
-                                            Icon(
-                                                imageVector = Icons.Filled.School,
-                                                contentDescription = null,
-                                                tint = MaterialTheme.colorScheme.onTertiaryContainer
-                                            )
-                                            Spacer(Modifier.size(6.dp))
+                                itemsIndexed(quiz) { index, _ ->
+                                    val answered = userAnswers.containsKey(index)
+                                    val isCorrect =
+                                        answered && userAnswers[index] == quiz[index].correctAnswerIndex
+                                    val bg = when {
+                                        isSubmitted && isCorrect -> correctBg
+                                        isSubmitted && !isCorrect && answered -> incorrectBg
+                                        index == currentIndex -> MaterialTheme.colorScheme.secondaryContainer
+                                        else -> MaterialTheme.colorScheme.surfaceVariant
+                                    }
+                                    val fg = when {
+                                        isSubmitted && isCorrect -> correctFg
+                                        isSubmitted && !isCorrect && answered -> incorrectFg
+                                        index == currentIndex -> MaterialTheme.colorScheme.onSecondaryContainer
+                                        else -> MaterialTheme.colorScheme.onSurfaceVariant
+                                    }
+                                    Surface(
+                                        modifier = Modifier
+                                            .size(40.dp)
+                                            .clip(CircleShape)
+                                            .clickable { currentIndex = index },
+                                        shape = CircleShape,
+                                        color = bg,
+                                        border = BorderStroke(
+                                            1.dp,
+                                            MaterialTheme.colorScheme.outlineVariant
+                                        )
+                                    ) {
+                                        Box(contentAlignment = Alignment.Center) {
                                             Text(
-                                                text = "解析：",
-                                                style = MaterialTheme.typography.labelLarge.copy(
-                                                    color = MaterialTheme.colorScheme.onTertiaryContainer
-                                                )
-                                            )
-                                        }
-                                        if (hasEn) {
-                                            Text(
-                                                text = question.explanationEnglish.orEmpty(),
-                                                style = MaterialTheme.typography.bodyLarge,
-                                                color = MaterialTheme.colorScheme.onTertiaryContainer
-                                            )
-                                        }
-                                        if (hasZh) {
-                                            Text(
-                                                text = question.explanationChinese.orEmpty(),
-                                                style = MaterialTheme.typography.bodyMedium,
-                                                color = MaterialTheme.colorScheme.onTertiaryContainer
+                                                text = "${index + 1}",
+                                                color = fg,
+                                                style = MaterialTheme.typography.labelLarge,
+                                                fontWeight = FontWeight.Bold
                                             )
                                         }
                                     }
                                 }
                             }
+                            Spacer(modifier = Modifier.height(8.dp))
+                            // 顏色圖例
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(16.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                LegendDot(MaterialTheme.colorScheme.secondaryContainer, "目前題")
+                                LegendDot(correctBg, "答對")
+                                LegendDot(incorrectBg, "答錯")
+                                LegendDot(MaterialTheme.colorScheme.surfaceVariant, "未作答")
+                            }
+                            Spacer(modifier = Modifier.height(8.dp))
                         }
-                    } else {
-                        Text("目前沒有題目", style = MaterialTheme.typography.bodyLarge)
-                    }
 
-                    Spacer(modifier = Modifier.height(8.dp))
+                        // 單題顯示（不再整頁直向捲動）
+                        if (quiz.isNotEmpty()) {
+                            val question = quiz[currentIndex]
+                            QuizQuestionItem(
+                                questionNumber = currentIndex + 1,
+                                question = question,
+                                selectedAnswer = userAnswers[currentIndex],
+                                onAnswerSelected = { answerIndex ->
+                                    if (!isSubmitted) {
+                                        userAnswers[currentIndex] = answerIndex
+                                    }
+                                },
+                                isSubmitted = isSubmitted
+                            )
 
-                    if (!isSubmitted) {
-                        Button(
-                            onClick = onSubmit,
-                            modifier = Modifier.fillMaxWidth(),
-                            enabled = userAnswers.size == quiz.size,
-                            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
-                        ) {
-                            Icon(Icons.Filled.Send, contentDescription = null)
-                            Spacer(Modifier.size(8.dp))
-                            Text("送出答案")
+                            // 解析區塊（提交後顯示）
+                            if (isSubmitted) {
+                                Spacer(modifier = Modifier.height(12.dp))
+                                Surface(
+                                    shape = MaterialTheme.shapes.medium,
+                                    color = MaterialTheme.colorScheme.tertiaryContainer,
+                                    tonalElevation = 1.dp,
+                                ) {
+                                    Column(
+                                        modifier = Modifier.padding(12.dp),
+                                        verticalArrangement = Arrangement.spacedBy(6.dp)
+                                    ) {
+                                        Text(
+                                            text = "題目中文：",
+                                            style = MaterialTheme.typography.labelLarge.copy(color = MaterialTheme.colorScheme.onTertiaryContainer)
+                                        )
+                                        Text(
+                                            text = question.questionChinese.orEmpty(),
+                                            style = MaterialTheme.typography.bodyLarge,
+                                            color = MaterialTheme.colorScheme.onTertiaryContainer
+                                        )
+                                        val hasEn =
+                                            question.explanationEnglish?.isNotBlank() == true
+                                        val hasZh =
+                                            question.explanationChinese?.isNotBlank() == true
+                                        if (hasEn || hasZh) {
+                                            Spacer(modifier = Modifier.height(6.dp))
+                                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                                Icon(
+                                                    imageVector = Icons.Filled.School,
+                                                    contentDescription = null,
+                                                    tint = MaterialTheme.colorScheme.onTertiaryContainer
+                                                )
+                                                Spacer(Modifier.size(6.dp))
+                                                Text(
+                                                    text = "解析：",
+                                                    style = MaterialTheme.typography.labelLarge.copy(
+                                                        color = MaterialTheme.colorScheme.onTertiaryContainer
+                                                    )
+                                                )
+                                            }
+                                            if (hasEn) {
+                                                Text(
+                                                    text = question.explanationEnglish.orEmpty(),
+                                                    style = MaterialTheme.typography.bodyLarge,
+                                                    color = MaterialTheme.colorScheme.onTertiaryContainer
+                                                )
+                                            }
+                                            if (hasZh) {
+                                                Text(
+                                                    text = question.explanationChinese.orEmpty(),
+                                                    style = MaterialTheme.typography.bodyMedium,
+                                                    color = MaterialTheme.colorScheme.onTertiaryContainer
+                                                )
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        } else {
+                            Text("目前沒有題目", style = MaterialTheme.typography.bodyLarge)
+                        }
+
+                        Spacer(modifier = Modifier.height(8.dp))
+
+                        if (!isSubmitted) {
+                            Button(
+                                onClick = onSubmit,
+                                modifier = Modifier.fillMaxWidth(),
+                                enabled = userAnswers.size == quiz.size,
+                                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
+                            ) {
+                                Icon(Icons.Filled.Send, contentDescription = null)
+                                Spacer(Modifier.size(8.dp))
+                                Text("送出答案")
+                            }
                         }
                     }
                 }
             }
-        }
 
-        Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(8.dp))
 
-        // 展開/收起按鈕
-        FloatingActionButton(
-            onClick = { onExpandChange(!isExpanded) },
-            modifier = Modifier.size(56.dp),
-        ) {
-            if (isExpanded) {
-                Text(
-                    text = "✕",
-                    style = MaterialTheme.typography.titleLarge,
-                    color = MaterialTheme.colorScheme.onPrimary
-                )
-            } else {
-                Icon(
-                    imageVector = Icons.Filled.MenuBook,
-                    contentDescription = "開啟測驗",
-                    tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                    modifier = Modifier.size(32.dp)
-                )
+            // 展開/收起按鈕
+            FloatingActionButton(
+                onClick = { onExpandChange(!isExpanded) },
+                modifier = Modifier.size(56.dp),
+            ) {
+                if (isExpanded) {
+                    Text(
+                        text = "✕",
+                        style = MaterialTheme.typography.titleLarge,
+                        color = MaterialTheme.colorScheme.onPrimary
+                    )
+                } else {
+                    Icon(
+                        imageVector = Icons.Filled.MenuBook,
+                        contentDescription = "開啟測驗",
+                        tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                        modifier = Modifier.size(32.dp)
+                    )
+                }
             }
+            // end Column
         }
+        // end BoxWithConstraints
     }
 }
 
