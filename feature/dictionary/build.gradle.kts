@@ -2,6 +2,8 @@ plugins {
     alias(libs.plugins.kotlinMultiplatform)
     alias(libs.plugins.android.kotlin.multiplatform.library)
     alias(libs.plugins.kotlinx.serialization)
+    alias(libs.plugins.ksp)
+    alias(libs.plugins.androidx.room)
 }
 
 kotlin {
@@ -78,6 +80,9 @@ kotlin {
 
                 // Coroutines
                 implementation(libs.kotlinx.coroutines.core)
+                // Room Database
+                implementation(libs.room.runtime)
+                implementation(libs.sqlite.bundled)
             }
         }
 
@@ -96,6 +101,8 @@ kotlin {
                 // dependencies declared in commonMain.
                 implementation(libs.ktor.client.okhttp)
                 implementation(libs.androidx.core.ktx)
+                // Room
+                implementation(libs.room.runtime)
             }
         }
 
@@ -119,4 +126,17 @@ kotlin {
         }
     }
 
+}
+
+dependencies {
+    // Room KSP 編譯器 - 官方最佳實踐：每個 target 都要配置
+    add("kspCommonMainMetadata", libs.room.compiler)
+    add("kspAndroid", libs.room.compiler)
+    add("kspIosX64", libs.room.compiler)
+    add("kspIosArm64", libs.room.compiler)
+    add("kspIosSimulatorArm64", libs.room.compiler)
+}
+
+room {
+    schemaDirectory("$projectDir/schemas")
 }

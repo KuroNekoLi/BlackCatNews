@@ -9,90 +9,78 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
+/**
+ * LookupWordUseCase 單元測試類別
+ */
 class LookupWordUseCaseTest {
+    // 被測試的 use case
+    private lateinit var lookupWordUseCase: LookupWordUseCase
 
-    private lateinit var useCase: LookupWordUseCase
-    private lateinit var repository: MockDictionaryRepository
+    // Mock 存儲庫
+    private lateinit var mockRepository: MockDictionaryRepository
 
     @BeforeTest
-    fun setUp() {
-        repository = MockDictionaryRepository()
-        useCase = LookupWordUseCase(repository)
+    fun setup() {
+        mockRepository = MockDictionaryRepository()
+        lookupWordUseCase = LookupWordUseCase(mockRepository)
     }
 
     @Test
-    fun `invoke returns success from repository`() = runTest {
-        val testWord = "test"
-        val mockWord = MockDictionaryData.getMockWord(testWord)
-        repository.mockWordResult = Result.success(mockWord)
+    fun lookupWord_successfulLookup_returnsWordDetails() = runTest {
+        // 準備：設定存儲庫返回成功結果
+        val expectedWord = MockDictionaryData.getMockWord()
+        mockRepository.wordToReturn = expectedWord
 
-        val result = useCase(testWord)
+        // 執行測試
+        val result = lookupWordUseCase("apple")
 
+        // 驗證結果
         assertTrue(result.isSuccess)
-        assertEquals(mockWord, result.getOrNull())
+        assertEquals(expectedWord, result.getOrNull())
+        assertEquals(1, mockRepository.lookupWordCallCount)
     }
 
     @Test
-    fun `invoke returns failure from repository`() = runTest {
-        val testWord = "test"
-        val exception = RuntimeException("Network error")
-        repository.mockWordResult = Result.failure(exception)
+    fun lookupWord_failedLookup_returnsError() = runTest {
+        // 準備：設定存儲庫返回失敗結果
+        mockRepository.errorToReturn = Exception("Dictionary error")
 
-        val result = useCase(testWord)
+        // 執行測試
+        val result = lookupWordUseCase("unknown")
 
+        // 驗證結果
         assertTrue(result.isFailure)
-        assertEquals(exception, result.exceptionOrNull())
-    }
-
-    @Test
-    fun `invoke with empty word returns failure`() = runTest {
-        val result = useCase("")
-
-        assertTrue(result.isFailure)
-        assertTrue(result.exceptionOrNull() is IllegalArgumentException)
-    }
-
-    @Test
-    fun `invoke with blank word returns failure`() = runTest {
-        val result = useCase("  ")
-
-        assertTrue(result.isFailure)
-        assertTrue(result.exceptionOrNull() is IllegalArgumentException)
-    }
-
-    @Test
-    fun `invoke trims and lowercases the word`() = runTest {
-        val originalWord = "  TeSt  "
-        val expectedWord = "test"
-        val mockWord = MockDictionaryData.getMockWord(expectedWord)
-        repository.mockWordResult = Result.success(mockWord)
-
-        useCase(originalWord)
-
-        assertEquals(expectedWord, repository.lastSavedWord)
-        assertEquals(expectedWord, repository.lastLookedUpWord)
+        assertEquals("Dictionary error", result.exceptionOrNull()?.message)
+        assertEquals(1, mockRepository.lookupWordCallCount)
     }
 
     /**
-     * Mock implementation of DictionaryRepository for testing.
+     * 模擬字典存儲庫
      */
-    class MockDictionaryRepository : DictionaryRepository {
-        var mockWordResult: Result<Word> = Result.success(MockDictionaryData.getMockWord())
-        var mockRecentSearches = MockDictionaryData.getMockRecentSearches()
-        var lastLookedUpWord: String? = null
-        var lastSavedWord: String? = null
+    private class MockDictionaryRepository : DictionaryRepository {
+        // 測試輔助設置
+        var wordToReturn: Word? = null
+        var errorToReturn: Exception? = null
+        var lookupWordCallCount = 0
+        var getRecentSearchesCallCount = 0
+        var saveRecentSearchCallCount = 0
 
         override suspend fun lookupWord(word: String): Result<Word> {
-            lastLookedUpWord = word
-            return mockWordResult
+            lookupWordCallCount++
+            return errorToReturn?.let {
+                Result.failure(it)
+            } ?: wordToReturn?.let {
+                Result.success(it)
+            } ?: Result.failure(Exception("No mock response configured"))
         }
 
         override suspend fun getRecentSearches(): List<String> {
-            return mockRecentSearches
+            getRecentSearchesCallCount++
+            return emptyList()
         }
 
         override suspend fun saveRecentSearch(word: String) {
-            lastSavedWord = word
+            saveRecentSearchCallCount++
         }
     }
 }

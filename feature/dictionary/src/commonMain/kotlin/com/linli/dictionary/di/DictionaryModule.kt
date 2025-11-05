@@ -1,6 +1,8 @@
 package com.linli.dictionary.di
 
-import com.linli.dictionary.data.local.DictionaryDataStore
+import androidx.room.RoomDatabase
+import androidx.sqlite.driver.bundled.BundledSQLiteDriver
+import com.linli.dictionary.data.local.database.DictionaryDatabase
 import com.linli.dictionary.data.remote.DefaultDictionaryApi
 import com.linli.dictionary.data.remote.DictionaryApi
 import com.linli.dictionary.data.repository.DictionaryRepositoryImpl
@@ -17,24 +19,31 @@ import kotlinx.serialization.json.Json
 import org.koin.core.module.dsl.bind
 import org.koin.core.module.dsl.factoryOf
 import org.koin.core.module.dsl.singleOf
+import org.koin.core.qualifier.named
 import org.koin.dsl.module
 
 /**
  * Koin module for the dictionary feature.
  */
 val dictionaryModule = module {
-    // Platform-specific DataStore implementation
-    single<DictionaryDataStore> {
-        // 使用平台特定的實現
-        getDataStoreForPlatform(this)
+    // Database
+    single<DictionaryDatabase> {
+        val builder: RoomDatabase.Builder<DictionaryDatabase> =
+            get(named("dictionaryDatabaseBuilder"))
+        builder
+            .setDriver(BundledSQLiteDriver())
+            .fallbackToDestructiveMigration(true)
+            .build()
     }
+    single { get<DictionaryDatabase>().dictionaryDao() }
 
     // API
     single { createHttpClient() }
     singleOf(::DefaultDictionaryApi) { bind<DictionaryApi>() }
+//    singleOf(::MockDictionaryApi) { bind<DictionaryApi>() }
 
     // Repository
-    singleOf(::DictionaryRepositoryImpl) { bind<DictionaryRepository>() }
+    single<DictionaryRepository> { DictionaryRepositoryImpl(get(), get()) }
 
     // Use cases
     factoryOf(::LookupWordUseCase)
@@ -44,10 +53,6 @@ val dictionaryModule = module {
     factory { DictionaryViewModel(get(), get()) }
 }
 
-/**
- * 根據當前平台返回對應的 DictionaryDataStore 實現
- */
-expect fun getDataStoreForPlatform(scope: org.koin.core.scope.Scope): DictionaryDataStore
 
 /**
  * Creates an HTTP client with JSON serialization and logging.

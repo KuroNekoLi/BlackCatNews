@@ -3,6 +3,7 @@ package com.linli.blackcatnews.di
 import androidx.room.RoomDatabase
 import com.linli.blackcatnews.data.local.database.NewsDatabase
 import com.linli.blackcatnews.data.local.database.buildDatabase
+import org.koin.core.qualifier.named
 import org.koin.dsl.module
 
 /**
@@ -13,7 +14,7 @@ import org.koin.dsl.module
  */
 val databaseModule = module {
     single<NewsDatabase> {
-        val builder: RoomDatabase.Builder<NewsDatabase> = get()
+        val builder: RoomDatabase.Builder<NewsDatabase> = get(named("newsDatabaseBuilder"))
         buildDatabase(builder)
     }
 

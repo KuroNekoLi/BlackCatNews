@@ -9,6 +9,7 @@ import com.linli.blackcatnews.data.local.database.getDatabaseBuilder
 import org.koin.android.ext.koin.androidContext
 import org.koin.core.context.startKoin
 import org.koin.core.context.stopKoin
+import org.koin.core.qualifier.named
 import org.koin.dsl.module
 
 val androidPlatformModule = module {
@@ -16,7 +17,7 @@ val androidPlatformModule = module {
         platformAuthProvidersModule,
         platformLoginModule
     )
-    single<RoomDatabase.Builder<NewsDatabase>> {
+    single<RoomDatabase.Builder<NewsDatabase>>(named("newsDatabaseBuilder")) {
         val context: Context = androidContext()
         getDatabaseBuilder(context)
     }

@@ -1,15 +1,17 @@
 package com.linli.dictionary.di
 
-import com.linli.dictionary.data.local.DictionaryDataStore
-import com.linli.dictionary.data.local.IosDictionaryDataStore
-import org.koin.core.module.dsl.bind
-import org.koin.core.module.dsl.singleOf
+import androidx.room.RoomDatabase
+import com.linli.dictionary.data.local.database.DictionaryDatabase
+import com.linli.dictionary.data.local.database.getDatabaseBuilder
+import org.koin.core.qualifier.named
 import org.koin.dsl.module
 
 /**
- * iOS-specific dictionary module.
+ * iOS 專用字典模組。
  */
 val iosDictionaryModule = module {
-    // iOS-specific implementations
-    singleOf(::IosDictionaryDataStore) { bind<DictionaryDataStore>() }
+    // 字典數據庫建構器
+    single<RoomDatabase.Builder<DictionaryDatabase>>(named("dictionaryDatabaseBuilder")) {
+        getDatabaseBuilder()
+    }
 }

@@ -14,7 +14,7 @@ object MockDictionaryData {
     /**
      * Returns a mock WordResponseDto for the given word.
      */
-    fun getMockWordResponseDto(word: String = "adjust"): WordResponseDto {
+    fun getMockWordResponseDto(word: String = "to"): WordResponseDto {
         return WordResponseDto(
             word = word,
             pronunciations = PronunciationsDto(

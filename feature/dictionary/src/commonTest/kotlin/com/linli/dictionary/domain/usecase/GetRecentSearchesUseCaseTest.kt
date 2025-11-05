@@ -1,6 +1,5 @@
 package com.linli.dictionary.domain.usecase
 
-import com.linli.dictionary.data.mock.MockDictionaryData
 import com.linli.dictionary.domain.model.Word
 import com.linli.dictionary.domain.repository.DictionaryRepository
 import kotlinx.coroutines.test.runTest
@@ -8,44 +7,71 @@ import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
+/**
+ * GetRecentSearchesUseCase 的單元測試
+ */
 class GetRecentSearchesUseCaseTest {
+    // 被測試的 use case
+    private lateinit var getRecentSearchesUseCase: GetRecentSearchesUseCase
 
-    private lateinit var useCase: GetRecentSearchesUseCase
-    private lateinit var repository: MockDictionaryRepository
+    // Mock 數據倉庫
+    private lateinit var mockRepository: MockDictionaryRepository
 
     @BeforeTest
-    fun setUp() {
-        repository = MockDictionaryRepository()
-        useCase = GetRecentSearchesUseCase(repository)
+    fun setup() {
+        mockRepository = MockDictionaryRepository()
+        getRecentSearchesUseCase = GetRecentSearchesUseCase(mockRepository)
     }
 
     @Test
-    fun `invoke returns recent searches from repository`() = runTest {
-        val mockRecentSearches = MockDictionaryData.getMockRecentSearches()
-        repository.mockRecentSearches = mockRecentSearches
+    fun getRecentSearches_returnsOrderedList() = runTest {
+        // 準備 Mock 數據倉庫返回的最近搜索記錄
+        val expectedSearches = listOf("apple", "banana", "orange")
+        mockRepository.recentSearchesToReturn = expectedSearches
 
-        val result = useCase()
+        // 調用被測試的 use case
+        val result = getRecentSearchesUseCase()
 
-        assertEquals(mockRecentSearches, result)
+        // 斷言結果
+        assertEquals(expectedSearches, result)
+        assertEquals(1, mockRepository.getRecentSearchesCallCount)
+    }
+
+    @Test
+    fun getRecentSearches_emptyList_returnsEmptyList() = runTest {
+        // 準備 Mock 數據倉庫返回的最近搜索記錄為空
+        mockRepository.recentSearchesToReturn = emptyList()
+
+        // 調用被測試的 use case
+        val result = getRecentSearchesUseCase()
+
+        // 斷言結果
+        assertEquals(0, result.size)
+        assertEquals(1, mockRepository.getRecentSearchesCallCount)
     }
 
     /**
-     * Mock implementation of DictionaryRepository for testing.
+     * Mock 數據倉庫
      */
-    class MockDictionaryRepository : DictionaryRepository {
-        var mockWordResult: Result<Word> = Result.success(MockDictionaryData.getMockWord())
-        var mockRecentSearches = MockDictionaryData.getMockRecentSearches()
+    private class MockDictionaryRepository : DictionaryRepository {
+        // 被測試的方法調用次數
+        var recentSearchesToReturn: List<String> = emptyList()
+        var lookupWordCallCount = 0
+        var getRecentSearchesCallCount = 0
+        var saveRecentSearchCallCount = 0
 
         override suspend fun lookupWord(word: String): Result<Word> {
-            return mockWordResult
+            lookupWordCallCount++
+            return Result.failure(Exception("Not implemented for this test"))
         }
 
         override suspend fun getRecentSearches(): List<String> {
-            return mockRecentSearches
+            getRecentSearchesCallCount++
+            return recentSearchesToReturn
         }
 
         override suspend fun saveRecentSearch(word: String) {
-            // Do nothing in test
+            saveRecentSearchCallCount++
         }
     }
 }
