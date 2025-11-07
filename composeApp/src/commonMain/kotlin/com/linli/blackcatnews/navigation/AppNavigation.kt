@@ -1,7 +1,11 @@
 package com.linli.blackcatnews.navigation
 
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
@@ -11,11 +15,21 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.navigation.NavDestination
+import androidx.navigation.NavDestination.Companion.hasRoute
+import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.toRoute
+import blackcatnews.composeapp.generated.resources.Res
+import blackcatnews.composeapp.generated.resources.title_article_detail
+import blackcatnews.composeapp.generated.resources.title_categories
+import blackcatnews.composeapp.generated.resources.title_favorites
+import blackcatnews.composeapp.generated.resources.title_home
+import blackcatnews.composeapp.generated.resources.title_search
+import blackcatnews.composeapp.generated.resources.title_settings
 import com.linli.authentication.ProviderType
 import com.linli.authentication.domain.SignInUIClient
 import com.linli.authentication.domain.usecase.GetCurrentUserUseCase
@@ -32,6 +46,7 @@ import com.linli.blackcatnews.ui.screens.RegisterScreen
 import com.linli.blackcatnews.ui.screens.SearchScreen
 import com.linli.blackcatnews.ui.screens.SettingsScreen
 import com.linli.blackcatnews.ui.screens.SignInScreen
+import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.koinInject
 import org.koin.compose.viewmodel.koinViewModel
 import org.koin.core.parameter.parametersOf
@@ -54,7 +69,7 @@ expect fun rememberSignInUIClients(): Map<ProviderType, SignInUIClient>
 fun AppNavigation() {
     val navController = rememberNavController()
     val currentBackStackEntry by navController.currentBackStackEntryAsState()
-    val currentRoute = currentBackStackEntry?.destination?.route
+    val currentDestination: NavDestination? = currentBackStackEntry?.destination
 
     // Check if user is already authenticated
     val getCurrentUserUseCase: GetCurrentUserUseCase = koinInject()
@@ -67,9 +82,9 @@ fun AppNavigation() {
         topBar = {
             // 根據當前路由顯示不同的頂部欄
             when {
-                shouldShowTopBar(currentRoute) -> {
+                shouldShowTopBar(currentDestination) -> {
                     AppTopBar(
-                        title = getTopBarTitle(currentRoute),
+                        title = getTopBarTitle(currentDestination),
                         onSearchClick = {
                             navController.navigate(SearchRoute) {
                                 launchSingleTop = true
@@ -81,8 +96,8 @@ fun AppNavigation() {
                             //     launchSingleTop = true
                             // }
                         },
-                        showActions = isHomeRoute(currentRoute),
-                        showBackButton = isDetailRoute(currentRoute),
+                        showActions = isHomeDestination(currentDestination),
+                        showBackButton = isDetailDestination(currentDestination),
                         onBackClick = {
                             navController.navigateUp()
                         }
@@ -92,9 +107,9 @@ fun AppNavigation() {
         },
         bottomBar = {
             // 只在主要頁面顯示底部導航
-            if (shouldShowBottomBar(currentRoute)) {
+            if (shouldShowBottomBar(currentDestination)) {
                 AppBottomNavigation(
-                    currentRoute = getCurrentRouteObject(currentRoute),
+                    currentRoute = getCurrentRouteObject(currentDestination),
                     onNavigate = { route ->
                         navController.navigate(route) {
                             // 避免重複導航到同一個目的地
@@ -259,14 +274,17 @@ private fun AppTopBar(
         navigationIcon = {
             if (showBackButton) {
                 IconButton(onClick = onBackClick) {
-                    Text("←", style = MaterialTheme.typography.titleLarge)
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                        contentDescription = "Back"
+                    )
                 }
             }
         },
         actions = {
             if (showActions) {
                 IconButton(onClick = onSearchClick) {
-                    Text("🔍", style = MaterialTheme.typography.titleLarge)
+                    Icon(imageVector = Icons.Outlined.Search, contentDescription = "Search")
                 }
                 // IconButton(onClick = onNotificationClick) {
                 //     Text("🔔", style = MaterialTheme.typography.titleLarge)
@@ -283,73 +301,74 @@ private fun AppTopBar(
 /**
  * 判斷是否應該顯示頂部欄
  */
-private fun shouldShowTopBar(route: String?): Boolean {
-    return route in listOf(
-        "com.linli.blackcatnews.navigation.HomeRoute",
-        "com.linli.blackcatnews.navigation.CategoriesRoute",
-        "com.linli.blackcatnews.navigation.FavoritesRoute",
-        "com.linli.blackcatnews.navigation.SettingsRoute",
-        "com.linli.blackcatnews.navigation.SearchRoute",
-        // "com.linli.blackcatnews.navigation.NotificationsRoute",  // 暫時註解
-        "com.linli.blackcatnews.navigation.ArticleDetailRoute"
-    )
+private fun shouldShowTopBar(destination: NavDestination?): Boolean {
+    return destination?.hierarchy?.any {
+        it.hasRoute<HomeRoute>() ||
+                it.hasRoute<CategoriesRoute>() ||
+                it.hasRoute<FavoritesRoute>() ||
+                it.hasRoute<SettingsRoute>() ||
+                it.hasRoute<SearchRoute>() ||
+                it.hasRoute<ArticleDetailRoute>()
+    } == true
 }
 
 /**
  * 判斷是否應該顯示底部導航欄
  */
-private fun shouldShowBottomBar(route: String?): Boolean {
-    return route in listOf(
-        "com.linli.blackcatnews.navigation.HomeRoute",
-        "com.linli.blackcatnews.navigation.CategoriesRoute",
-        "com.linli.blackcatnews.navigation.FavoritesRoute",
-        "com.linli.blackcatnews.navigation.SettingsRoute"
-    )
+private fun shouldShowBottomBar(destination: NavDestination?): Boolean {
+    return destination?.hierarchy?.any {
+        it.hasRoute<HomeRoute>() ||
+                it.hasRoute<CategoriesRoute>() ||
+                it.hasRoute<FavoritesRoute>() ||
+                it.hasRoute<SettingsRoute>()
+    } == true
 }
 
 /**
  * 判斷是否為首頁路由
  */
-private fun isHomeRoute(route: String?): Boolean {
-    return route == "com.linli.blackcatnews.navigation.HomeRoute"
+private fun isHomeDestination(destination: NavDestination?): Boolean {
+    return destination?.hierarchy?.any { it.hasRoute<HomeRoute>() } == true
 }
 
 /**
  * 判斷是否為詳情頁路由（文章詳情、搜尋、通知）
  */
-private fun isDetailRoute(route: String?): Boolean {
-    return route in listOf(
-        "com.linli.blackcatnews.navigation.ArticleDetailRoute",
-        "com.linli.blackcatnews.navigation.SearchRoute"
-        // "com.linli.blackcatnews.navigation.NotificationsRoute"  // 暫時註解
-    )
+private fun isDetailDestination(destination: NavDestination?): Boolean {
+    return destination?.hierarchy?.any {
+        it.hasRoute<ArticleDetailRoute>() ||
+                it.hasRoute<SearchRoute>()
+    } == true
 }
 
 /**
  * 根據路由獲取頂部欄標題
  */
-private fun getTopBarTitle(route: String?): String {
-    return when (route) {
-        "com.linli.blackcatnews.navigation.HomeRoute" -> "黑貓新聞"
-        "com.linli.blackcatnews.navigation.CategoriesRoute" -> "分類"
-        "com.linli.blackcatnews.navigation.FavoritesRoute" -> "收藏"
-        "com.linli.blackcatnews.navigation.SettingsRoute" -> "設定"
-        "com.linli.blackcatnews.navigation.SearchRoute" -> "搜尋"
-        // "com.linli.blackcatnews.navigation.NotificationsRoute" -> "通知"  // 暫時註解
-        "com.linli.blackcatnews.navigation.ArticleDetailRoute" -> "文章詳情"
-        else -> "黑貓新聞"
+@Composable
+private fun getTopBarTitle(destination: NavDestination?): String {
+    return when {
+        destination?.hierarchy?.any { it.hasRoute<HomeRoute>() } == true -> stringResource(Res.string.title_home)
+        destination?.hierarchy?.any { it.hasRoute<CategoriesRoute>() } == true -> stringResource(Res.string.title_categories)
+        destination?.hierarchy?.any { it.hasRoute<FavoritesRoute>() } == true -> stringResource(Res.string.title_favorites)
+        destination?.hierarchy?.any { it.hasRoute<SettingsRoute>() } == true -> stringResource(Res.string.title_settings)
+        destination?.hierarchy?.any { it.hasRoute<SearchRoute>() } == true -> stringResource(Res.string.title_search)
+        destination?.hierarchy?.any { it.hasRoute<ArticleDetailRoute>() } == true -> stringResource(
+            Res.string.title_article_detail
+        )
+
+        else -> stringResource(Res.string.title_home)
     }
 }
 
 /**
  * 從路由字符串獲取路由對象
  */
-private fun getCurrentRouteObject(route: String?): Any? {
-    return when (route) {
-        "com.linli.blackcatnews.navigation.HomeRoute" -> HomeRoute
-        "com.linli.blackcatnews.navigation.CategoriesRoute" -> CategoriesRoute
-        "com.linli.blackcatnews.navigation.FavoritesRoute" -> FavoritesRoute
-        "com.linli.blackcatnews.navigation.SettingsRoute" -> SettingsRoute
+private fun getCurrentRouteObject(destination: NavDestination?): Any? {
+    return when {
+        destination?.hierarchy?.any { it.hasRoute<HomeRoute>() } == true -> HomeRoute
+        destination?.hierarchy?.any { it.hasRoute<CategoriesRoute>() } == true -> CategoriesRoute
+        destination?.hierarchy?.any { it.hasRoute<FavoritesRoute>() } == true -> FavoritesRoute
+        destination?.hierarchy?.any { it.hasRoute<SettingsRoute>() } == true -> SettingsRoute
         else -> null
     }
 }
