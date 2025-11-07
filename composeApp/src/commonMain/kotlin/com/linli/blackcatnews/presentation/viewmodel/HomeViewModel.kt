@@ -17,7 +17,6 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.launch
 
@@ -91,7 +90,7 @@ class HomeViewModel(
                 section = targetSection,
                 count = DEFAULT_ARTICLE_COUNT,
                 forceRefresh = forceRefresh
-            ).collectLatest { result ->
+            ).collect { result ->
                 when (result) {
                     is Result.Loading -> Unit
                     is Result.Success -> _uiState.value = _uiState.value.copy(

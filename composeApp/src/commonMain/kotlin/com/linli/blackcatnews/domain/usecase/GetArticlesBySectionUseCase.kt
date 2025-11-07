@@ -1,7 +1,7 @@
 package com.linli.blackcatnews.domain.usecase
 
-import com.linli.blackcatnews.domain.model.NewsItem
 import com.linli.blackcatnews.domain.model.ArticleSection
+import com.linli.blackcatnews.domain.model.NewsItem
 import com.linli.blackcatnews.domain.repository.ArticleRepository
 import com.linli.blackcatnews.domain.repository.Result
 import kotlinx.coroutines.flow.Flow
@@ -67,23 +67,6 @@ class GetArticlesBySectionUseCase(
             section = section,
             count = count,
             forceRefresh = forceRefresh
-        )
-    }
-
-    companion object {
-        /**
-         * 有效的新聞分類列表
-         */
-        val VALID_SECTIONS =
-            setOf(ArticleSection.News, ArticleSection.World, ArticleSection.Technology)
-
-        /**
-         * 分類顯示名稱映射
-         */
-        val SECTION_DISPLAY_NAMES = mapOf(
-            ArticleSection.News to "最新",
-            ArticleSection.World to "世界",
-            ArticleSection.Technology to "科技"
         )
     }
 }
