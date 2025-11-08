@@ -201,17 +201,31 @@ platform :ios do
     end
 
     begin
-      latest_build = latest_testflight_build_number(
+      tf_build = latest_testflight_build_number(
         app_identifier: BUNDLE_ID,
         version: version,
         api_key: api_key
-      )
-      next_build = latest_build.to_i + 1
-      UI.message("🔢 設定 CFBundleVersion: #{next_build} (TestFlight 最新 build 為 #{latest_build})")
+      ) rescue 0
+
+      asc_build = 0
+      begin
+        asc_build = app_store_build_number(
+          app_identifier: BUNDLE_ID,
+          version: version,
+          api_key: api_key
+        )
+      rescue => e
+        UI.important("⚠️ 無法讀取 App Store build：#{e.message}，略過")
+        asc_build = 0
+      end
+
+      latest_remote = [tf_build.to_i, asc_build.to_i].max
+      next_build = latest_remote + 1
+      UI.message("🔢 設定 CFBundleVersion: #{next_build} (TF=#{tf_build} / ASC=#{asc_build})")
       increment_build_number(build_number: next_build, xcodeproj: @project_path)
       next_build
     rescue => e
-      UI.important("⚠️ 無法讀取 TestFlight build：#{e.message}，使用 build=1")
+      UI.important("⚠️ 無法計算遠端 build：#{e.message}，使用 build=1")
       increment_build_number(build_number: 1, xcodeproj: @project_path)
       1
     end
@@ -377,9 +391,35 @@ platform :ios do
 
   desc "Upload to App Store Connect"
   lane :release do
-    build
+    # build
 
     api_key = get_api_key
+
+    # 取得當前專案版本，並在 ASC 中找出已上傳的 build
+    version = get_version_number(xcodeproj: @project_path, target: TARGET_NAME) rescue "1.0.0"
+    UI.message("🧾 將提交審核的版本（CFBundleShortVersionString）：#{version}")
+
+    selected_build = nil
+    begin
+      selected_build = app_store_build_number(
+        app_identifier: BUNDLE_ID,
+        version: version,
+        api_key: api_key
+      )
+      UI.message("✅ 在 App Store Connect 找到已上傳的 build：#{selected_build}")
+    rescue => e
+      UI.important("⚠️ 讀取 App Store build 失敗：#{e.message}，退回查詢 TestFlight")
+      begin
+        selected_build = latest_testflight_build_number(
+          app_identifier: BUNDLE_ID,
+          version: version,
+          api_key: api_key
+        )
+        UI.message("✅ 在 TestFlight 找到已上傳的 build：#{selected_build}")
+      rescue => e2
+        UI.user_error!("❌ 找不到已上傳的 build（版本 #{version}）。請先執行 beta 上傳後再跑 release。錯誤：#{e2.message}")
+      end
+    end
 
     # 讀取環境變數
     submit = ENV["SUBMIT_FOR_REVIEW"] == "true"
@@ -403,10 +443,12 @@ platform :ios do
     begin
       deliver(
         api_key: api_key,
-        ipa: "#{OUTPUT_NAME}.ipa",
+        app_version: version,
+        build_number: selected_build,   # 🔒 指定既有的 build
         submit_for_review: submit,
         automatic_release: auto_release,
         submission_information: submission_info,
+        skip_binary_upload: true,       # 🚫 不上傳 IPA，只提交既有 build
         skip_metadata: true,
         skip_screenshots: true,
         force: true,
@@ -419,6 +461,8 @@ platform :ios do
         sleep(300)
         deliver(
           api_key: api_key,
+          app_version: version,
+          build_number: selected_build,
           submit_for_review: submit,
           automatic_release: auto_release,
           submission_information: submission_info,
@@ -433,5 +477,14 @@ platform :ios do
         raise ex
       end
     end
+  end
+
+  desc "One-click: Upload to TestFlight then submit that build for review"
+  lane :release_oneclick do
+    # 1) 上傳並等待處理完成（beta 內已設定 skip_waiting_for_build_processing: false）
+    beta
+
+    # 2) 直接提交同一版本的既有 build（release 只提交、不再上傳）
+    release
   end
 end
