@@ -18,6 +18,7 @@ import kotlin.time.ExperimentalTime
  * @property ukPronunciation 英式發音
  * @property usPronunciation 美式發音
  * @property entriesJson 詞性與定義列表的 JSON 字符串
+ * @property isInWordBank 表示該單字是否加入用戶的單字庫
  * @property timestamp 上次更新時間的時間戳
  */
 @Serializable
@@ -29,6 +30,7 @@ data class WordEntity @OptIn(ExperimentalTime::class) constructor(
     val ukPronunciation: String,
     val usPronunciation: String,
     val entriesJson: String,
+    val isInWordBank: Boolean = false,
     val timestamp: Long = Clock.System.now().toEpochMilliseconds()
 )
 

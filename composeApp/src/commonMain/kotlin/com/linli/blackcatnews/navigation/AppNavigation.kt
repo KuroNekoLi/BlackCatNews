@@ -2,22 +2,21 @@ package com.linli.blackcatnews.navigation
 
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.navigation.NavDestination
 import androidx.navigation.NavDestination.Companion.hasRoute
 import androidx.navigation.NavDestination.Companion.hierarchy
+import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
@@ -37,6 +36,7 @@ import com.linli.blackcatnews.presentation.viewmodel.ArticleDetailViewModel
 import com.linli.blackcatnews.presentation.viewmodel.FavoritesViewModel
 import com.linli.blackcatnews.presentation.viewmodel.HomeViewModel
 import com.linli.blackcatnews.presentation.viewmodel.SearchViewModel
+import com.linli.blackcatnews.ui.common.BackIcon
 import com.linli.blackcatnews.ui.components.AppBottomNavigation
 import com.linli.blackcatnews.ui.screens.ArticleDetailScreen
 import com.linli.blackcatnews.ui.screens.CategoriesScreen
@@ -46,6 +46,7 @@ import com.linli.blackcatnews.ui.screens.RegisterScreen
 import com.linli.blackcatnews.ui.screens.SearchScreen
 import com.linli.blackcatnews.ui.screens.SettingsScreen
 import com.linli.blackcatnews.ui.screens.SignInScreen
+import kotlinx.serialization.Serializable
 import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.koinInject
 import org.koin.compose.viewmodel.koinViewModel
@@ -61,6 +62,12 @@ import org.koin.core.parameter.parametersOf
 expect fun rememberSignInUIClients(): Map<ProviderType, SignInUIClient>
 
 /**
+ * 固定起點：SplashRoute（決策頁）
+ */
+@Serializable
+object SplashRoute
+
+/**
  * 主導航結構
  * 使用統一的 Scaffold 管理頂部欄和底部導航
  */
@@ -70,13 +77,6 @@ fun AppNavigation() {
     val navController = rememberNavController()
     val currentBackStackEntry by navController.currentBackStackEntryAsState()
     val currentDestination: NavDestination? = currentBackStackEntry?.destination
-
-    // Check if user is already authenticated
-    val getCurrentUserUseCase: GetCurrentUserUseCase = koinInject()
-    val isAuthenticated = getCurrentUserUseCase.isAuthenticated()
-
-    // Determine start destination based on authentication state
-    val startDestination = if (isAuthenticated) HomeRoute else SignInRoute
 
     Scaffold(
         topBar = {
@@ -112,12 +112,11 @@ fun AppNavigation() {
                     currentRoute = getCurrentRouteObject(currentDestination),
                     onNavigate = { route ->
                         navController.navigate(route) {
-                            // 避免重複導航到同一個目的地
-                            launchSingleTop = true
-                            // 回到起始目的地時清除 back stack
-                            if (route == HomeRoute) {
-                                popUpTo(HomeRoute) { inclusive = false }
+                            popUpTo(navController.graph.findStartDestination().id) {
+                                saveState = true
                             }
+                            launchSingleTop = true
+                            restoreState = true
                         }
                     }
                 )
@@ -126,9 +125,21 @@ fun AppNavigation() {
     ) { innerPadding ->
         NavHost(
             navController = navController,
-            startDestination = startDestination,
+            startDestination = SplashRoute,
             modifier = Modifier.padding(innerPadding)
         ) {
+            // 啟動頁（決策頁）
+            composable<SplashRoute> {
+                val getCurrentUserUseCase: GetCurrentUserUseCase = koinInject()
+                LaunchedEffect(Unit) {
+                    val isAuthed = getCurrentUserUseCase.isAuthenticated()
+                    val target = if (isAuthed) HomeRoute else SignInRoute
+                    navController.navigate(target) {
+                        popUpTo(SplashRoute) { inclusive = true }
+                        launchSingleTop = true
+                    }
+                }
+            }
             // 登入頁面
             composable<SignInRoute> {
                 SignInScreen(
@@ -171,7 +182,6 @@ fun AppNavigation() {
                 HomeScreen(
                     viewModel = viewModel,
                     onNewsItemClick = { newsItem ->
-                        // 導航到文章詳情頁
                         navController.navigate(
                             ArticleDetailRoute(
                                 articleId = newsItem.id,
@@ -222,8 +232,7 @@ fun AppNavigation() {
                     viewModel = koinInject(),
                     onNavigateToSignIn = {
                         navController.navigate(SignInRoute) {
-                            // Clear entire back stack when signing out
-                            popUpTo(0) {
+                            popUpTo(navController.graph.findStartDestination().id) {
                                 inclusive = true
                             }
                             launchSingleTop = true
@@ -273,12 +282,7 @@ private fun AppTopBar(
         title = { Text(title) },
         navigationIcon = {
             if (showBackButton) {
-                IconButton(onClick = onBackClick) {
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                        contentDescription = "Back"
-                    )
-                }
+                BackIcon { onBackClick() }
             }
         },
         actions = {
@@ -291,10 +295,10 @@ private fun AppTopBar(
                 // }
             }
         },
-        colors = TopAppBarDefaults.topAppBarColors(
-            containerColor = MaterialTheme.colorScheme.primaryContainer,
-            titleContentColor = MaterialTheme.colorScheme.onPrimaryContainer
-        )
+//        colors = TopAppBarDefaults.topAppBarColors(
+//            containerColor = MaterialTheme.colorScheme.primaryContainer,
+//            titleContentColor = MaterialTheme.colorScheme.onPrimaryContainer
+//        )
     )
 }
 

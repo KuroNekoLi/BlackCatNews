@@ -10,10 +10,8 @@ import coil3.request.crossfade
 import com.linli.blackcatnews.navigation.AppNavigation
 import com.linli.blackcatnews.ui.theme.AppTheme
 import okio.FileSystem
-import org.jetbrains.compose.ui.tooling.preview.Preview
 
 @Composable
-@Preview
 fun App() {
     // 初始化 Coil ImageLoader
     setSingletonImageLoaderFactory { context ->

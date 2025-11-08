@@ -2,58 +2,67 @@ package com.linli.dictionary.data.repository
 
 import com.linli.dictionary.data.local.dao.DictionaryDao
 import com.linli.dictionary.data.local.entity.EntryEntity
-import com.linli.dictionary.data.local.entity.WordEntity
 import com.linli.dictionary.data.mapper.toDomain
 import com.linli.dictionary.data.remote.DictionaryApi
 import com.linli.dictionary.domain.model.Word
-import com.linli.dictionary.domain.repository.DictionaryRepository
+import com.linli.dictionary.domain.repository.WordBankRepository
 import kotlinx.serialization.json.Json
-import kotlin.time.Clock
-import kotlin.time.ExperimentalTime
 
 /**
- * Implementation of DictionaryRepository that combines remote API and local storage.
- * Follows the Single Source of Truth (SSOT) principle by prioritizing local data.
+ * WordBankRepository 的實現類，負責管理用戶的單字庫。
+ * 通過在 WordEntity 上添加 isInWordBank 標記來區別單字是否存在於單字庫中。
  */
-@OptIn(ExperimentalTime::class)
-class DictionaryRepositoryImpl(
+class WordBankRepositoryImpl(
     private val api: DictionaryApi,
     private val dao: DictionaryDao
-) : DictionaryRepository {
+) : WordBankRepository {
 
     private val json = Json { ignoreUnknownKeys = true }
 
     /**
-     * Looks up a word in the dictionary.
-     * First checks if the word is available locally, then fallbacks to the API if needed.
+     * 獲取使用者單字庫中所有的單字。
      *
-     * @param word The word to look up.
-     * @return The word with its definitions and pronunciations wrapped in Result.
+     * @return 儲存在單字庫中的單字列表。
      */
-    override suspend fun lookupWord(word: String): Result<Word> {
+    override suspend fun getSavedWords(): List<Word> {
+        return dao.getWordsInWordBank().map { entity ->
+            convertWordEntityToDomain(entity)
+        }
+    }
+
+    /**
+     * 將單字添加到單字庫。
+     *
+     * @param word 要添加的單字。
+     * @return 操作結果，成功時為 Unit，失敗時包含例外。
+     */
+    override suspend fun addWordToWordBank(word: String): Result<Unit> {
         return try {
-            // 先嘗試從本地數據獲取
+            // 先檢查單字是否存在於本地數據庫
             val localWordEntity = dao.getWordByName(word)
 
             if (localWordEntity != null) {
-                // 本地有數據，直接返回
-                // 需要將 WordEntity 轉換為 Word 領域模型
-                val domainWord = convertWordEntityToDomain(localWordEntity)
-                Result.success(domainWord)
+                // 如果單字已在數據庫中，將添加到單字庫
+                val affectedRows = dao.addToWordBank(word)
+                if (affectedRows > 0) {
+                    Result.success(Unit)
+                } else {
+                    Result.failure(Exception("添加單字到單字庫失敗"))
+                }
             } else {
-                // 本地沒有，從API獲取
+                // 如果單字不在數據庫中，則先從 API 獲取單字定義
                 val remoteWord = api.lookupWord(word).toDomain()
 
-                // 將領域模型轉換為數據實體並保存到本地
-                val wordEntity = WordEntity(
+                // 將單字保存到數據庫，並標記為單字庫中的單字
+                val wordEntity = com.linli.dictionary.data.local.entity.WordEntity(
                     word = remoteWord.word,
                     ukPronunciation = remoteWord.pronunciations.uk,
                     usPronunciation = remoteWord.pronunciations.us,
-                    entriesJson = convertEntriesToJson(remoteWord)
+                    entriesJson = convertEntriesToJson(remoteWord),
+                    isInWordBank = true
                 )
                 dao.insertWord(wordEntity)
-
-                Result.success(remoteWord)
+                Result.success(Unit)
             }
         } catch (e: Exception) {
             Result.failure(e)
@@ -61,37 +70,48 @@ class DictionaryRepositoryImpl(
     }
 
     /**
-     * Gets the recently searched words.
+     * 從單字庫移除單字。
      *
-     * @return A list of recently searched words.
+     * @param word 要移除的單字。
+     * @return 操作結果，成功時為 Unit，失敗時包含例外。
      */
-    override suspend fun getRecentSearches(): List<String> {
-        return dao.getRecentSearches().map { it.word }
+    override suspend fun removeWordFromWordBank(word: String): Result<Unit> {
+        return try {
+            val affectedRows = dao.removeFromWordBank(word)
+            if (affectedRows > 0) {
+                Result.success(Unit)
+            } else {
+                Result.failure(Exception("從單字庫移除單字失敗"))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
     }
 
     /**
-     * Saves a word to the recent searches.
-     * This method might be called when user clicks on a word in the recent searches list.
+     * 檢查單字是否已在單字庫中。
      *
-     * @param word The word to save.
+     * @param word 要檢查的單字。
+     * @return 如果單字在單字庫中則返回 true，否則返回 false。
      */
-    override suspend fun saveRecentSearch(word: String) {
-        // 檢查是否已經存在
-        val existingWord = dao.getWordByName(word)
+    override suspend fun isWordInWordBank(word: String): Boolean {
+        val wordEntity = dao.getWordByName(word)
+        return wordEntity?.isInWordBank ?: false
+    }
 
-        // 如果已經存在，更新時間戳並移到最前面
-        if (existingWord != null) {
-            val updatedEntity =
-                existingWord.copy(timestamp = Clock.System.now().toEpochMilliseconds())
-            dao.insertWord(updatedEntity)
-        }
-        // 如果不存在，需要先查詢 API 並保存
+    /**
+     * 獲取單字庫中的單字數量。
+     *
+     * @return 單字庫中的單字總數。
+     */
+    override suspend fun getWordBankCount(): Int {
+        return dao.getWordBankCount()
     }
 
     /**
      * 將 WordEntity 轉換為領域模型 Word
      */
-    private fun convertWordEntityToDomain(entity: WordEntity): Word {
+    private fun convertWordEntityToDomain(entity: com.linli.dictionary.data.local.entity.WordEntity): Word {
         // 將 WordEntity 轉換為 Word 領域模型
         return Word(
             word = entity.word,

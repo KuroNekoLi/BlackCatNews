@@ -31,7 +31,7 @@ import com.linli.dictionary.data.local.entity.WordEntity
  */
 @Database(
     entities = [WordEntity::class],
-    version = 1,
+    version = 2,
     exportSchema = false
 )
 @TypeConverters(WordConverters::class)

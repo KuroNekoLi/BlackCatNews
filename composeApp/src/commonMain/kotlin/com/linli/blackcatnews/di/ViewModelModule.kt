@@ -7,13 +7,14 @@ import com.linli.blackcatnews.presentation.viewmodel.FavoritesViewModel
 import com.linli.blackcatnews.presentation.viewmodel.HomeViewModel
 import com.linli.blackcatnews.presentation.viewmodel.SearchViewModel
 import com.linli.blackcatnews.presentation.viewmodel.SettingsViewModel
+import org.koin.core.module.dsl.viewModel
 import org.koin.dsl.module
 
 val viewModelModule = module {
     single { UserPreferencesRepository() }
-    single { HomeViewModel(get(), get(), get()) }
-    factory { (articleId: String) -> ArticleDetailViewModel(articleId, get()) }
-    single { SettingsViewModel(get(), get<SignOutUseCase>()) }
-    single { FavoritesViewModel(get()) }
-    single { SearchViewModel(get()) }
+    viewModel { HomeViewModel(get(), get(), get()) }
+    viewModel { (articleId: String) -> ArticleDetailViewModel(articleId, get()) }
+    viewModel { SettingsViewModel(get(), get<SignOutUseCase>()) }
+    viewModel { FavoritesViewModel(get()) }
+    viewModel { SearchViewModel(get()) }
 }

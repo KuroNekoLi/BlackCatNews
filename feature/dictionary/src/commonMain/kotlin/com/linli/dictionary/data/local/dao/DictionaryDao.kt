@@ -63,4 +63,46 @@ interface DictionaryDao {
      */
     @Query("DELETE FROM words")
     suspend fun deleteAllWords()
+
+    /**
+     * 獲取所有標記為單字庫中的單字
+     *
+     * 返回所有 isInWordBank 為 true 的詞彙
+     *
+     * @return 單字庫中的單字列表
+     */
+    @Query("SELECT * FROM words WHERE isInWordBank = 1")
+    suspend fun getWordsInWordBank(): List<WordEntity>
+
+    /**
+     * 將單字加入到單字庫
+     *
+     * 更新單字的 isInWordBank 字段為 true
+     *
+     * @param word 要加入單字庫的單字
+     * @return 影響的行數，通常為 1
+     */
+    @Query("UPDATE words SET isInWordBank = 1 WHERE word = :word")
+    suspend fun addToWordBank(word: String): Int
+
+    /**
+     * 從單字庫移除單字
+     *
+     * 更新單字的 isInWordBank 字段為 false
+     *
+     * @param word 要從單字庫移除的單字
+     * @return 影響的行數，通常為 1
+     */
+    @Query("UPDATE words SET isInWordBank = 0 WHERE word = :word")
+    suspend fun removeFromWordBank(word: String): Int
+
+    /**
+     * 獲取單字庫中的單字數量
+     *
+     * 計算 isInWordBank 為 true 的詞彙數量
+     *
+     * @return 單字庫中的單字總數
+     */
+    @Query("SELECT COUNT(*) FROM words WHERE isInWordBank = 1")
+    suspend fun getWordBankCount(): Int
 }

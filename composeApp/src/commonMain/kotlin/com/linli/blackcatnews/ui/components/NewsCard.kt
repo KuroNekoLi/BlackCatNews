@@ -15,9 +15,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.text.font.FontWeight
 import coil3.compose.AsyncImage
 import com.linli.blackcatnews.domain.model.NewsItem
 
@@ -53,7 +53,6 @@ fun NewsCard(
                     contentScale = ContentScale.Crop,
                     onError = { error ->
                         // 圖片加載失敗時的處理
-                        println("圖片加載失敗: ${newsItem.imageUrl}")
                     }
                 )
             }

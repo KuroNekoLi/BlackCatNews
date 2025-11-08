@@ -21,7 +21,7 @@ fun BackIcon(
         Icon(
             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
             contentDescription = "返回",
-            tint = MaterialTheme.colorScheme.onBackground
+            tint = MaterialTheme.colorScheme.onSurface
         )
     }
 }
@@ -29,7 +29,9 @@ fun BackIcon(
 @Preview
 @Composable
 fun BackIconPreview() {
-    BackIcon(
-        onBackClick = { /* Preview onClick handler */ }
-    )
+    MaterialTheme {
+        BackIcon(
+            onBackClick = { /* Preview onClick handler */ }
+        )
+    }
 }

@@ -11,12 +11,14 @@ import com.linli.blackcatnews.domain.usecase.RefreshArticlesUseCase
 import com.linli.blackcatnews.presentation.state.HomeUiEffect
 import com.linli.blackcatnews.presentation.state.HomeUiEvent
 import com.linli.blackcatnews.presentation.state.HomeUiState
+import kotlinx.coroutines.CoroutineName
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.onCompletion
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.launch
 
@@ -25,6 +27,9 @@ class HomeViewModel(
     private val refreshArticlesUseCase: RefreshArticlesUseCase,
     private val preferencesRepository: UserPreferencesRepository
 ) : ViewModel() {
+
+    init {
+    }
 
     private val _uiState = MutableStateFlow(HomeUiState(isRefreshing = true))
     val uiState: StateFlow<HomeUiState> = _uiState.asStateFlow()
@@ -85,28 +90,34 @@ class HomeViewModel(
             errorMessage = null
         )
 
-        articlesJob = viewModelScope.launch {
+        articlesJob = viewModelScope.launch(CoroutineName("LoadArticles/$targetSection")) {
             getArticlesBySectionUseCase(
                 section = targetSection,
                 count = DEFAULT_ARTICLE_COUNT,
                 forceRefresh = forceRefresh
-            ).collect { result ->
-                when (result) {
-                    is Result.Loading -> Unit
-                    is Result.Success -> _uiState.value = _uiState.value.copy(
-                        isRefreshing = false,
-                        articles = result.data,
-                        errorMessage = null
-                    )
-                    is Result.Error -> {
-                        _uiState.value = _uiState.value.copy(
-                            isRefreshing = false,
-                            errorMessage = result.message
-                        )
-                        _uiEffect.send(HomeUiEffect.ShowError(result.message))
+            )
+                .onCompletion { cause ->
+                }
+                .collect { result ->
+                    when (result) {
+                        is Result.Loading -> Unit
+                        is Result.Success -> {
+                            _uiState.value = _uiState.value.copy(
+                                isRefreshing = false,
+                                articles = result.data,
+                                errorMessage = null
+                            )
+                        }
+
+                        is Result.Error -> {
+                            _uiState.value = _uiState.value.copy(
+                                isRefreshing = false,
+                                errorMessage = result.message
+                            )
+                            _uiEffect.send(HomeUiEffect.ShowError(result.message))
+                        }
                     }
                 }
-            }
         }
     }
 

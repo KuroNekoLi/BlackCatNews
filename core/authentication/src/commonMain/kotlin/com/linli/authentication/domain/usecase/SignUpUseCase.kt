@@ -51,7 +51,6 @@ class SignUpUseCase(
             } catch (e: Exception) {
                 // 註冊成功但寄信失敗，不影響註冊結果
                 // 使用者可以稍後手動重寄
-                println("註冊成功但寄送驗證信失敗: ${e.message}")
             }
         }
 

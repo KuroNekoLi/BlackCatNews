@@ -88,9 +88,10 @@ kotlin {
 
         commonTest {
             dependencies {
-                implementation(libs.kotlin.test)
+                implementation(kotlin("test"))
                 implementation(libs.koin.test)
                 implementation(libs.kotlinx.coroutines.test)
+                implementation("app.cash.turbine:turbine:1.0.0")
             }
         }
 

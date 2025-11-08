@@ -57,6 +57,22 @@ class MockDictionaryDao : DictionaryDao {
         searchHistory.clear()
     }
 
+    override suspend fun getWordsInWordBank(): List<WordEntity> {
+        TODO("Not yet implemented")
+    }
+
+    override suspend fun addToWordBank(word: String): Int {
+        TODO("Not yet implemented")
+    }
+
+    override suspend fun removeFromWordBank(word: String): Int {
+        TODO("Not yet implemented")
+    }
+
+    override suspend fun getWordBankCount(): Int {
+        TODO("Not yet implemented")
+    }
+
     // 測試輔助方法：清除所有計數器
     fun clearCounters() {
         getWordByNameCallCount = 0
