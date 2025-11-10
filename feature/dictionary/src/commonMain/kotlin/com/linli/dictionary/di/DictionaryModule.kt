@@ -6,9 +6,16 @@ import com.linli.dictionary.data.local.database.DictionaryDatabase
 import com.linli.dictionary.data.remote.DefaultDictionaryApi
 import com.linli.dictionary.data.remote.DictionaryApi
 import com.linli.dictionary.data.repository.DictionaryRepositoryImpl
+import com.linli.dictionary.data.repository.WordBankRepositoryImpl
 import com.linli.dictionary.domain.repository.DictionaryRepository
+import com.linli.dictionary.domain.repository.WordBankRepository
+import com.linli.dictionary.domain.usecase.AddWordToWordBankUseCase
 import com.linli.dictionary.domain.usecase.GetRecentSearchesUseCase
+import com.linli.dictionary.domain.usecase.GetSavedWordsUseCase
+import com.linli.dictionary.domain.usecase.GetWordBankCountUseCase
+import com.linli.dictionary.domain.usecase.IsWordInWordBankUseCase
 import com.linli.dictionary.domain.usecase.LookupWordUseCase
+import com.linli.dictionary.domain.usecase.RemoveWordFromWordBankUseCase
 import com.linli.dictionary.presentation.DictionaryViewModel
 import io.ktor.client.HttpClient
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
@@ -45,9 +52,19 @@ val dictionaryModule = module {
     // Repository
     single<DictionaryRepository> { DictionaryRepositoryImpl(get(), get()) }
 
+    // WordBank 相關
+    single<WordBankRepository> { WordBankRepositoryImpl(get(), get()) }
+
     // Use cases
     factoryOf(::LookupWordUseCase)
     factoryOf(::GetRecentSearchesUseCase)
+
+    // WordBank Use cases
+    factoryOf(::GetSavedWordsUseCase)
+    factoryOf(::AddWordToWordBankUseCase)
+    factoryOf(::RemoveWordFromWordBankUseCase)
+    factoryOf(::IsWordInWordBankUseCase)
+    factoryOf(::GetWordBankCountUseCase)
 
     // ViewModel
     factory { DictionaryViewModel(get(), get()) }

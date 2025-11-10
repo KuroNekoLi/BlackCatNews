@@ -38,6 +38,8 @@ import com.linli.blackcatnews.domain.model.BilingualParagraph
 import com.linli.blackcatnews.domain.model.BilingualParagraphType
 import com.linli.blackcatnews.domain.model.ReadingMode
 import com.linli.dictionary.presentation.DictionaryViewModel
+import com.linli.dictionary.presentation.wordbank.WordBankViewModel
+import org.koin.compose.viewmodel.koinViewModel
 import kotlin.math.roundToInt
 
 /**
@@ -49,6 +51,7 @@ import kotlin.math.roundToInt
  * @param paragraph 要顯示的文章段落
  * @param readingMode 閱讀模式（英文、中文或英文中文對照）
  * @param viewModel 字典視圖模型，用於查詢單字
+ * @param wordBankViewModel 生字本視圖模型，用於儲存單字
  * @param modifier 組件修飾用
  */
 @OptIn(ExperimentalComposeUiApi::class)
@@ -57,6 +60,7 @@ fun ArticleWithWordTooltip(
     paragraph: BilingualParagraph,
     readingMode: ReadingMode,
     viewModel: DictionaryViewModel,
+    wordBankViewModel: WordBankViewModel = koinViewModel(),
     modifier: Modifier = Modifier
 ) {
     // Only apply tooltip functionality to text paragraphs
@@ -344,7 +348,7 @@ fun ArticleWithWordTooltip(
                 offset = tooltipOffset,
                 onDismiss = { showTooltip = false },
                 onSaveWord = {
-                    // TODO: 實作「加入生字本」功能，暫時只關閉提示框
+                    wordBankViewModel.addWord(selectedWord)
                     showTooltip = false
                 }
             )

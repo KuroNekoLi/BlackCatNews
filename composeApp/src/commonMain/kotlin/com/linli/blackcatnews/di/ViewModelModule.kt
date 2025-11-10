@@ -7,6 +7,7 @@ import com.linli.blackcatnews.presentation.viewmodel.FavoritesViewModel
 import com.linli.blackcatnews.presentation.viewmodel.HomeViewModel
 import com.linli.blackcatnews.presentation.viewmodel.SearchViewModel
 import com.linli.blackcatnews.presentation.viewmodel.SettingsViewModel
+import com.linli.dictionary.presentation.wordbank.WordBankViewModel
 import org.koin.core.module.dsl.viewModel
 import org.koin.dsl.module
 
@@ -17,4 +18,16 @@ val viewModelModule = module {
     viewModel { SettingsViewModel(get(), get<SignOutUseCase>()) }
     viewModel { FavoritesViewModel(get()) }
     viewModel { SearchViewModel(get()) }
+
+    // --- 生字本（WordBank）DI ---
+    // ViewModel
+    viewModel {
+        WordBankViewModel(
+            get(),
+            get(),
+            get(),
+            get(),
+            get()
+        )
+    }
 }
