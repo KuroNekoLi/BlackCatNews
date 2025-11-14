@@ -2,6 +2,7 @@ package com.linli.dictionary.data.mock
 
 import com.linli.dictionary.data.model.DefinitionDto
 import com.linli.dictionary.data.model.EntryDto
+import com.linli.dictionary.data.model.ExampleDto
 import com.linli.dictionary.data.model.PronunciationsDto
 import com.linli.dictionary.data.model.WordResponseDto
 import com.linli.dictionary.domain.model.Word
@@ -29,24 +30,24 @@ object MockDictionaryData {
                             enDefinition = "to change something slightly, especially to make it more correct, effective, or suitable",
                             zhDefinition = "（尤指為了使某物更正確、有效或合適而）調整，調節",
                             examples = listOf(
-                                "If the chair is too high you can adjust it to suit you. 如果椅子太高了，你可以把它調到適合你的高度。",
-                                "As a teacher you have to adjust your methods to suit the needs of slower children. 作為一名老師，你必須調整教學方法來適應那些學得較慢的孩子的需要。"
+                                ExampleDto(exampleText = "If the chair is too high you can adjust it to suit you. 如果椅子太高了，你可以把它調到適合你的高度。"),
+                                ExampleDto(exampleText = "As a teacher you have to adjust your methods to suit the needs of slower children. 作為一名老師，你必須調整教學方法來適應那些學得較慢的孩子的需要。")
                             )
                         ),
                         DefinitionDto(
                             enDefinition = "to arrange your clothing to make yourself look tidy",
                             zhDefinition = "整理（衣著）",
                             examples = listOf(
-                                "She adjusted her skirt, took a deep breath, and walked into the room. 她整理了一下裙子，深吸一口氣，走進了房間。"
+                                ExampleDto(exampleText = "She adjusted her skirt, took a deep breath, and walked into the room. 她整理了一下裙子，深吸一口氣，走進了房間。")
                             )
                         ),
                         DefinitionDto(
                             enDefinition = "to become more familiar with a new situation",
                             zhDefinition = "適應;習慣",
                             examples = listOf(
-                                "I can't adjust to liv ing on my own. 我不習慣獨自生活。",
-                                "Her eyes slowly adjusted to the dark. 她的眼睛慢慢適應了黑暗。",
-                                "The lifestyle is so very different - it takes a while to adjust. 生活方式差別太大了，要過一段時間才能適應。"
+                                ExampleDto(exampleText = "I can't adjust to liv ing on my own. 我不習慣獨自生活。"),
+                                ExampleDto(exampleText = "Her eyes slowly adjusted to the dark. 她的眼睛慢慢適應了黑暗。"),
+                                ExampleDto(exampleText = "The lifestyle is so very different - it takes a while to adjust. 生活方式差別太大了，要過一段時間才能適應。")
                             )
                         )
                     )

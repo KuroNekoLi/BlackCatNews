@@ -20,7 +20,7 @@ fun WordResponseDto.toDomain(): Word {
                     Word.Definition(
                         enDefinition = definition.enDefinition,
                         zhDefinition = definition.zhDefinition,
-                        examples = definition.examples
+                        examples = definition.examples.map { it.exampleText }
                     )
                 }
             )

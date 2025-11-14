@@ -26,7 +26,7 @@ class DefaultDictionaryApi(private val httpClient: HttpClient) : DictionaryApi {
     /**
      * Base URL for the dictionary API.
      */
-    private val baseUrl = "https://dictionary.kuronekoli.uk/api/v1/word"
+    private val baseUrl = "https://dictionary.kuronekoli.uk/word"
 
     /**
      * Looks up a word in the dictionary.

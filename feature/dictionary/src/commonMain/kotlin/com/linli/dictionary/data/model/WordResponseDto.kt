@@ -54,5 +54,14 @@ data class DefinitionDto(
     val zhDefinition: String,
 
     @SerialName("examples")
-    val examples: List<String>
+    val examples: List<ExampleDto>
+)
+
+/**
+ * Example text structure from the dictionary API.
+ */
+@Serializable
+data class ExampleDto(
+    @SerialName("example_text")
+    val exampleText: String
 )

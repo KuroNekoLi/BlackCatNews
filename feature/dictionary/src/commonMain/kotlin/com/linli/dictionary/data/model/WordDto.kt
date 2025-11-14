@@ -32,7 +32,13 @@ data class WordDto(
         val enDefinition: String,
         @SerialName("zh_definition")
         val zhDefinition: String,
-        val examples: List<String>
+        val examples: List<ExampleDto>
+    )
+
+    @Serializable
+    data class ExampleDto(
+        @SerialName("example_text")
+        val exampleText: String
     )
 }
 
@@ -53,7 +59,7 @@ fun WordDto.toDomain(): Word {
                     Word.Definition(
                         enDefinition = definition.enDefinition,
                         zhDefinition = definition.zhDefinition,
-                        examples = definition.examples
+                        examples = definition.examples.map { example -> example.exampleText }
                     )
                 }
             )
