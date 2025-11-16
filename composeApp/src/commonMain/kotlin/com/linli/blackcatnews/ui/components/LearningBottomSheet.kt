@@ -15,10 +15,12 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.BookmarkAdd
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.VolumeUp
 import androidx.compose.material3.BottomSheetDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -47,6 +49,7 @@ import com.linli.blackcatnews.domain.model.GlossaryItem
 import com.linli.blackcatnews.domain.model.GrammarPoint
 import com.linli.blackcatnews.domain.model.PhraseIdiom
 import com.linli.blackcatnews.domain.model.SentencePattern
+import com.linli.dictionary.domain.model.Word
 import org.jetbrains.compose.ui.tooling.preview.Preview
 
 /**
@@ -61,10 +64,14 @@ fun LearningBottomSheet(
     grammarPoints: List<GrammarPoint>,
     sentencePatterns: List<SentencePattern>,
     phrases: List<PhraseIdiom>,
+    wordBankWords: List<Word> = emptyList(),
+    isWordBankLoading: Boolean = false,
+    wordBankError: String? = null,
+    onRemoveWordFromBank: (String) -> Unit = {},
 ) {
     val isPreview = LocalInspectionMode.current
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = false)
-    val tabTitles = listOf("重點單字", "文法說明", "句型說明", "片語／習語")
+    val tabTitles = listOf("重點單字", "文法說明", "句型說明", "片語／習語", "單字庫")
     LaunchedEffect(isOpen) {
         if (isOpen) {
             // 先以「部分展開」呈現，使用者可再往上拖至全展開
@@ -91,6 +98,10 @@ fun LearningBottomSheet(
                         grammarPoints = grammarPoints,
                         sentencePatterns = sentencePatterns,
                         phrases = phrases,
+                        wordBankWords = wordBankWords,
+                        isWordBankLoading = isWordBankLoading,
+                        wordBankError = wordBankError,
+                        onRemoveWordFromBank = onRemoveWordFromBank,
                         onDismiss = onDismiss
                     )
                 }
@@ -108,6 +119,10 @@ fun LearningBottomSheet(
                     grammarPoints = grammarPoints,
                     sentencePatterns = sentencePatterns,
                     phrases = phrases,
+                    wordBankWords = wordBankWords,
+                    isWordBankLoading = isWordBankLoading,
+                    wordBankError = wordBankError,
+                    onRemoveWordFromBank = onRemoveWordFromBank,
                     onDismiss = onDismiss
                 )
             }
@@ -123,6 +138,10 @@ private fun SheetBody(
     grammarPoints: List<GrammarPoint>,
     sentencePatterns: List<SentencePattern>,
     phrases: List<PhraseIdiom>,
+    wordBankWords: List<Word>,
+    isWordBankLoading: Boolean,
+    wordBankError: String?,
+    onRemoveWordFromBank: (String) -> Unit,
     onDismiss: () -> Unit,
 ) {
     var selectedTabIndex by selectedTabIndexState
@@ -550,6 +569,156 @@ private fun SheetBody(
                     }
                 }
             }
+
+            4 -> {
+                LazyColumn(
+                    verticalArrangement = Arrangement.spacedBy(16.dp),
+                    contentPadding = PaddingValues(bottom = 32.dp)
+                ) {
+                    stickyHeader {
+                        Surface(tonalElevation = 3.dp) {
+                            TabRow(selectedTabIndex = selectedTabIndex) {
+                                tabTitles.forEachIndexed { idx, title ->
+                                    Tab(
+                                        selected = selectedTabIndex == idx,
+                                        onClick = { selectedTabIndex = idx },
+                                        text = {
+                                            Text(
+                                                title,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                            )
+                                        }
+                                    )
+                                }
+                            }
+                        }
+                    }
+
+                    when {
+                        isWordBankLoading -> {
+                            item {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(vertical = 32.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    CircularProgressIndicator()
+                                }
+                            }
+                        }
+
+                        wordBankError != null -> {
+                            item {
+                                Text(
+                                    text = wordBankError,
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    color = MaterialTheme.colorScheme.error
+                                )
+                            }
+                        }
+
+                        wordBankWords.isEmpty() -> {
+                            item {
+                                Text(
+                                    text = "尚未加入任何單字，長按文章中的單字即可加入單字庫。",
+                                    style = MaterialTheme.typography.bodyLarge
+                                )
+                            }
+                        }
+
+                        else -> {
+                            items(wordBankWords) { word ->
+                                WordBankEntryCard(
+                                    word = word,
+                                    onRemove = { onRemoveWordFromBank(word.word) }
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun WordBankEntryCard(
+    word: Word,
+    onRemove: () -> Unit
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+    ) {
+        Box(Modifier.fillMaxWidth().padding(12.dp)) {
+            Column(Modifier.align(Alignment.CenterStart)) {
+                Text(
+                    text = word.word,
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold
+                )
+                val pronunciations = word.pronunciations
+                val pronunciationsText = listOfNotNull(
+                    pronunciations.uk.takeIf { it.isNotBlank() }?.let { "UK [$it]" },
+                    pronunciations.us.takeIf { it.isNotBlank() }?.let { "US [$it]" }
+                ).joinToString("  ")
+                if (pronunciationsText.isNotBlank()) {
+                    Text(
+                        text = pronunciationsText,
+                        style = MaterialTheme.typography.labelLarge,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+
+                word.entries.forEach { entry ->
+                    Spacer(modifier = Modifier.height(4.dp))
+                    if (entry.partOfSpeech.isNotBlank()) {
+                        Text(
+                            text = entry.partOfSpeech,
+                            style = MaterialTheme.typography.labelLarge,
+                            color = MaterialTheme.colorScheme.primary,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                    }
+                    entry.definitions.take(2).forEach { definition ->
+                        if (definition.enDefinition.isNotBlank()) {
+                            Text(
+                                text = definition.enDefinition,
+                                style = MaterialTheme.typography.bodyMedium
+                            )
+                        }
+                        if (definition.zhDefinition.isNotBlank()) {
+                            Text(
+                                text = definition.zhDefinition,
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        if (definition.examples.isNotEmpty()) {
+                            Text(
+                                text = "• ${definition.examples.first()}",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        Spacer(modifier = Modifier.height(4.dp))
+                    }
+                }
+            }
+
+            IconButton(
+                onClick = onRemove,
+                modifier = Modifier.align(Alignment.TopEnd)
+            ) {
+                Icon(
+                    imageVector = Icons.Filled.Delete,
+                    contentDescription = "移除單字",
+                    tint = MaterialTheme.colorScheme.error
+                )
+            }
         }
     }
 }
@@ -597,6 +766,24 @@ private fun LearningBottomSheetPreview() {
             exampleChinese = "嫌疑人被警方在警告下進行了面試。"
         )
     )
+    val wordBank = listOf(
+        Word(
+            word = "resilient",
+            pronunciations = Word.Pronunciations(uk = "rɪˈzɪliənt", us = "rɪˈzɪliənt"),
+            entries = listOf(
+                Word.Entry(
+                    partOfSpeech = "adj.",
+                    definitions = listOf(
+                        Word.Definition(
+                            enDefinition = "Able to withstand or recover quickly from difficult conditions.",
+                            zhDefinition = "能夠迅速從困難狀況中恢復的。",
+                            examples = listOf("The resilient team bounced back after the setback.")
+                        )
+                    )
+                )
+            )
+        )
+    )
     MaterialTheme {
         LearningBottomSheet(
             isOpen = true,
@@ -604,7 +791,8 @@ private fun LearningBottomSheetPreview() {
             glossary = glossary,
             grammarPoints = grammar,
             sentencePatterns = patterns,
-            phrases = phrases
+            phrases = phrases,
+            wordBankWords = wordBank
         )
     }
 }

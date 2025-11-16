@@ -67,6 +67,7 @@ import com.linli.blackcatnews.ui.theme.correctBg
 import com.linli.blackcatnews.ui.theme.correctFg
 import com.linli.blackcatnews.ui.theme.wrongBg
 import com.linli.blackcatnews.ui.theme.wrongFg
+import com.linli.dictionary.domain.model.Word
 import org.jetbrains.compose.ui.tooling.preview.Preview
 
 /**
@@ -87,6 +88,10 @@ fun QuizPanel(
     grammarPoints: List<GrammarPoint> = emptyList(),
     sentencePatterns: List<SentencePattern> = emptyList(),
     phrases: List<PhraseIdiom> = emptyList(),
+    wordBankWords: List<Word> = emptyList(),
+    isWordBankLoading: Boolean = false,
+    wordBankError: String? = null,
+    onRemoveWordFromBank: (String) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     // 狀態：學習輔助 bottom sheet 展開、tab切換
@@ -124,7 +129,11 @@ fun QuizPanel(
                 glossary = glossary,
                 grammarPoints = grammarPoints,
                 sentencePatterns = sentencePatterns,
-                phrases = phrases
+                phrases = phrases,
+                wordBankWords = wordBankWords,
+                isWordBankLoading = isWordBankLoading,
+                wordBankError = wordBankError,
+                onRemoveWordFromBank = onRemoveWordFromBank
             )
             // 展開的測驗內容
             AnimatedVisibility(

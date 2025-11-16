@@ -28,6 +28,7 @@ import com.linli.blackcatnews.ui.components.ArticleWithWordTooltip
 import com.linli.blackcatnews.ui.components.BilingualTextView
 import com.linli.blackcatnews.ui.components.QuizPanel
 import com.linli.dictionary.presentation.DictionaryViewModel
+import com.linli.dictionary.presentation.wordbank.WordBankViewModel
 import org.koin.compose.viewmodel.koinViewModel
 
 /**
@@ -44,6 +45,8 @@ fun ArticleDetailScreen(
 ) {
     val dictionaryViewModel: DictionaryViewModel = koinViewModel<DictionaryViewModel>()
     val uiState by viewModel.uiState.collectAsState()
+    val wordBankViewModel: WordBankViewModel = koinViewModel()
+    val wordBankState by wordBankViewModel.uiState.collectAsState()
     val article = uiState.article ?: return
     var readingMode by remember { mutableStateOf(ReadingMode.ENGLISH_ONLY) }
     var isQuizExpanded by remember { mutableStateOf(false) }
@@ -82,7 +85,8 @@ fun ArticleDetailScreen(
                         BilingualParagraphType.TEXT -> ArticleWithWordTooltip(
                             paragraph = paragraph,
                             readingMode = readingMode,
-                            viewModel = dictionaryViewModel
+                            viewModel = dictionaryViewModel,
+                            wordBankViewModel = wordBankViewModel
                         )
 
                         else -> BilingualTextView(
@@ -113,6 +117,10 @@ fun ArticleDetailScreen(
             grammarPoints = article.grammarPoints,
             sentencePatterns = article.sentencePatterns,
             phrases = article.phrases,
+            wordBankWords = wordBankState.savedWords,
+            isWordBankLoading = wordBankState.isLoading,
+            wordBankError = wordBankState.error,
+            onRemoveWordFromBank = { wordBankViewModel.removeWord(it) },
             modifier = Modifier.align(Alignment.BottomEnd)
         )
     }
