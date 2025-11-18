@@ -19,6 +19,7 @@ import org.jetbrains.compose.ui.tooling.preview.Preview
  * @param offset 提示框的偏移位置
  * @param onDismiss 關閉提示框的回調
  * @param onSaveWord 儲存單字的回調
+ * @param isWordSaved 當前選中單字是否已存在於單字庫中
  * @param onPronounceClick 點擊發音按鈕的回調
  */
 @Composable
@@ -28,6 +29,7 @@ fun DictionaryTooltip(
     offset: IntOffset,
     onDismiss: () -> Unit,
     onSaveWord: () -> Unit,
+    isWordSaved: Boolean = false,
     onPronounceClick: (String) -> Unit = {}
 ) {
     Popup(
@@ -61,6 +63,7 @@ fun DictionaryTooltip(
                             word = w,
                             onDismiss = onDismiss,
                             onSaveWord = onSaveWord,
+                            isSaved = isWordSaved,
                             onPronounceClick = onPronounceClick
                         )
                     } else {

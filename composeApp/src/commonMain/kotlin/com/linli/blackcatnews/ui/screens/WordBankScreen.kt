@@ -64,9 +64,10 @@ fun WordBankContentScreen(
     onRemoveWord: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    if (uiState.error != null && uiState.savedWords.isEmpty() && !uiState.isLoading) {
+    val errorMessage = uiState.error
+    if (errorMessage != null && uiState.savedWords.isEmpty() && !uiState.isLoading) {
         Box(modifier = modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            Text(text = uiState.error, style = MaterialTheme.typography.bodyLarge)
+            Text(text = errorMessage, style = MaterialTheme.typography.bodyLarge)
         }
         return
     }

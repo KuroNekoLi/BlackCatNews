@@ -38,6 +38,7 @@ import org.jetbrains.compose.ui.tooling.preview.Preview
  * @param word 要顯示的單字資訊
  * @param onDismiss 關閉提示框的回調
  * @param onSaveWord 儲存單字的回調
+ * @param isSaved 該單字是否已存在於單字庫中，若為 true 則不再顯示加入按鈕
  * @param onPronounceClick 點擊發音按鈕的回調
  */
 @Composable
@@ -45,6 +46,7 @@ fun DictionaryTooltipContent(
     word: Word,
     onDismiss: () -> Unit,
     onSaveWord: () -> Unit,
+    isSaved: Boolean = false,
     onPronounceClick: (String) -> Unit = {}
 ) {
     ElevatedCard(
@@ -63,12 +65,14 @@ fun DictionaryTooltipContent(
                     modifier = Modifier.weight(1f)
                 )
 
-                // 新增至生字本
-                IconButton(onClick = onSaveWord) {
-                    Icon(
-                        imageVector = Icons.Default.Add,
-                        contentDescription = "新增到生字本"
-                    )
+                // 新增至生字本（已存在則隱藏）
+                if (!isSaved) {
+                    IconButton(onClick = onSaveWord) {
+                        Icon(
+                            imageVector = Icons.Default.Add,
+                            contentDescription = "新增到生字本"
+                        )
+                    }
                 }
 
                 // 關閉提示框
