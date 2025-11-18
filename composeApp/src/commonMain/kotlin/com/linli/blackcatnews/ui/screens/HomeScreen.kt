@@ -12,22 +12,15 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Book
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.AssistChipDefaults
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.ExtendedFloatingActionButton
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
@@ -38,9 +31,6 @@ import com.linli.blackcatnews.presentation.state.HomeUiEvent
 import com.linli.blackcatnews.presentation.viewmodel.HomeViewModel
 import com.linli.blackcatnews.ui.components.CategoryChip
 import com.linli.blackcatnews.ui.components.NewsCard
-import com.linli.blackcatnews.ui.components.WordBankBottomSheet
-import com.linli.dictionary.presentation.wordbank.WordBankViewModel
-import org.koin.compose.viewmodel.koinViewModel
 
 /**
  * 首頁屏幕
@@ -51,7 +41,6 @@ import org.koin.compose.viewmodel.koinViewModel
 fun HomeScreen(
     viewModel: HomeViewModel,
     onNewsItemClick: (NewsItem) -> Unit,
-    wordBankViewModel: WordBankViewModel = koinViewModel(),
     modifier: Modifier = Modifier
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -85,8 +74,6 @@ fun HomeScreen(
         }
         return
     }
-
-    var isWordBankSheetOpen by remember { mutableStateOf(false) }
 
     Box(modifier = modifier.fillMaxSize()) {
         Column(
@@ -142,25 +129,7 @@ fun HomeScreen(
         }
     }
 
-        ExtendedFloatingActionButton(
-            modifier = Modifier
-                .align(Alignment.BottomEnd)
-                .padding(16.dp),
-            onClick = {
-                isWordBankSheetOpen = true
-                wordBankViewModel.loadSavedWords()
-                wordBankViewModel.loadWordCount()
-            },
-            icon = { Icon(imageVector = Icons.Filled.Book, contentDescription = null) },
-            text = { Text("單字庫") }
-        )
     }
-
-    WordBankBottomSheet(
-        isOpen = isWordBankSheetOpen,
-        viewModel = wordBankViewModel,
-        onDismissRequest = { isWordBankSheetOpen = false }
-    )
 }
 
 /**
