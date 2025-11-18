@@ -314,6 +314,11 @@ platform :ios do
     end
   end
 
+  desc "Build only (no upload, for CI branches/PRs)"
+  lane :build_only do
+    build
+  end
+
   desc "Upload to TestFlight with automatic version bump on conflict"
   lane :beta do
     build

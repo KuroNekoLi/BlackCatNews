@@ -151,8 +151,7 @@ jobs:
         working-directory: iosApp
         run: |
           echo "🔨 Building only (no deployment)"
-          BUNDLE_GEMFILE=fastlane/Gemfile bundle exec fastlane build_only || \
-          xcodebuild -workspace iosApp.xcworkspace -scheme iosApp -configuration Release -archivePath build/iosApp.xcarchive archive
+          BUNDLE_GEMFILE=fastlane/Gemfile bundle exec fastlane build_only
 
       - name: Upload ipa artifact
         if: always()
