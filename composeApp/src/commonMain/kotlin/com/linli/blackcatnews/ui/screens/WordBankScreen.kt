@@ -32,6 +32,7 @@ import org.jetbrains.compose.ui.tooling.preview.Preview
 
 /**
  * 單字庫主畫面，負責從 [WordBankViewModel] 取得狀態並渲染內容。
+ * 早期的 WordBankBottomSheet 已移除，統一改由此頁面呈現功能。
  *
  * @param viewModel 單字庫的狀態管理 ViewModel
  * @param modifier 外部傳入的修飾器
