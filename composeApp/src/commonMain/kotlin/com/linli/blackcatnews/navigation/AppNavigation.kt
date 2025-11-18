@@ -29,6 +29,7 @@ import blackcatnews.composeapp.generated.resources.title_favorites
 import blackcatnews.composeapp.generated.resources.title_home
 import blackcatnews.composeapp.generated.resources.title_search
 import blackcatnews.composeapp.generated.resources.title_settings
+import blackcatnews.composeapp.generated.resources.title_word_bank
 import com.linli.authentication.ProviderType
 import com.linli.authentication.domain.SignInUIClient
 import com.linli.authentication.domain.usecase.GetCurrentUserUseCase
@@ -36,6 +37,7 @@ import com.linli.blackcatnews.presentation.viewmodel.ArticleDetailViewModel
 import com.linli.blackcatnews.presentation.viewmodel.FavoritesViewModel
 import com.linli.blackcatnews.presentation.viewmodel.HomeViewModel
 import com.linli.blackcatnews.presentation.viewmodel.SearchViewModel
+import com.linli.dictionary.presentation.wordbank.WordBankViewModel
 import com.linli.blackcatnews.ui.common.BackIcon
 import com.linli.blackcatnews.ui.components.AppBottomNavigation
 import com.linli.blackcatnews.ui.screens.ArticleDetailScreen
@@ -46,6 +48,7 @@ import com.linli.blackcatnews.ui.screens.RegisterScreen
 import com.linli.blackcatnews.ui.screens.SearchScreen
 import com.linli.blackcatnews.ui.screens.SettingsScreen
 import com.linli.blackcatnews.ui.screens.SignInScreen
+import com.linli.blackcatnews.ui.screens.WordBankScreen
 import kotlinx.serialization.Serializable
 import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.koinInject
@@ -226,6 +229,12 @@ fun AppNavigation() {
                 )
             }
 
+            // 單字庫頁面
+            composable<WordBankRoute> {
+                val viewModel: WordBankViewModel = koinViewModel()
+                WordBankScreen(viewModel = viewModel)
+            }
+
             // 設定頁面
             composable<SettingsRoute> {
                 SettingsScreen(
@@ -310,6 +319,7 @@ private fun shouldShowTopBar(destination: NavDestination?): Boolean {
         it.hasRoute<HomeRoute>() ||
                 it.hasRoute<CategoriesRoute>() ||
                 it.hasRoute<FavoritesRoute>() ||
+                it.hasRoute<WordBankRoute>() ||
                 it.hasRoute<SettingsRoute>() ||
                 it.hasRoute<SearchRoute>() ||
                 it.hasRoute<ArticleDetailRoute>()
@@ -324,6 +334,7 @@ private fun shouldShowBottomBar(destination: NavDestination?): Boolean {
         it.hasRoute<HomeRoute>() ||
                 it.hasRoute<CategoriesRoute>() ||
                 it.hasRoute<FavoritesRoute>() ||
+                it.hasRoute<WordBankRoute>() ||
                 it.hasRoute<SettingsRoute>()
     } == true
 }
@@ -354,6 +365,7 @@ private fun getTopBarTitle(destination: NavDestination?): String {
         destination?.hierarchy?.any { it.hasRoute<HomeRoute>() } == true -> stringResource(Res.string.title_home)
         destination?.hierarchy?.any { it.hasRoute<CategoriesRoute>() } == true -> stringResource(Res.string.title_categories)
         destination?.hierarchy?.any { it.hasRoute<FavoritesRoute>() } == true -> stringResource(Res.string.title_favorites)
+        destination?.hierarchy?.any { it.hasRoute<WordBankRoute>() } == true -> stringResource(Res.string.title_word_bank)
         destination?.hierarchy?.any { it.hasRoute<SettingsRoute>() } == true -> stringResource(Res.string.title_settings)
         destination?.hierarchy?.any { it.hasRoute<SearchRoute>() } == true -> stringResource(Res.string.title_search)
         destination?.hierarchy?.any { it.hasRoute<ArticleDetailRoute>() } == true -> stringResource(
@@ -372,6 +384,7 @@ private fun getCurrentRouteObject(destination: NavDestination?): Any? {
         destination?.hierarchy?.any { it.hasRoute<HomeRoute>() } == true -> HomeRoute
         destination?.hierarchy?.any { it.hasRoute<CategoriesRoute>() } == true -> CategoriesRoute
         destination?.hierarchy?.any { it.hasRoute<FavoritesRoute>() } == true -> FavoritesRoute
+        destination?.hierarchy?.any { it.hasRoute<WordBankRoute>() } == true -> WordBankRoute
         destination?.hierarchy?.any { it.hasRoute<SettingsRoute>() } == true -> SettingsRoute
         else -> null
     }

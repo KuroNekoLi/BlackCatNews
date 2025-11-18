@@ -86,6 +86,9 @@ fun ArticleWithWordTooltip(
     // Dictionary state
     val dictionaryState = viewModel.state.collectAsState().value
 
+    // Word bank state for checking existing entries
+    val wordBankState = wordBankViewModel.uiState.collectAsState().value
+
     // Tooltip visibility and position
     var showTooltip by remember { mutableStateOf(false) }
     var tooltipOffset by remember { mutableStateOf(IntOffset(0, 0)) }
@@ -342,15 +345,26 @@ fun ArticleWithWordTooltip(
 
         // 單字提示 Popup
         if (showTooltip) {
+            var isWordSaved by remember(selectedWord, wordBankState.savedWords) {
+                mutableStateOf(
+                    wordBankState.savedWords.any {
+                        it.word.equals(selectedWord, ignoreCase = true)
+                    }
+                )
+            }
+
             DictionaryTooltip(
                 state = dictionaryState,
                 selectedWord = selectedWord,
                 offset = tooltipOffset,
                 onDismiss = { showTooltip = false },
                 onSaveWord = {
-                    wordBankViewModel.addWord(selectedWord)
-                    showTooltip = false
-                }
+                    if (!isWordSaved) {
+                        wordBankViewModel.addWord(selectedWord)
+                        isWordSaved = true
+                    }
+                },
+                isWordSaved = isWordSaved
             )
         }
     }

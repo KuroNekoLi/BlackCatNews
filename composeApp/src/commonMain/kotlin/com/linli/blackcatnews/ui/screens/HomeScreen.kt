@@ -75,9 +75,10 @@ fun HomeScreen(
         return
     }
 
-    Column(
-        modifier = modifier.fillMaxSize()
-    ) {
+    Box(modifier = modifier.fillMaxSize()) {
+        Column(
+            modifier = Modifier.fillMaxSize()
+        ) {
         // 分類 Chips
         CategoryChipsRow(
             categories = NewsCategory.entries,
@@ -126,6 +127,8 @@ fun HomeScreen(
                 )
             }
         }
+    }
+
     }
 }
 
