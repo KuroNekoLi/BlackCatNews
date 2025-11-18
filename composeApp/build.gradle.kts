@@ -130,6 +130,12 @@ android {
     namespace = "com.linli.blackcatnews"
     compileSdk = libs.versions.android.compileSdk.get().toInt()
 
+    // 👇 新增這段
+    compileOptions {
+        sourceCompatibility = JavaVersion.VERSION_11
+        targetCompatibility = JavaVersion.VERSION_11
+    }
+
     // 讀取 keystore.properties
     val keystorePropertiesFile = rootProject.file("composeApp/keystore.properties")
     val keystoreProperties = Properties()
@@ -196,6 +202,10 @@ android {
             signingConfig = signingConfigs.getByName("release")
             isMinifyEnabled = false
         }
+    }
+
+    buildFeatures {
+        buildConfig = true
     }
 
 }

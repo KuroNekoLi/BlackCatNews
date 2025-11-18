@@ -27,9 +27,11 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.linli.blackcatnews.domain.model.NewsCategory
 import com.linli.blackcatnews.domain.model.NewsItem
+import com.linli.blackcatnews.isDebug
 import com.linli.blackcatnews.presentation.state.HomeUiEvent
 import com.linli.blackcatnews.presentation.viewmodel.HomeViewModel
 import com.linli.blackcatnews.ui.components.CategoryChip
+import com.linli.blackcatnews.ui.components.DebugBadge
 import com.linli.blackcatnews.ui.components.NewsCard
 
 /**
@@ -99,31 +101,42 @@ fun HomeScreen(
         )
 
         // 新聞列表
-        LazyColumn(
-            modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            items(articles, key = { it.id }) { newsItem ->
-                NewsCard(
-                    newsItem = newsItem,
-                    onClick = { onNewsItemClick(newsItem) },
-                    prefersChinese = prefersChinese
-                )
-            }
-        }
-
-        if (shouldShowUnsupportedCategoryMessage) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize(),
-                contentAlignment = Alignment.Center
+        Box(modifier = Modifier.weight(1f)) {
+            LazyColumn(
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                Text(
-                    text = "此分類尚未提供內容",
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = MaterialTheme.colorScheme.onBackground,
-                    textAlign = TextAlign.Center
+                items(articles, key = { it.id }) { newsItem ->
+                    NewsCard(
+                        newsItem = newsItem,
+                        onClick = { onNewsItemClick(newsItem) },
+                        prefersChinese = prefersChinese
+                    )
+                }
+            }
+
+            if (shouldShowUnsupportedCategoryMessage) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = "此分類尚未提供內容",
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = MaterialTheme.colorScheme.onBackground,
+                        textAlign = TextAlign.Center
+                    )
+                }
+            }
+
+            // Add debug badge in the bottom-right corner when in debug mode
+            if (isDebug) {
+                DebugBadge(
+                    modifier = Modifier
+                        .align(Alignment.BottomEnd)
+                        .padding(16.dp)
                 )
             }
         }

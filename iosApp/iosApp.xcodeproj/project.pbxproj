@@ -7,12 +7,12 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		3B6192E52EA8AB560004E857 /* BuildFile in Frameworks */ = {isa = PBXBuildFile; };
-		3B6192EB2EA8ABFF0004E857 /* BuildFile in Frameworks */ = {isa = PBXBuildFile; };
-		3B6192EF2EA8ABFF0004E857 /* BuildFile in Frameworks */ = {isa = PBXBuildFile; };
-		3B6193052EA8DD2C0004E857 /* BuildFile in Frameworks */ = {isa = PBXBuildFile; };
-		3B6193072EA8DD2C0004E857 /* BuildFile in Frameworks */ = {isa = PBXBuildFile; };
-		3B9E04BF2EA61742002224F5 /* BuildFile in Frameworks */ = {isa = PBXBuildFile; settings = {ATTRIBUTES = (Required, ); }; };
+		3B6192E52EA8AB560004E857 /* (null) in Frameworks */ = {isa = PBXBuildFile; };
+		3B6192EB2EA8ABFF0004E857 /* (null) in Frameworks */ = {isa = PBXBuildFile; };
+		3B6192EF2EA8ABFF0004E857 /* (null) in Frameworks */ = {isa = PBXBuildFile; };
+		3B6193052EA8DD2C0004E857 /* (null) in Frameworks */ = {isa = PBXBuildFile; };
+		3B6193072EA8DD2C0004E857 /* (null) in Frameworks */ = {isa = PBXBuildFile; };
+		3B9E04BF2EA61742002224F5 /* (null) in Frameworks */ = {isa = PBXBuildFile; settings = {ATTRIBUTES = (Required, ); }; };
 		CB2C7125E8055D971ADC6FB1 /* Pods_iosApp.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 663602EED3EF450D878CBBA6 /* Pods_iosApp.framework */; };
 /* End PBXBuildFile section */
 
@@ -44,8 +44,6 @@
 		};
 		D6C6CB3358D5F4F5C6214692 /* Configuration */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
-			exceptions = (
-			);
 			path = Configuration;
 			sourceTree = "<group>";
 		};
@@ -56,12 +54,12 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				3B6193052EA8DD2C0004E857 /* BuildFile in Frameworks */,
-				3B9E04BF2EA61742002224F5 /* BuildFile in Frameworks */,
-				3B6192E52EA8AB560004E857 /* BuildFile in Frameworks */,
-				3B6193072EA8DD2C0004E857 /* BuildFile in Frameworks */,
-				3B6192EB2EA8ABFF0004E857 /* BuildFile in Frameworks */,
-				3B6192EF2EA8ABFF0004E857 /* BuildFile in Frameworks */,
+				3B6193052EA8DD2C0004E857 /* (null) in Frameworks */,
+				3B9E04BF2EA61742002224F5 /* (null) in Frameworks */,
+				3B6192E52EA8AB560004E857 /* (null) in Frameworks */,
+				3B6193072EA8DD2C0004E857 /* (null) in Frameworks */,
+				3B6192EB2EA8ABFF0004E857 /* (null) in Frameworks */,
+				3B6192EF2EA8ABFF0004E857 /* (null) in Frameworks */,
 				CB2C7125E8055D971ADC6FB1 /* Pods_iosApp.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -206,9 +204,13 @@
 			inputFileListPaths = (
 				"${PODS_ROOT}/Target Support Files/Pods-iosApp/Pods-iosApp-resources-${CONFIGURATION}-input-files.xcfilelist",
 			);
+			inputPaths = (
+			);
 			name = "[CP] Copy Pods Resources";
 			outputFileListPaths = (
 				"${PODS_ROOT}/Target Support Files/Pods-iosApp/Pods-iosApp-resources-${CONFIGURATION}-output-files.xcfilelist",
+			);
+			outputPaths = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
@@ -223,9 +225,13 @@
 			inputFileListPaths = (
 				"${PODS_ROOT}/Target Support Files/Pods-iosApp/Pods-iosApp-frameworks-${CONFIGURATION}-input-files.xcfilelist",
 			);
+			inputPaths = (
+			);
 			name = "[CP] Embed Pods Frameworks";
 			outputFileListPaths = (
 				"${PODS_ROOT}/Target Support Files/Pods-iosApp/Pods-iosApp-frameworks-${CONFIGURATION}-output-files.xcfilelist",
+			);
+			outputPaths = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
@@ -414,7 +420,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = iosApp/iosApp.entitlements;
 				CODE_SIGN_IDENTITY = "Apple Development";
-				CODE_SIGN_STYLE = Manual;
+				CODE_SIGN_STYLE = Automatic;
 				DEVELOPMENT_ASSET_PATHS = "\"iosApp/Preview Content\"";
 				DEVELOPMENT_TEAM = W2R2DW3K68;
 				ENABLE_PREVIEWS = YES;
@@ -435,6 +441,7 @@
 					"@executable_path/Frameworks",
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = com.linli.blackcatnews.debug;
+				PROVISIONING_PROFILE_SPECIFIER = "";
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";

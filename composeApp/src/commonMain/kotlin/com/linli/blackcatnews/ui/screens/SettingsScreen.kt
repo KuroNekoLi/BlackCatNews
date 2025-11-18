@@ -26,6 +26,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalUriHandler
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.linli.blackcatnews.presentation.viewmodel.SettingsEffect
 import com.linli.blackcatnews.presentation.viewmodel.SettingsViewModel
@@ -106,7 +108,48 @@ fun SettingsScreen(
                 }
             }
 
+            // Divider
+            HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+
+            // Feedback section
+            Text(
+                text = "意見反饋",
+                style = MaterialTheme.typography.titleMedium
+            )
+            FeedbackButton()
+
+            // Divider
+            HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+
             Spacer(Modifier.weight(1f))
+            // App version display at the bottom
+            val versionName = "1.0"
+            val displayVersion = "1.0"
+            val platform = "ios"
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                Text(
+                    text = "版本號：$versionName",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    textAlign = TextAlign.Center
+                )
+                Text(
+                    text = displayVersion,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                    textAlign = TextAlign.Center
+                )
+                Text(
+                    text = "平台：$platform",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                    textAlign = TextAlign.Center
+                )
+            }
         }
 
         // Snackbar for error messages
@@ -139,5 +182,22 @@ private fun RowSettingItem(
                 uncheckedThumbColor = MaterialTheme.colorScheme.outlineVariant
             )
         )
+    }
+}
+
+/**
+ * 提供快速發送 email 意見反饋的按鈕
+ * 使用 mailto 連結調用系統 email 客戶端
+ */
+@Composable
+private fun FeedbackButton() {
+    val uriHandler = LocalUriHandler.current
+    Button(
+        onClick = {
+            uriHandler.openUri("mailto:alice.margatroid.love@gmail.com?subject=BlackCatNews%20意見回饋")
+        },
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Text("發送意見反饋 Email")
     }
 }
