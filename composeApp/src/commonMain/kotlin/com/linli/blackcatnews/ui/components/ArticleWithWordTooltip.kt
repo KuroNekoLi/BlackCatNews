@@ -345,8 +345,12 @@ fun ArticleWithWordTooltip(
 
         // 單字提示 Popup
         if (showTooltip) {
-            val isWordSaved = wordBankState.savedWords.any {
-                it.word.equals(selectedWord, ignoreCase = true)
+            var isWordSaved by remember(selectedWord, wordBankState.savedWords) {
+                mutableStateOf(
+                    wordBankState.savedWords.any {
+                        it.word.equals(selectedWord, ignoreCase = true)
+                    }
+                )
             }
 
             DictionaryTooltip(
@@ -357,8 +361,8 @@ fun ArticleWithWordTooltip(
                 onSaveWord = {
                     if (!isWordSaved) {
                         wordBankViewModel.addWord(selectedWord)
+                        isWordSaved = true
                     }
-                    showTooltip = false
                 },
                 isWordSaved = isWordSaved
             )
