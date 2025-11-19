@@ -7,6 +7,8 @@ import com.linli.blackcatnews.domain.usecase.GetArticleDetailUseCase
 import com.linli.blackcatnews.presentation.state.ArticleDetailUiEffect
 import com.linli.blackcatnews.presentation.state.ArticleDetailUiEvent
 import com.linli.blackcatnews.presentation.state.ArticleDetailUiState
+import com.linli.blackcatnews.rating.RatingReason
+import com.linli.blackcatnews.rating.RatingRequester
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -17,7 +19,8 @@ import kotlinx.coroutines.launch
 
 class ArticleDetailViewModel(
     private val articleId: String,
-    private val getArticleDetailUseCase: GetArticleDetailUseCase
+    private val getArticleDetailUseCase: GetArticleDetailUseCase,
+    private val ratingRequester: RatingRequester
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(ArticleDetailUiState(isLoading = true))
@@ -55,6 +58,12 @@ class ArticleDetailViewModel(
                     }
                 }
             }
+        }
+    }
+
+    fun onLeaveArticleDetail() {
+        viewModelScope.launch {
+            ratingRequester.maybeRequestReview(RatingReason.ARTICLE_READ)
         }
     }
 }

@@ -11,6 +11,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateMapOf
@@ -49,6 +50,20 @@ fun ArticleDetailScreen(
     var isQuizExpanded by remember { mutableStateOf(false) }
     val userAnswers = remember { mutableStateMapOf<Int, Int>() }
     var isQuizSubmitted by remember { mutableStateOf(false) }
+    var hasReportedLeave by remember { mutableStateOf(false) }
+
+    fun reportLeaveOnce() {
+        if (!hasReportedLeave) {
+            hasReportedLeave = true
+            viewModel.onLeaveArticleDetail()
+        }
+    }
+
+    DisposableEffect(viewModel) {
+        onDispose {
+            reportLeaveOnce()
+        }
+    }
 
     val scrollState = rememberScrollState()
     Box(modifier = modifier.fillMaxSize()) {
@@ -67,7 +82,10 @@ fun ArticleDetailScreen(
                 imageUrl = article.imageUrl,
                 readingMode = readingMode,
                 onReadingModeChange = { readingMode = it },
-                onBackClick = onBackClick
+                onBackClick = {
+                    reportLeaveOnce()
+                    onBackClick()
+                }
             )
 
             Spacer(modifier = Modifier.height(16.dp))

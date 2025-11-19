@@ -64,6 +64,8 @@ kotlin {
             implementation(libs.androidx.activity.compose)
             implementation(libs.ktor.client.okhttp)
             implementation(libs.koin.android)
+            implementation(libs.google.play.review)
+            implementation(libs.androidx.datastore.preferences)
 
             // Android 專用：Firebase Android SDK（與 GitLive 相容）
             implementation(project.dependencies.platform(libs.firebase.bom))
