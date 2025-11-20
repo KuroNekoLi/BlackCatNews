@@ -22,7 +22,6 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -59,14 +58,6 @@ fun HomeScreen(
         !uiState.isRefreshing && articles.isEmpty() && selectedCategory !in supportedCategories
 
     val pullToRefreshState = rememberPullToRefreshState()
-
-    LaunchedEffect(uiState.isRefreshing) {
-        if (uiState.isRefreshing) {
-            pullToRefreshState.startRefresh()
-        } else {
-            pullToRefreshState.endRefresh()
-        }
-    }
 
     val showEmptyState = !uiState.isRefreshing && uiState.errorMessage == null &&
         articles.isEmpty() && !shouldShowUnsupportedCategoryMessage
