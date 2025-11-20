@@ -8,6 +8,7 @@ import com.linli.blackcatnews.data.local.entity.SentencePatternEntity
 import com.linli.blackcatnews.data.local.entity.VocabularyItemEntity
 import com.linli.blackcatnews.data.remote.dto.AiArticleDto
 import com.linli.blackcatnews.data.remote.dto.ComprehensionQuestionDto
+import com.linli.blackcatnews.data.remote.dto.McqOptionDto
 import com.linli.blackcatnews.data.remote.dto.GrammarItemDto
 import com.linli.blackcatnews.data.remote.dto.PhraseIdiomDto
 import com.linli.blackcatnews.data.remote.dto.SentencePatternDto
@@ -47,33 +48,37 @@ object ArticleMapper {
     fun dtoToEntity(dto: AiArticleDto, existing: ArticleEntity? = null): ArticleEntity {
         val now = Clock.System.now().toEpochMilliseconds()
         val createdAt = existing?.createdAt ?: now
-        val summaryText = dto.summaryEnglish?.takeIf { it.isNotBlank() }
-            ?: dto.cleanedTextEnglish.lineSequence().firstOrNull()?.take(200)?.trim().orEmpty()
+        val summaryText = dto.summaryFrom?.takeIf { it.isNotBlank() }
+            ?: dto.summaryEnglishLegacy?.takeIf { it.isNotBlank() }
+            ?: dto.content?.cleanedTextFrom?.lineSequence()?.firstOrNull()?.take(200)?.trim()
+                .orEmpty()
 
-        val normalizedChineseContent = dto.optimizedZhHtml?.takeIf { it.isNotBlank() }
-            ?: dto.cleanedTextChinese
+        val normalizedChineseContent = dto.content?.optimizedHtmlTo?.takeIf { it.isNotBlank() }
+            ?: dto.content?.cleanedTextTo
 
         return ArticleEntity(
             id = dto.id.toString(),
-            title = dto.title.decodeHtmlEntities(),
-            titleZh = dto.titleZh?.decodeHtmlEntities(),
+            title = (dto.titleFrom ?: dto.title ?: "").decodeHtmlEntities(),
+            titleZh = (dto.titleTo ?: dto.titleZh ?: dto.title)?.decodeHtmlEntities(),
             summary = summaryText.decodeHtmlEntities(),
-            summaryZh = dto.summaryChinese?.decodeHtmlEntities(),
-            contentHtml = dto.optimizedHtml ?: dto.contentHtml,
-            cleanedText = dto.cleanedTextEnglish,
+            summaryZh = (dto.summaryTo ?: dto.summaryChineseLegacy)?.decodeHtmlEntities(),
+            contentHtml = dto.content?.optimizedHtmlFrom ?: dto.contentHtml.orEmpty(),
+            cleanedText = dto.content?.cleanedTextFrom.orEmpty(),
             cleanedTextZh = normalizedChineseContent,
-            imageUrl = extractHeroImage(dto.contentHtml),
-            sourceName = dto.sourceName,
-            publishTime = dto.publishedAt,
-            section = dto.section,
+            imageUrl = dto.contentHtml?.let { extractHeroImage(it) },
+            sourceName = dto.sourceName.orEmpty(),
+            publishTime = dto.publishedAt.orEmpty(),
+            section = dto.section.orEmpty(),
             url = dto.originalUrl,
-            language = dto.language,
-            learningVocabulary = dto.explanation?.vocabulary?.map { it.toEntity() } ?: emptyList(),
-            learningGrammar = dto.explanation?.grammar?.map { it.toEntity() } ?: emptyList(),
-            learningSentencePatterns = dto.explanation?.sentencePatterns?.map { it.toEntity() }
+            language = dto.fromLanguage,
+            learningVocabulary = dto.content?.explanation?.vocabulary?.map { it.toEntity() }
                 ?: emptyList(),
-            learningPhrases = dto.explanation?.phrasesIdioms?.map { it.toEntity() } ?: emptyList(),
-            learningQuiz = dto.explanation?.comprehensionMcq?.mapIndexed { index, dtoQuestion ->
+            learningGrammar = dto.content?.explanation?.grammar?.map { it.toEntity() } ?: emptyList(),
+            learningSentencePatterns = dto.content?.explanation?.sentencePatterns?.map { it.toEntity() }
+                ?: emptyList(),
+            learningPhrases = dto.content?.explanation?.phrasesIdioms?.map { it.toEntity() }
+                ?: emptyList(),
+            learningQuiz = dto.content?.explanation?.comprehensionMcq?.mapIndexed { index, dtoQuestion ->
                 dtoQuestion.toEntity(index)
             } ?: emptyList(),
             isFavorite = existing?.isFavorite ?: false,
@@ -159,26 +164,28 @@ object ArticleMapper {
      * DTO 直接轉換為列表展示使用
      */
     fun dtoToNewsItem(dto: AiArticleDto): NewsItem {
-        val summaryText = dto.summaryEnglish?.takeIf { it.isNotBlank() }
-            ?: dto.cleanedTextEnglish.lineSequence().firstOrNull()?.take(200)?.trim().orEmpty()
+        val summaryText = dto.summaryFrom?.takeIf { it.isNotBlank() }
+            ?: dto.summaryEnglishLegacy?.takeIf { it.isNotBlank() }
+            ?: dto.content?.cleanedTextFrom?.lineSequence()?.firstOrNull()?.take(200)?.trim()
+                .orEmpty()
 
         return NewsItem(
             id = dto.id.toString(),
-            title = dto.title.decodeHtmlEntities(),
-            titleZh = dto.titleZh?.decodeHtmlEntities(),
+            title = (dto.titleFrom ?: dto.title ?: "").decodeHtmlEntities(),
+            titleZh = (dto.titleTo ?: dto.titleZh ?: dto.title)?.decodeHtmlEntities(),
             summary = summaryText.decodeHtmlEntities(),
-            summaryZh = dto.summaryChinese?.decodeHtmlEntities(),
-            imageUrl = extractHeroImage(dto.contentHtml),
-            source = dto.sourceName,
-            publishTime = dto.publishedAt,
+            summaryZh = (dto.summaryTo ?: dto.summaryChineseLegacy)?.decodeHtmlEntities(),
+            imageUrl = dto.contentHtml?.let { extractHeroImage(it) },
+            source = dto.sourceName.orEmpty(),
+            publishTime = dto.publishedAt.orEmpty(),
             category = mapSectionToCategory(dto.section)
         )
     }
 
     // region 私有輔助邏輯
 
-    private fun mapSectionToCategory(section: String): NewsCategory {
-        return when (section.lowercase()) {
+    private fun mapSectionToCategory(section: String?): NewsCategory {
+        return when (section?.lowercase()) {
             "world" -> NewsCategory.WORLD
             "technology", "tech" -> NewsCategory.TECH
             "business" -> NewsCategory.BUSINESS
@@ -200,56 +207,56 @@ object ArticleMapper {
     private fun VocabularyItemDto.toEntity(): VocabularyItemEntity {
         return VocabularyItemEntity(
             partOfSpeech = partOfSpeech,
-            wordEnglish = wordEnglish,
-            wordChinese = wordChinese,
-            definitionEnglish = definitionEnglish,
-            definitionChinese = definitionChinese,
-            exampleEnglish = exampleEnglish,
-            exampleChinese = exampleChinese,
+            wordEnglish = wordFrom,
+            wordChinese = wordTo,
+            definitionEnglish = definitionFrom,
+            definitionChinese = definitionTo,
+            exampleEnglish = exampleFrom,
+            exampleChinese = exampleTo,
             pronunciation = null
         )
     }
 
     private fun GrammarItemDto.toEntity(): GrammarItemEntity {
         return GrammarItemEntity(
-            ruleEnglish = ruleEnglish,
-            explanationEnglish = explanationEnglish,
-            explanationChinese = explanationChinese,
-            exampleEnglish = exampleEnglish,
-            exampleChinese = exampleChinese
+            ruleEnglish = ruleFrom,
+            explanationEnglish = explanationFrom,
+            explanationChinese = explanationTo,
+            exampleEnglish = exampleFrom,
+            exampleChinese = exampleTo
         )
     }
 
     private fun SentencePatternDto.toEntity(): SentencePatternEntity {
         return SentencePatternEntity(
-            patternEnglish = patternEnglish,
-            explanationEnglish = explanationEnglish,
-            explanationChinese = explanationChinese,
-            exampleEnglish = exampleEnglish,
-            exampleChinese = exampleChinese
+            patternEnglish = patternFrom,
+            explanationEnglish = explanationFrom,
+            explanationChinese = explanationTo,
+            exampleEnglish = exampleFrom,
+            exampleChinese = exampleTo
         )
     }
 
     private fun PhraseIdiomDto.toEntity(): PhraseIdiomEntity {
         return PhraseIdiomEntity(
-            phraseEnglish = phraseEnglish,
-            explanationEnglish = explanationEnglish,
-            explanationChinese = explanationChinese,
-            exampleEnglish = exampleEnglish,
-            exampleChinese = exampleChinese
+            phraseEnglish = phraseFrom,
+            explanationEnglish = explanationFrom,
+            explanationChinese = explanationTo,
+            exampleEnglish = exampleFrom,
+            exampleChinese = exampleTo
         )
     }
 
     private fun ComprehensionQuestionDto.toEntity(index: Int): ComprehensionQuestionEntity {
         return ComprehensionQuestionEntity(
             id = (index + 1).toString(),
-            questionEnglish = questionEnglish,
-            questionChinese = questionChinese,
-            options = options.toSortedMap().values.toList(),
-            correctAnswerIndex = answerKeyLetterToIndex(),
+            questionEnglish = questionFrom,
+            questionChinese = questionTo,
+            options = options.toSortedList().mapNotNull { it.value },
+            correctAnswerIndex = answerKeyLabelToIndex(),
             correctAnswerKey = answerKey ?: "",
-            explanationEnglish = explanationEnglish,
-            explanationChinese = explanationChinese
+            explanationEnglish = explanationFrom,
+            explanationChinese = explanationTo
         )
     }
 
@@ -310,13 +317,16 @@ object ArticleMapper {
         )
     }
 
-    private fun Map<String, String>.toSortedMap(): Map<String, String> {
-        return entries.sortedBy { it.key }.associate { it.key to it.value }
+    private fun List<McqOptionDto>.toSortedList(): List<Pair<String, String?>> {
+        return sortedBy { it.label }.map { option ->
+            option.label to (option.textTo ?: option.textFrom)
+        }
     }
 
-    private fun ComprehensionQuestionDto.answerKeyLetterToIndex(): Int {
+    private fun ComprehensionQuestionDto.answerKeyLabelToIndex(): Int {
         val normalized = answerKey?.trim()?.uppercase() ?: ""
-        return normalized.firstOrNull()?.let { letter -> letter - 'A' } ?: -1
+        val sortedLabels = options.map { it.label.uppercase() }.sorted()
+        return sortedLabels.indexOf(normalized)
     }
 
     fun serializeVocabulary(items: List<VocabularyItemDto>?): String? = null
