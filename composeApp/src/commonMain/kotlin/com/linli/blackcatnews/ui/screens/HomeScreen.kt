@@ -12,6 +12,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Button
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.AssistChipDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -19,6 +20,8 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
+import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -33,12 +36,14 @@ import com.linli.blackcatnews.presentation.viewmodel.HomeViewModel
 import com.linli.blackcatnews.ui.components.CategoryChip
 import com.linli.blackcatnews.ui.components.DebugBadge
 import com.linli.blackcatnews.ui.components.NewsCard
+import androidx.compose.material3.ExperimentalMaterial3Api
 
 /**
  * 首頁屏幕
  * 顯示分類 Chips 和新聞列表
  * Scaffold 和 TopBar 由 AppNavigation 統一管理
  */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(
     viewModel: HomeViewModel,
@@ -52,32 +57,18 @@ fun HomeScreen(
     val shouldShowUnsupportedCategoryMessage =
         !uiState.isRefreshing && articles.isEmpty() && selectedCategory !in supportedCategories
 
-    if (uiState.isRefreshing && uiState.articles.isEmpty()) {
-        Box(
-            modifier = modifier.fillMaxSize(),
-            contentAlignment = Alignment.Center
-        ) {
-            CircularProgressIndicator()
-        }
-        return
-    }
+    val pullToRefreshState = rememberPullToRefreshState()
 
-    if (!uiState.isRefreshing && uiState.errorMessage != null && uiState.articles.isEmpty()) {
-        Box(
-            modifier = modifier.fillMaxSize(),
-            contentAlignment = Alignment.Center
-        ) {
-            Text(
-                text = uiState.errorMessage ?: "",
-                style = MaterialTheme.typography.bodyLarge,
-                color = MaterialTheme.colorScheme.error,
-                textAlign = TextAlign.Center
-            )
-        }
-        return
-    }
+    val showEmptyState = !uiState.isRefreshing && uiState.errorMessage == null &&
+        articles.isEmpty() && !shouldShowUnsupportedCategoryMessage
+    val showErrorState = !uiState.isRefreshing && uiState.errorMessage != null && articles.isEmpty()
 
-    Box(modifier = modifier.fillMaxSize()) {
+    PullToRefreshBox(
+        modifier = modifier.fillMaxSize(),
+        isRefreshing = uiState.isRefreshing,
+        onRefresh = { viewModel.onEvent(HomeUiEvent.Refresh) },
+        state = pullToRefreshState
+    ) {
         Column(
             modifier = Modifier.fillMaxSize()
         ) {
@@ -129,6 +120,26 @@ fun HomeScreen(
                         textAlign = TextAlign.Center
                     )
                 }
+            } else if (showErrorState) {
+                ErrorState(
+                    message = uiState.errorMessage.orEmpty(),
+                    onRetry = { viewModel.onEvent(HomeUiEvent.Refresh) },
+                    modifier = Modifier.align(Alignment.Center)
+                )
+            } else if (showEmptyState) {
+                EmptyArticlesState(
+                    onRetry = { viewModel.onEvent(HomeUiEvent.Refresh) },
+                    modifier = Modifier.align(Alignment.Center)
+                )
+            }
+
+            if (uiState.isRefreshing && articles.isEmpty()) {
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    CircularProgressIndicator()
+                }
             }
 
             // Add debug badge in the bottom-right corner when in debug mode
@@ -141,7 +152,6 @@ fun HomeScreen(
             }
         }
     }
-
     }
 }
 
@@ -233,6 +243,51 @@ private fun LanguageToggleRow(
                     onClick = { onToggle(true) }
                 )
             }
+        }
+    }
+}
+
+@Composable
+private fun EmptyArticlesState(
+    onRetry: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        modifier = modifier,
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        Text(
+            text = "目前沒有文章",
+            style = MaterialTheme.typography.bodyLarge,
+            color = MaterialTheme.colorScheme.onBackground,
+            textAlign = TextAlign.Center
+        )
+        Button(onClick = onRetry) {
+            Text(text = "重新整理")
+        }
+    }
+}
+
+@Composable
+private fun ErrorState(
+    message: String,
+    onRetry: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        modifier = modifier,
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        Text(
+            text = message,
+            style = MaterialTheme.typography.bodyLarge,
+            color = MaterialTheme.colorScheme.error,
+            textAlign = TextAlign.Center
+        )
+        Button(onClick = onRetry) {
+            Text(text = "重試")
         }
     }
 }
