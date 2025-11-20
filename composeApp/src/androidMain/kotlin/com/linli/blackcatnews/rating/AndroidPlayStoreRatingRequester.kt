@@ -52,10 +52,21 @@ class AndroidPlayStoreRatingRequester(
 
         val readCount = gatingState.first
         val hasAsked = gatingState.second
+        println("[InAppReview] maybeRequestReview readCount=$readCount hasAsked=$hasAsked")
         if (!eligibilityDecider.shouldRequest(readCount, hasAsked)) return
 
-        val activity = activityProvider.getCurrentActivity() ?: return
-        val reviewInfo = requestReviewInfo() ?: return
+        val activity = activityProvider.getCurrentActivity()
+        if (activity == null) {
+            println("[InAppReview] No current activity available; skip review")
+            return
+        }
+
+        val reviewInfo = requestReviewInfo()
+        if (reviewInfo == null) {
+            println("[InAppReview] requestReviewFlow failed; skip review")
+            return
+        }
+
         launchReviewDialog(activity, reviewInfo)
         markHasAskedForReview()
     }
@@ -64,8 +75,10 @@ class AndroidPlayStoreRatingRequester(
         reviewManager.requestReviewFlow()
             .addOnCompleteListener { task ->
                 if (task.isSuccessful) {
+                    println("[InAppReview] requestReviewFlow successful")
                     cont.resume(task.result)
                 } else {
+                    println("[InAppReview] requestReviewFlow unsuccessful: ${'$'}{task.exception?.message}")
                     cont.resume(null)
                 }
             }
@@ -74,6 +87,7 @@ class AndroidPlayStoreRatingRequester(
     private suspend fun launchReviewDialog(activity: Activity, reviewInfo: ReviewInfo) = suspendCancellableCoroutine { cont ->
         reviewManager.launchReviewFlow(activity, reviewInfo)
             .addOnCompleteListener {
+                println("[InAppReview] launchReviewFlow completed (dialog may or may not have shown)")
                 cont.resume(Unit)
             }
     }
@@ -84,6 +98,7 @@ class AndroidPlayStoreRatingRequester(
                 prefs[HAS_ASKED_FOR_REVIEW_KEY] = true
             }
         }
+        println("[InAppReview] Marked hasAskedForReview=true")
     }
 
     companion object {
