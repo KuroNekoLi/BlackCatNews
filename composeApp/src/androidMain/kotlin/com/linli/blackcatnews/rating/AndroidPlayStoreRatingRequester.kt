@@ -33,37 +33,46 @@ class AndroidPlayStoreRatingRequester(
     private val context: Context,
     private val reviewManager: ReviewManager,
     private val activityProvider: CurrentActivityProvider,
-    private val eligibilityDecider: RatingEligibilityDecider = RatingEligibilityDecider(DEFAULT_READ_THRESHOLD),
+    private val eligibilityDecider: RatingEligibilityDecider = RatingEligibilityDecider(
+        DEFAULT_READ_THRESHOLD
+    ),
     private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO
 ) : RatingRequester {
 
     override suspend fun maybeRequestReview(reason: RatingReason) {
-        if (reason != ARTICLE_READ) return
 
-        val gatingState = withContext(ioDispatcher) {
-            val updatedPrefs = context.reviewPreferencesDataStore.edit { prefs ->
-                val updatedCount = (prefs[ARTICLE_READ_COUNT_KEY] ?: 0) + 1
-                prefs[ARTICLE_READ_COUNT_KEY] = updatedCount
-            }
-            val hasAsked = updatedPrefs[HAS_ASKED_FOR_REVIEW_KEY] ?: false
-            val readCount = updatedPrefs[ARTICLE_READ_COUNT_KEY] ?: 0
-            readCount to hasAsked
+        if (reason != ARTICLE_READ) {
+            return
         }
 
-        val readCount = gatingState.first
-        val hasAsked = gatingState.second
-        println("[InAppReview] maybeRequestReview readCount=$readCount hasAsked=$hasAsked")
-        if (!eligibilityDecider.shouldRequest(readCount, hasAsked)) return
+        val (readCount, hasAsked) = try {
+            withContext(ioDispatcher) {
+                val updatedPrefs = context.reviewPreferencesDataStore.edit { prefs ->
+                    val currentCount = prefs[ARTICLE_READ_COUNT_KEY] ?: 0
+                    val updatedCount = currentCount + 1
+                    prefs[ARTICLE_READ_COUNT_KEY] = updatedCount
+                }
+                val hasAskedValue = updatedPrefs[HAS_ASKED_FOR_REVIEW_KEY] ?: false
+                val readCountValue = updatedPrefs[ARTICLE_READ_COUNT_KEY] ?: 0
+                readCountValue to hasAskedValue
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+            return
+        }
+
+        val shouldRequest = eligibilityDecider.shouldRequest(readCount, hasAsked)
+        if (!shouldRequest) {
+            return
+        }
 
         val activity = activityProvider.getCurrentActivity()
         if (activity == null) {
-            println("[InAppReview] No current activity available; skip review")
             return
         }
 
         val reviewInfo = requestReviewInfo()
         if (reviewInfo == null) {
-            println("[InAppReview] requestReviewFlow failed; skip review")
             return
         }
 
@@ -75,22 +84,20 @@ class AndroidPlayStoreRatingRequester(
         reviewManager.requestReviewFlow()
             .addOnCompleteListener { task ->
                 if (task.isSuccessful) {
-                    println("[InAppReview] requestReviewFlow successful")
                     cont.resume(task.result)
                 } else {
-                    println("[InAppReview] requestReviewFlow unsuccessful: ${'$'}{task.exception?.message}")
                     cont.resume(null)
                 }
             }
     }
 
-    private suspend fun launchReviewDialog(activity: Activity, reviewInfo: ReviewInfo) = suspendCancellableCoroutine { cont ->
-        reviewManager.launchReviewFlow(activity, reviewInfo)
-            .addOnCompleteListener {
-                println("[InAppReview] launchReviewFlow completed (dialog may or may not have shown)")
-                cont.resume(Unit)
-            }
-    }
+    private suspend fun launchReviewDialog(activity: Activity, reviewInfo: ReviewInfo) =
+        suspendCancellableCoroutine { cont ->
+            reviewManager.launchReviewFlow(activity, reviewInfo)
+                .addOnCompleteListener {
+                    cont.resume(Unit)
+                }
+        }
 
     private suspend fun markHasAskedForReview() {
         withContext(ioDispatcher) {
@@ -98,7 +105,6 @@ class AndroidPlayStoreRatingRequester(
                 prefs[HAS_ASKED_FOR_REVIEW_KEY] = true
             }
         }
-        println("[InAppReview] Marked hasAskedForReview=true")
     }
 
     companion object {

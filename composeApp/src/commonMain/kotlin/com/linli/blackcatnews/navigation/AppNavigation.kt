@@ -36,8 +36,8 @@ import com.linli.authentication.domain.usecase.GetCurrentUserUseCase
 import com.linli.blackcatnews.presentation.viewmodel.ArticleDetailViewModel
 import com.linli.blackcatnews.presentation.viewmodel.FavoritesViewModel
 import com.linli.blackcatnews.presentation.viewmodel.HomeViewModel
+import com.linli.blackcatnews.presentation.viewmodel.RatingViewModel
 import com.linli.blackcatnews.presentation.viewmodel.SearchViewModel
-import com.linli.dictionary.presentation.wordbank.WordBankViewModel
 import com.linli.blackcatnews.ui.common.BackIcon
 import com.linli.blackcatnews.ui.components.AppBottomNavigation
 import com.linli.blackcatnews.ui.screens.ArticleDetailScreen
@@ -49,6 +49,7 @@ import com.linli.blackcatnews.ui.screens.SearchScreen
 import com.linli.blackcatnews.ui.screens.SettingsScreen
 import com.linli.blackcatnews.ui.screens.SignInScreen
 import com.linli.blackcatnews.ui.screens.WordBankScreen
+import com.linli.dictionary.presentation.wordbank.WordBankViewModel
 import kotlinx.serialization.Serializable
 import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.koinInject
@@ -81,6 +82,9 @@ fun AppNavigation() {
     val currentBackStackEntry by navController.currentBackStackEntryAsState()
     val currentDestination: NavDestination? = currentBackStackEntry?.destination
 
+    // 創建全局的 RatingViewModel，用於處理評分邏輯
+    val ratingViewModel: RatingViewModel = koinViewModel()
+
     Scaffold(
         topBar = {
             // 根據當前路由顯示不同的頂部欄
@@ -102,6 +106,10 @@ fun AppNavigation() {
                         showActions = isHomeDestination(currentDestination),
                         showBackButton = isDetailDestination(currentDestination),
                         onBackClick = {
+                            // 如果是文章詳情頁，觸發評分
+                            if (currentDestination?.hierarchy?.any { it.hasRoute<ArticleDetailRoute>() } == true) {
+                                ratingViewModel.onArticleRead()
+                            }
                             navController.navigateUp()
                         }
                     )
@@ -203,6 +211,8 @@ fun AppNavigation() {
                 ArticleDetailScreen(
                     viewModel = viewModel,
                     onBackClick = {
+                        // 使用者返回時觸發評分請求
+                        ratingViewModel.onArticleRead()
                         navController.navigateUp()
                     }
                 )
