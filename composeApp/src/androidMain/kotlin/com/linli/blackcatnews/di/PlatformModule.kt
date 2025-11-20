@@ -18,7 +18,7 @@ import org.koin.core.context.stopKoin
 import org.koin.core.qualifier.named
 import org.koin.dsl.module
 
-val androidPlatformModule = module(override = true) {
+val androidPlatformModule = module {
     includes(
         platformAuthProvidersModule,
         platformLoginModule
@@ -44,6 +44,7 @@ val androidPlatformModule = module(override = true) {
 fun initKoin() {
     stopKoin()
     startKoin {
+        allowOverride(true)
         modules(listOf(appModule, androidPlatformModule))
     }
 }
