@@ -18,7 +18,7 @@ import org.koin.core.context.stopKoin
 import org.koin.core.qualifier.named
 import org.koin.dsl.module
 
-val androidPlatformModule = module {
+val androidPlatformModule = module(override = true) {
     includes(
         platformAuthProvidersModule,
         platformLoginModule
@@ -32,7 +32,7 @@ val androidPlatformModule = module {
         val application = androidContext().applicationContext as Application
         LifecycleAwareActivityProvider(application)
     }
-    single<RatingRequester>(override = true) {
+    single<RatingRequester> {
         AndroidPlayStoreRatingRequester(
             context = androidContext(),
             reviewManager = ReviewManagerFactory.create(androidContext()),
