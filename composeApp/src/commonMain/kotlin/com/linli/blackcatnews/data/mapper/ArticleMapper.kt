@@ -252,7 +252,7 @@ object ArticleMapper {
             id = (index + 1).toString(),
             questionEnglish = questionFrom,
             questionChinese = questionTo,
-            options = options.toSortedList().mapNotNull { it.value },
+            options = options.toSortedList().mapNotNull { it.second },
             correctAnswerIndex = answerKeyLabelToIndex(),
             correctAnswerKey = answerKey ?: "",
             explanationEnglish = explanationFrom,
