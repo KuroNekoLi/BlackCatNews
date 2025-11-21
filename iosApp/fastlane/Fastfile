@@ -349,7 +349,8 @@ platform :ios do
         skip_waiting_for_build_processing: false
       )
     rescue => ex
-      if ex.message =~ /(Invalid Pre-Release Train|CFBundleShortVersionString|already been used|409)/
+      # 擴充判斷條件，捕捉 altool 回傳的「Redundant Binary Upload」訊息，避免重複 build 號時無法自動 bump
+      if ex.message =~ /(Invalid Pre-Release Train|CFBundleShortVersionString|already been used|409|Redundant Binary Upload)/
         UI.important("⛽️ 偵測到版本衝突，自動 bump 並重試")
 
         current_ver = get_version_number(xcodeproj: @project_path, target: TARGET_NAME) rescue "1.0.0"
