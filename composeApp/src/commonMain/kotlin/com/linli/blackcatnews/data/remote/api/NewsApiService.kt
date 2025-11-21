@@ -47,6 +47,7 @@ class NewsApiService(
         val response: AiArticlesResponseDto = httpClient.get("$BASE_URL$RANDOM_ARTICLES_ENDPOINT") {
             parameter("count", count)
             parameter("difficulty", "NORMAL")
+            parameter("difficulty", "EASY")
             section?.let { parameter("section", it) }
             source?.let { parameter("source", it) }
         }.body()
