@@ -15,46 +15,97 @@ data class AiArticleDto(
     val id: Long,
 
     @SerialName("sourceName")
-    val sourceName: String,
+    val sourceName: String? = null,
 
     @SerialName("section")
-    val section: String,
+    val section: String? = null,
 
     @SerialName("title")
-    val title: String,
+    val title: String? = null,
+
+    @SerialName("titleFrom")
+    val titleFrom: String? = null,
+
+    @SerialName("titleTo")
+    val titleTo: String? = null,
 
     @SerialName("title_zh")
     val titleZh: String? = null,
 
+    @SerialName("summaryFrom")
+    val summaryFrom: String? = null,
+
+    @SerialName("summaryTo")
+    val summaryTo: String? = null,
+
     @SerialName("summary_en")
-    val summaryEnglish: String? = null,
+    val summaryEnglishLegacy: String? = null,
 
     @SerialName("summary_zh")
-    val summaryChinese: String? = null,
+    val summaryChineseLegacy: String? = null,
 
     @SerialName("publishedAt")
-    val publishedAt: String,
+    val publishedAt: String? = null,
 
     @SerialName("originalUrl")
     val originalUrl: String,
 
     @SerialName("contentHtml")
-    val contentHtml: String,
+    val contentHtml: String? = null,
 
-    @SerialName("cleaned_text")
-    val cleanedTextEnglish: String,
+    @SerialName("requested_difficulty")
+    val requestedDifficulty: String? = null,
 
-    @SerialName("cleaned_text_zh")
-    val cleanedTextChinese: String? = null,
+    @SerialName("from_language")
+    val fromLanguage: String,
 
-    @SerialName("optimized_html")
-    val optimizedHtml: String? = null,
+    @SerialName("to_language")
+    val toLanguage: String,
 
-    @SerialName("optimized_zh_html")
-    val optimizedZhHtml: String? = null,
+    @SerialName("content")
+    val content: DifficultyContentDto? = null,
 
-    @SerialName("language")
-    val language: String = "en",
+    @SerialName("available_difficulties")
+    val availableDifficulties: List<String> = emptyList(),
+
+    @SerialName("available_views")
+    val availableViews: List<AiViewAvailabilityDto> = emptyList()
+)
+
+@Serializable
+data class AiViewAvailabilityDto(
+    @SerialName("from_language")
+    val fromLanguage: String,
+
+    @SerialName("to_language")
+    val toLanguage: String,
+
+    @SerialName("difficulty")
+    val difficulty: String
+)
+
+@Serializable
+data class DifficultyContentDto(
+    @SerialName("difficulty")
+    val difficulty: String,
+
+    @SerialName("from_language")
+    val fromLanguage: String,
+
+    @SerialName("to_language")
+    val toLanguage: String,
+
+    @SerialName("optimized_html_from")
+    val optimizedHtmlFrom: String? = null,
+
+    @SerialName("optimized_html_to")
+    val optimizedHtmlTo: String? = null,
+
+    @SerialName("cleaned_text_from")
+    val cleanedTextFrom: String? = null,
+
+    @SerialName("cleaned_text_to")
+    val cleanedTextTo: String? = null,
 
     @SerialName("explanation")
     val explanation: ExplanationDto? = null
@@ -89,23 +140,23 @@ data class VocabularyItemDto(
     @SerialName("pos")
     val partOfSpeech: String? = null,
 
-    @SerialName("word_en")
-    val wordEnglish: String,
+    @SerialName("word_from")
+    val wordFrom: String,
 
-    @SerialName("word_zh")
-    val wordChinese: String? = null,
+    @SerialName("word_to")
+    val wordTo: String? = null,
 
-    @SerialName("definition_en")
-    val definitionEnglish: String,
+    @SerialName("definition_from")
+    val definitionFrom: String,
 
-    @SerialName("definition_zh")
-    val definitionChinese: String? = null,
+    @SerialName("definition_to")
+    val definitionTo: String? = null,
 
-    @SerialName("example_en")
-    val exampleEnglish: String,
+    @SerialName("example_from")
+    val exampleFrom: String,
 
-    @SerialName("example_zh")
-    val exampleChinese: String? = null
+    @SerialName("example_to")
+    val exampleTo: String? = null
 )
 
 /**
@@ -113,23 +164,23 @@ data class VocabularyItemDto(
  */
 @Serializable
 data class GrammarItemDto(
-    @SerialName("rule_en")
-    val ruleEnglish: String,
+    @SerialName("rule_from")
+    val ruleFrom: String,
 
-    @SerialName("rule_zh")
-    val ruleChinese: String? = null,
+    @SerialName("rule_to")
+    val ruleTo: String? = null,
 
-    @SerialName("explanation_en")
-    val explanationEnglish: String,
+    @SerialName("explanation_from")
+    val explanationFrom: String,
 
-    @SerialName("explanation_zh")
-    val explanationChinese: String,
+    @SerialName("explanation_to")
+    val explanationTo: String,
 
-    @SerialName("example_en")
-    val exampleEnglish: String,
+    @SerialName("example_from")
+    val exampleFrom: String,
 
-    @SerialName("example_zh")
-    val exampleChinese: String
+    @SerialName("example_to")
+    val exampleTo: String
 )
 
 /**
@@ -137,23 +188,23 @@ data class GrammarItemDto(
  */
 @Serializable
 data class SentencePatternDto(
-    @SerialName("pattern_en")
-    val patternEnglish: String,
+    @SerialName("pattern_from")
+    val patternFrom: String,
 
-    @SerialName("pattern_zh")
-    val patternChinese: String? = null,
+    @SerialName("pattern_to")
+    val patternTo: String? = null,
 
-    @SerialName("explanation_en")
-    val explanationEnglish: String,
+    @SerialName("explanation_from")
+    val explanationFrom: String,
 
-    @SerialName("explanation_zh")
-    val explanationChinese: String,
+    @SerialName("explanation_to")
+    val explanationTo: String,
 
-    @SerialName("example_en")
-    val exampleEnglish: String,
+    @SerialName("example_from")
+    val exampleFrom: String,
 
-    @SerialName("example_zh")
-    val exampleChinese: String
+    @SerialName("example_to")
+    val exampleTo: String
 )
 
 /**
@@ -161,23 +212,23 @@ data class SentencePatternDto(
  */
 @Serializable
 data class PhraseIdiomDto(
-    @SerialName("phrase_en")
-    val phraseEnglish: String,
+    @SerialName("phrase_from")
+    val phraseFrom: String,
 
-    @SerialName("phrase_zh")
-    val phraseChinese: String? = null,
+    @SerialName("phrase_to")
+    val phraseTo: String? = null,
 
-    @SerialName("explanation_en")
-    val explanationEnglish: String,
+    @SerialName("explanation_from")
+    val explanationFrom: String,
 
-    @SerialName("explanation_zh")
-    val explanationChinese: String,
+    @SerialName("explanation_to")
+    val explanationTo: String,
 
-    @SerialName("example_en")
-    val exampleEnglish: String,
+    @SerialName("example_from")
+    val exampleFrom: String,
 
-    @SerialName("example_zh")
-    val exampleChinese: String
+    @SerialName("example_to")
+    val exampleTo: String
 )
 
 /**
@@ -185,23 +236,35 @@ data class PhraseIdiomDto(
  */
 @Serializable
 data class ComprehensionQuestionDto(
-    @SerialName("question_en")
-    val questionEnglish: String,
+    @SerialName("question_from")
+    val questionFrom: String,
 
-    @SerialName("question_zh")
-    val questionChinese: String? = null,
+    @SerialName("question_to")
+    val questionTo: String? = null,
 
     @SerialName("options")
-    val options: Map<String, String>,
+    val options: List<McqOptionDto>,
 
     @SerialName("answer")
     val answerKey: String? = null,
 
-    @SerialName("explanation_en")
-    val explanationEnglish: String? = null,
+    @SerialName("explanation_from")
+    val explanationFrom: String? = null,
 
-    @SerialName("explanation_zh")
-    val explanationChinese: String? = null
+    @SerialName("explanation_to")
+    val explanationTo: String? = null
+)
+
+@Serializable
+data class McqOptionDto(
+    @SerialName("label")
+    val label: String,
+
+    @SerialName("text_from")
+    val textFrom: String? = null,
+
+    @SerialName("text_to")
+    val textTo: String? = null
 )
 
 /**
@@ -237,5 +300,14 @@ data class FiltersDto(
     val source: String? = null,
 
     @SerialName("section")
-    val section: String? = null
+    val section: String? = null,
+
+    @SerialName("difficulty")
+    val difficulty: String? = null,
+
+    @SerialName("from_language")
+    val fromLanguage: String? = null,
+
+    @SerialName("to_language")
+    val toLanguage: String? = null
 )
