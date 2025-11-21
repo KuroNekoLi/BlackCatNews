@@ -23,6 +23,7 @@ import androidx.compose.ui.unit.dp
 import com.linli.blackcatnews.domain.model.BilingualParagraphType
 import com.linli.blackcatnews.domain.model.ReadingMode
 import com.linli.blackcatnews.presentation.viewmodel.ArticleDetailViewModel
+import com.linli.blackcatnews.ui.common.LoginRequiredDialog
 import com.linli.blackcatnews.ui.components.ArticleHeader
 import com.linli.blackcatnews.ui.components.ArticleWithWordTooltip
 import com.linli.blackcatnews.ui.components.BilingualTextView
@@ -40,6 +41,8 @@ import org.koin.compose.viewmodel.koinViewModel
 fun ArticleDetailScreen(
     viewModel: ArticleDetailViewModel,
     onBackClick: () -> Unit,
+    onRequireSignIn: () -> Boolean,
+    onNavigateToSignIn: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val dictionaryViewModel: DictionaryViewModel = koinViewModel<DictionaryViewModel>()
@@ -49,6 +52,16 @@ fun ArticleDetailScreen(
     var isQuizExpanded by remember { mutableStateOf(false) }
     val userAnswers = remember { mutableStateMapOf<Int, Int>() }
     var isQuizSubmitted by remember { mutableStateOf(false) }
+    var showLoginDialog by remember { mutableStateOf(false) }
+    val ensureAuthenticated = remember(onRequireSignIn) {
+        {
+            val authed = onRequireSignIn()
+            if (!authed) {
+                showLoginDialog = true
+            }
+            authed
+        }
+    }
 
     val scrollState = rememberScrollState()
     Box(modifier = modifier.fillMaxSize()) {
@@ -115,7 +128,18 @@ fun ArticleDetailScreen(
             grammarPoints = article.grammarPoints,
             sentencePatterns = article.sentencePatterns,
             phrases = article.phrases,
+            ensureAuthenticated = ensureAuthenticated,
             modifier = Modifier.align(Alignment.BottomEnd)
+        )
+    }
+
+    if (showLoginDialog) {
+        LoginRequiredDialog(
+            onConfirm = {
+                showLoginDialog = false
+                onNavigateToSignIn()
+            },
+            onDismiss = { showLoginDialog = false }
         )
     }
 }

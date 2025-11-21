@@ -1,5 +1,6 @@
 package com.linli.blackcatnews.di
 
+import com.linli.authentication.domain.usecase.GetCurrentUserUseCase
 import com.linli.authentication.domain.usecase.SignOutUseCase
 import com.linli.blackcatnews.data.preferences.UserPreferencesRepository
 import com.linli.blackcatnews.presentation.viewmodel.ArticleDetailViewModel
@@ -19,7 +20,13 @@ val viewModelModule = module {
     single<RatingRequester> { NoOpRatingRequester }
     viewModel { HomeViewModel(get(), get(), get()) }
     viewModel { (articleId: String) -> ArticleDetailViewModel(articleId, get()) }
-    viewModel { SettingsViewModel(get(), get<SignOutUseCase>()) }
+    viewModel {
+        SettingsViewModel(
+            get(),
+            get<SignOutUseCase>(),
+            get<GetCurrentUserUseCase>()
+        )
+    }
     viewModel { FavoritesViewModel(get()) }
     viewModel { SearchViewModel(get()) }
     viewModel { RatingViewModel(get()) }

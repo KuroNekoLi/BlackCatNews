@@ -9,7 +9,7 @@ import kotlinx.serialization.Serializable
 
 // 登入路由
 @Serializable
-object SignInRoute
+data class SignInRoute(val returnToSettings: Boolean = false)
 
 // 註冊路由
 @Serializable

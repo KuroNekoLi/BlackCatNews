@@ -87,6 +87,7 @@ fun QuizPanel(
     grammarPoints: List<GrammarPoint> = emptyList(),
     sentencePatterns: List<SentencePattern> = emptyList(),
     phrases: List<PhraseIdiom> = emptyList(),
+    ensureAuthenticated: () -> Boolean = { true },
     modifier: Modifier = Modifier
 ) {
     // 狀態：學習輔助 bottom sheet 展開、tab切換
@@ -109,7 +110,11 @@ fun QuizPanel(
         ) {
             // 學習輔助 FloatingActionButton
             FloatingActionButton(
-                onClick = { isLearnSheetOpen = true },
+                onClick = {
+                    if (ensureAuthenticated()) {
+                        isLearnSheetOpen = true
+                    }
+                },
                 modifier = Modifier.size(56.dp).padding(bottom = 6.dp)
             ) {
                 Icon(
@@ -374,7 +379,11 @@ fun QuizPanel(
 
             // 展開/收起按鈕
             FloatingActionButton(
-                onClick = { onExpandChange(!isExpanded) },
+                onClick = {
+                    if (ensureAuthenticated()) {
+                        onExpandChange(!isExpanded)
+                    }
+                },
                 modifier = Modifier.size(56.dp),
             ) {
                 if (isExpanded) {

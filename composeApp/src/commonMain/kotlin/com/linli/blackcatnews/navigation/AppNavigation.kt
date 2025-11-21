@@ -141,25 +141,27 @@ fun AppNavigation() {
         ) {
             // 啟動頁（決策頁）
             composable<SplashRoute> {
-                val getCurrentUserUseCase: GetCurrentUserUseCase = koinInject()
                 LaunchedEffect(Unit) {
-                    val isAuthed = getCurrentUserUseCase.isAuthenticated()
-                    val target = if (isAuthed) HomeRoute else SignInRoute
-                    navController.navigate(target) {
+                    navController.navigate(HomeRoute) {
                         popUpTo(SplashRoute) { inclusive = true }
                         launchSingleTop = true
                     }
                 }
             }
             // 登入頁面
-            composable<SignInRoute> {
+            composable<SignInRoute> { backStackEntry ->
+                val route = backStackEntry.toRoute<SignInRoute>()
                 SignInScreen(
                     onNavigateToHome = {
-                        navController.navigate(HomeRoute) {
-                            popUpTo(SignInRoute) {
-                                inclusive = true
+                        if (route.returnToSettings) {
+                            navController.navigateUp()
+                        } else {
+                            navController.navigate(HomeRoute) {
+                                popUpTo(SignInRoute()) {
+                                    inclusive = true
+                                }
+                                launchSingleTop = true
                             }
-                            launchSingleTop = true
                         }
                     },
                     onNavigateToRegister = {
@@ -175,7 +177,7 @@ fun AppNavigation() {
                 RegisterScreen(
                     onNavigateToHome = {
                         navController.navigate(HomeRoute) {
-                            popUpTo(SignInRoute) {
+                            popUpTo(SignInRoute()) {
                                 inclusive = true
                             }
                             launchSingleTop = true
@@ -206,6 +208,7 @@ fun AppNavigation() {
             // 文章詳情頁
             composable<ArticleDetailRoute> { backStackEntry ->
                 val route = backStackEntry.toRoute<ArticleDetailRoute>()
+                val getCurrentUserUseCase: GetCurrentUserUseCase = koinInject()
                 val viewModel: ArticleDetailViewModel =
                     koinViewModel { parametersOf(route.articleId) }
                 ArticleDetailScreen(
@@ -214,6 +217,12 @@ fun AppNavigation() {
                         // 使用者返回時觸發評分請求
                         ratingViewModel.onArticleRead()
                         navController.navigateUp()
+                    },
+                    onRequireSignIn = { getCurrentUserUseCase.isAuthenticated() },
+                    onNavigateToSignIn = {
+                        navController.navigate(SignInRoute()) {
+                            launchSingleTop = true
+                        }
                     }
                 )
             }
@@ -250,10 +259,7 @@ fun AppNavigation() {
                 SettingsScreen(
                     viewModel = koinInject(),
                     onNavigateToSignIn = {
-                        navController.navigate(SignInRoute) {
-                            popUpTo(navController.graph.findStartDestination().id) {
-                                inclusive = true
-                            }
+                        navController.navigate(SignInRoute(returnToSettings = true)) {
                             launchSingleTop = true
                         }
                     }
