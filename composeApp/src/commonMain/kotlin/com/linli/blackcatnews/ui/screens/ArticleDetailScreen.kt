@@ -67,7 +67,9 @@ fun ArticleDetailScreen(
                 imageUrl = article.imageUrl,
                 readingMode = readingMode,
                 onReadingModeChange = { readingMode = it },
-                onBackClick = onBackClick
+                onBackClick = {
+                    onBackClick()
+                }
             )
 
             Spacer(modifier = Modifier.height(16.dp))

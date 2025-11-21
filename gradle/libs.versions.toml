@@ -34,6 +34,8 @@ runner = "1.7.0"
 core = "1.7.0"
 googleid = "1.1.1"
 okio = "3.16.3"
+play-review = "2.0.2"
+datastore = "1.1.1"
 
 [libraries]
 kotlin-test = { module = "org.jetbrains.kotlin:kotlin-test", version.ref = "kotlin" }
@@ -88,6 +90,8 @@ androidx-credentials = { module = "androidx.credentials:credentials", version.re
 androidx-credentials-play-services = { module = "androidx.credentials:credentials-play-services-auth", version.ref = "androidx-credentials" }
 googleid = { module = "com.google.android.libraries.identity.googleid:googleid", version.ref = "googleid" }
 okio = { module = "com.squareup.okio:okio", version.ref = "okio" }
+google-play-review = { module = "com.google.android.play:review-ktx", version.ref = "play-review" }
+androidx-datastore-preferences = { module = "androidx.datastore:datastore-preferences", version.ref = "datastore" }
 firebase-bom = { module = "com.google.firebase:firebase-bom", version.ref = "firebase-bom" }
 firebase-common = { module = "com.google.firebase:firebase-common" }
 firebase-auth = { module = "com.google.firebase:firebase-auth" }
