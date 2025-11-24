@@ -29,6 +29,7 @@ import com.linli.blackcatnews.ui.components.ArticleWithWordTooltip
 import com.linli.blackcatnews.ui.components.BilingualTextView
 import com.linli.blackcatnews.ui.components.QuizPanel
 import com.linli.dictionary.presentation.DictionaryViewModel
+import com.linli.dictionary.presentation.wordbank.WordBankViewModel
 import org.koin.compose.viewmodel.koinViewModel
 
 /**
@@ -46,7 +47,9 @@ fun ArticleDetailScreen(
     modifier: Modifier = Modifier
 ) {
     val dictionaryViewModel: DictionaryViewModel = koinViewModel<DictionaryViewModel>()
+    val wordBankViewModel: WordBankViewModel = koinViewModel()
     val uiState by viewModel.uiState.collectAsState()
+    val wordBankState by wordBankViewModel.uiState.collectAsState()
     val article = uiState.article ?: return
     var readingMode by remember { mutableStateOf(ReadingMode.ENGLISH_ONLY) }
     var isQuizExpanded by remember { mutableStateOf(false) }
@@ -128,6 +131,13 @@ fun ArticleDetailScreen(
             grammarPoints = article.grammarPoints,
             sentencePatterns = article.sentencePatterns,
             phrases = article.phrases,
+            savedWords = wordBankState.savedWords.map { it.word.lowercase() }.toSet(),
+            onAddWordToWordBank = { word ->
+                val normalizedWord = word.trim()
+                if (normalizedWord.isNotEmpty()) {
+                    wordBankViewModel.addWord(normalizedWord)
+                }
+            },
             ensureAuthenticated = ensureAuthenticated,
             modifier = Modifier.align(Alignment.BottomEnd)
         )

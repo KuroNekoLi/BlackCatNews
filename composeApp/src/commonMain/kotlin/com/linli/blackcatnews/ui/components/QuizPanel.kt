@@ -87,6 +87,8 @@ fun QuizPanel(
     grammarPoints: List<GrammarPoint> = emptyList(),
     sentencePatterns: List<SentencePattern> = emptyList(),
     phrases: List<PhraseIdiom> = emptyList(),
+    savedWords: Set<String> = emptySet(),
+    onAddWordToWordBank: (String) -> Unit = {},
     ensureAuthenticated: () -> Boolean = { true },
     modifier: Modifier = Modifier
 ) {
@@ -129,7 +131,9 @@ fun QuizPanel(
                 glossary = glossary,
                 grammarPoints = grammarPoints,
                 sentencePatterns = sentencePatterns,
-                phrases = phrases
+                phrases = phrases,
+                savedWords = savedWords,
+                onAddWordToWordBank = onAddWordToWordBank
             )
             // 展開的測驗內容
             AnimatedVisibility(

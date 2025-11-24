@@ -9,14 +9,20 @@ import com.linli.dictionary.data.repository.DictionaryRepositoryImpl
 import com.linli.dictionary.data.repository.WordBankRepositoryImpl
 import com.linli.dictionary.domain.repository.DictionaryRepository
 import com.linli.dictionary.domain.repository.WordBankRepository
+import com.linli.dictionary.domain.service.FsrsScheduler
 import com.linli.dictionary.domain.usecase.AddWordToWordBankUseCase
+import com.linli.dictionary.domain.usecase.GetDueReviewCardsUseCase
 import com.linli.dictionary.domain.usecase.GetRecentSearchesUseCase
 import com.linli.dictionary.domain.usecase.GetSavedWordsUseCase
 import com.linli.dictionary.domain.usecase.GetWordBankCountUseCase
 import com.linli.dictionary.domain.usecase.IsWordInWordBankUseCase
 import com.linli.dictionary.domain.usecase.LookupWordUseCase
 import com.linli.dictionary.domain.usecase.RemoveWordFromWordBankUseCase
+import com.linli.dictionary.domain.usecase.ResetWordProgressUseCase
+import com.linli.dictionary.domain.usecase.ReviewWordUseCase
 import com.linli.dictionary.presentation.DictionaryViewModel
+import com.linli.dictionary.presentation.wordbank.WordBankViewModel
+import com.linli.dictionary.presentation.wordbank.WordReviewViewModel
 import io.ktor.client.HttpClient
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.client.plugins.logging.LogLevel
@@ -28,10 +34,12 @@ import org.koin.core.module.dsl.factoryOf
 import org.koin.core.module.dsl.singleOf
 import org.koin.core.qualifier.named
 import org.koin.dsl.module
+import kotlin.time.ExperimentalTime
 
 /**
  * Koin module for the dictionary feature.
  */
+@OptIn(ExperimentalTime::class)
 val dictionaryModule = module {
     // Database
     single<DictionaryDatabase> {
@@ -54,6 +62,7 @@ val dictionaryModule = module {
 
     // WordBank 相關
     single<WordBankRepository> { WordBankRepositoryImpl(get(), get()) }
+    single { FsrsScheduler() }
 
     // Use cases
     factoryOf(::LookupWordUseCase)
@@ -65,11 +74,15 @@ val dictionaryModule = module {
     factoryOf(::RemoveWordFromWordBankUseCase)
     factoryOf(::IsWordInWordBankUseCase)
     factoryOf(::GetWordBankCountUseCase)
+    factoryOf(::GetDueReviewCardsUseCase)
+    factoryOf(::ReviewWordUseCase)
+    factoryOf(::ResetWordProgressUseCase)
 
     // ViewModel
     factory { DictionaryViewModel(get(), get()) }
+    factoryOf(::WordBankViewModel)
+    factoryOf(::WordReviewViewModel)
 }
-
 
 /**
  * Creates an HTTP client with JSON serialization and logging.

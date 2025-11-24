@@ -61,6 +61,8 @@ fun LearningBottomSheet(
     grammarPoints: List<GrammarPoint>,
     sentencePatterns: List<SentencePattern>,
     phrases: List<PhraseIdiom>,
+    savedWords: Set<String> = emptySet(),
+    onAddWordToWordBank: (String) -> Unit = {},
 ) {
     val isPreview = LocalInspectionMode.current
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = false)
@@ -91,6 +93,8 @@ fun LearningBottomSheet(
                         grammarPoints = grammarPoints,
                         sentencePatterns = sentencePatterns,
                         phrases = phrases,
+                        savedWords = savedWords,
+                        onAddWordToWordBank = onAddWordToWordBank,
                         onDismiss = onDismiss
                     )
                 }
@@ -108,6 +112,8 @@ fun LearningBottomSheet(
                     grammarPoints = grammarPoints,
                     sentencePatterns = sentencePatterns,
                     phrases = phrases,
+                    savedWords = savedWords,
+                    onAddWordToWordBank = onAddWordToWordBank,
                     onDismiss = onDismiss
                 )
             }
@@ -123,6 +129,8 @@ private fun SheetBody(
     grammarPoints: List<GrammarPoint>,
     sentencePatterns: List<SentencePattern>,
     phrases: List<PhraseIdiom>,
+    savedWords: Set<String>,
+    onAddWordToWordBank: (String) -> Unit,
     onDismiss: () -> Unit,
 ) {
     var selectedTabIndex by selectedTabIndexState
@@ -157,6 +165,9 @@ private fun SheetBody(
                             }
                         }
                         items(glossary) { item ->
+                            val normalizedWord = item.word.trim()
+                            val isSaved =
+                                savedWords.any { it.equals(normalizedWord, ignoreCase = true) }
                             Card(
                                 modifier = Modifier.fillMaxWidth(),
                                 shape = RoundedCornerShape(12.dp),
@@ -237,12 +248,16 @@ private fun SheetBody(
                                         }
                                     }
                                     Row(Modifier.align(Alignment.TopEnd)) {
-                                        IconButton(onClick = { /* TODO: 收藏 */ }) {
-                                            Icon(
-                                                Icons.Filled.BookmarkAdd,
-                                                contentDescription = "加入單字庫",
-                                                tint = MaterialTheme.colorScheme.primary
-                                            )
+                                        if (!isSaved) {
+                                            IconButton(
+                                                onClick = { onAddWordToWordBank(normalizedWord) }
+                                            ) {
+                                                Icon(
+                                                    imageVector = Icons.Filled.BookmarkAdd,
+                                                    contentDescription = "加入單字庫",
+                                                    tint = MaterialTheme.colorScheme.primary
+                                                )
+                                            }
                                         }
                                         IconButton(onClick = { /* TODO: 播放發音 */ }) {
                                             Icon(
