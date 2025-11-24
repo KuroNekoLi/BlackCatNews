@@ -132,6 +132,18 @@ platform :ios do
     result
   end
 
+  private_lane :marketing_version_from_xcconfig do
+    begin
+      if File.exist?(@xcconfig_path)
+        line = File.readlines(@xcconfig_path).map(&:strip).find { |l| l =~ /^MARKETING_VERSION\s*=\s*(.+)$/ }
+        return Regexp.last_match(1).strip if line
+      end
+    rescue => e
+      UI.important("⚠️ 讀取 xcconfig MARKETING_VERSION 失敗：#{e.message}")
+    end
+    nil
+  end
+
   private_lane :bump_patch_version do |options|
     version = options[:version]
     parts = parse_version(version: version)
@@ -297,7 +309,19 @@ platform :ios do
 
     # 計算版本號
     current_version = get_version_number(xcodeproj: @project_path, target: TARGET_NAME) rescue "1.0.0"
-    desired_version = calculate_next_version(current: current_version)
+    xcconfig_version = marketing_version_from_xcconfig
+    override_version = ENV["TARGET_VERSION"].to_s.strip
+    use_project_version = ENV["USE_PROJECT_VERSION"] == "true"
+    desired_version = if !override_version.empty?
+      UI.message("🔖 使用外部指定版本：#{override_version}")
+      override_version
+    elsif use_project_version
+      chosen = xcconfig_version || current_version
+      UI.message("📌 使用專案設定的 MARKETING_VERSION：#{chosen}")
+      chosen
+    else
+      calculate_next_version(current: current_version)
+    end
 
     UI.message("📌 版本管理：#{current_version} → #{desired_version}")
 
@@ -402,26 +426,36 @@ platform :ios do
     api_key = get_api_key
 
     # 取得當前專案版本，並在 ASC 中找出已上傳的 build
-    version = get_version_number(xcodeproj: @project_path, target: TARGET_NAME) rescue "1.0.0"
-    UI.message("🧾 將提交審核的版本（CFBundleShortVersionString）：#{version}")
+    project_version = get_version_number(xcodeproj: @project_path, target: TARGET_NAME) rescue "1.0.0"
+    xcconfig_version = marketing_version_from_xcconfig
+    ref_type = ENV['GITHUB_REF_TYPE'].to_s
+    ref_name = ENV['GITHUB_REF_NAME'].to_s
+    if ref_type == 'tag' && ref_name =~ /^ios-v(\d+\.\d+\.\d+)$/
+      version = Regexp.last_match(1)
+      UI.message("🔖 使用 tag 指定版本：#{version}（專案設定為 #{project_version}）")
+    else
+      version = xcconfig_version || project_version
+      UI.message("🧾 將提交審核的版本（CFBundleShortVersionString）：#{version}（專案設定為 #{project_version} / xcconfig=#{xcconfig_version || '無'}）")
+    end
 
     selected_build = nil
+    # 優先使用指定版本的 TestFlight build，避免 ASC 回傳已上架版本的 build
     begin
-      selected_build = app_store_build_number(
+      selected_build = latest_testflight_build_number(
         app_identifier: BUNDLE_ID,
         version: version,
         api_key: api_key
       )
-      UI.message("✅ 在 App Store Connect 找到已上傳的 build：#{selected_build}")
+      UI.message("✅ 在 TestFlight 找到已上傳的 build：#{selected_build}")
     rescue => e
-      UI.important("⚠️ 讀取 App Store build 失敗：#{e.message}，退回查詢 TestFlight")
+      UI.important("⚠️ 讀取 TestFlight build 失敗：#{e.message}，改查詢 App Store Connect")
       begin
-        selected_build = latest_testflight_build_number(
+        selected_build = app_store_build_number(
           app_identifier: BUNDLE_ID,
           version: version,
           api_key: api_key
         )
-        UI.message("✅ 在 TestFlight 找到已上傳的 build：#{selected_build}")
+        UI.message("✅ 在 App Store Connect 找到已上傳的 build：#{selected_build}")
       rescue => e2
         UI.user_error!("❌ 找不到已上傳的 build（版本 #{version}）。請先執行 beta 上傳後再跑 release。錯誤：#{e2.message}")
       end
@@ -450,7 +484,7 @@ platform :ios do
       deliver(
         api_key: api_key,
         app_version: version,
-        build_number: selected_build,   # 🔒 指定既有的 build
+        build_number: selected_build.to_s,   # 🔒 指定既有的 build
         submit_for_review: submit,
         automatic_release: auto_release,
         submission_information: submission_info,
@@ -468,7 +502,7 @@ platform :ios do
         deliver(
           api_key: api_key,
           app_version: version,
-          build_number: selected_build,
+          build_number: selected_build.to_s,
           submit_for_review: submit,
           automatic_release: auto_release,
           submission_information: submission_info,
