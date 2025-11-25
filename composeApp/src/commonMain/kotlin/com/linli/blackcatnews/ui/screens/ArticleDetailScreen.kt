@@ -23,6 +23,9 @@ import androidx.compose.ui.unit.dp
 import com.linli.blackcatnews.domain.model.BilingualParagraphType
 import com.linli.blackcatnews.domain.model.ReadingMode
 import com.linli.blackcatnews.presentation.viewmodel.ArticleDetailViewModel
+import com.linli.blackcatnews.tts.DEFAULT_LANGUAGE_TAG
+import com.linli.blackcatnews.tts.rememberTextToSpeechManager
+import com.linli.blackcatnews.tts.rememberTtsPlaybackController
 import com.linli.blackcatnews.ui.common.LoginRequiredDialog
 import com.linli.blackcatnews.ui.components.ArticleHeader
 import com.linli.blackcatnews.ui.components.ArticleWithWordTooltip
@@ -51,6 +54,8 @@ fun ArticleDetailScreen(
     val uiState by viewModel.uiState.collectAsState()
     val wordBankState by wordBankViewModel.uiState.collectAsState()
     val article = uiState.article ?: return
+    val textToSpeechManager = rememberTextToSpeechManager()
+    val ttsPlaybackController = rememberTtsPlaybackController(textToSpeechManager)
     var readingMode by remember { mutableStateOf(ReadingMode.ENGLISH_ONLY) }
     var isQuizExpanded by remember { mutableStateOf(false) }
     val userAnswers = remember { mutableStateMapOf<Int, Int>() }
@@ -139,6 +144,16 @@ fun ArticleDetailScreen(
                 }
             },
             ensureAuthenticated = ensureAuthenticated,
+            playingAudioId = ttsPlaybackController.playingItemId,
+            onPlayAudio = { text, id, languageTag ->
+                ttsPlaybackController.play(
+                    text = text,
+                    id = id,
+                    languageTag = languageTag ?: DEFAULT_LANGUAGE_TAG
+                )
+            },
+            onStopAudio = { ttsPlaybackController.stop() },
+            isTtsSupported = textToSpeechManager != null,
             modifier = Modifier.align(Alignment.BottomEnd)
         )
     }

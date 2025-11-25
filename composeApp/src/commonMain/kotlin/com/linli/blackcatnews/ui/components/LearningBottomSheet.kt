@@ -15,7 +15,8 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.BookmarkAdd
-import androidx.compose.material.icons.filled.VolumeUp
+import androidx.compose.material.icons.filled.Pause
+import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.BottomSheetDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -47,6 +48,7 @@ import com.linli.blackcatnews.domain.model.GlossaryItem
 import com.linli.blackcatnews.domain.model.GrammarPoint
 import com.linli.blackcatnews.domain.model.PhraseIdiom
 import com.linli.blackcatnews.domain.model.SentencePattern
+import com.linli.blackcatnews.tts.DEFAULT_LANGUAGE_TAG
 import org.jetbrains.compose.ui.tooling.preview.Preview
 
 /**
@@ -63,6 +65,10 @@ fun LearningBottomSheet(
     phrases: List<PhraseIdiom>,
     savedWords: Set<String> = emptySet(),
     onAddWordToWordBank: (String) -> Unit = {},
+    playingAudioId: String? = null,
+    onPlayAudio: (text: String, id: String, languageTag: String?) -> Unit = { _, _, _ -> },
+    onStopAudio: () -> Unit = {},
+    isTtsSupported: Boolean = false,
 ) {
     val isPreview = LocalInspectionMode.current
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = false)
@@ -95,6 +101,10 @@ fun LearningBottomSheet(
                         phrases = phrases,
                         savedWords = savedWords,
                         onAddWordToWordBank = onAddWordToWordBank,
+                        playingAudioId = playingAudioId,
+                        onPlayAudio = onPlayAudio,
+                        onStopAudio = onStopAudio,
+                        isTtsSupported = isTtsSupported,
                         onDismiss = onDismiss
                     )
                 }
@@ -114,6 +124,10 @@ fun LearningBottomSheet(
                     phrases = phrases,
                     savedWords = savedWords,
                     onAddWordToWordBank = onAddWordToWordBank,
+                    playingAudioId = playingAudioId,
+                    onPlayAudio = onPlayAudio,
+                    onStopAudio = onStopAudio,
+                    isTtsSupported = isTtsSupported,
                     onDismiss = onDismiss
                 )
             }
@@ -131,6 +145,10 @@ private fun SheetBody(
     phrases: List<PhraseIdiom>,
     savedWords: Set<String>,
     onAddWordToWordBank: (String) -> Unit,
+    playingAudioId: String?,
+    onPlayAudio: (text: String, id: String, languageTag: String?) -> Unit,
+    onStopAudio: () -> Unit,
+    isTtsSupported: Boolean,
     onDismiss: () -> Unit,
 ) {
     var selectedTabIndex by selectedTabIndexState
@@ -168,102 +186,164 @@ private fun SheetBody(
                             val normalizedWord = item.word.trim()
                             val isSaved =
                                 savedWords.any { it.equals(normalizedWord, ignoreCase = true) }
+                            val wordPlayId = "word:${item.word}"
+                            val examplePlayId = "example:${item.word}"
+                            val isWordPlaying = playingAudioId == wordPlayId
+                            val isExamplePlaying = playingAudioId == examplePlayId
+                            val exampleToSpeak = when {
+                                !item.exampleEnglish.isNullOrBlank() -> item.exampleEnglish
+                                !item.exampleChinese.isNullOrBlank() -> item.exampleChinese
+                                else -> null
+                            }
+                            val exampleLanguageTag = when {
+                                !item.exampleEnglish.isNullOrBlank() -> DEFAULT_LANGUAGE_TAG
+                                !item.exampleChinese.isNullOrBlank() -> "zh-TW"
+                                else -> DEFAULT_LANGUAGE_TAG
+                            }
                             Card(
                                 modifier = Modifier.fillMaxWidth(),
                                 shape = RoundedCornerShape(12.dp),
                                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
                                 elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
                             ) {
-                                Box(Modifier.fillMaxWidth().padding(12.dp)) {
-                                    Column(Modifier.align(Alignment.CenterStart)) {
-                                        // 單字標題
-                                        Text(
-                                            text = buildString {
-                                                append(item.word)
-                                                if (!item.partOfSpeech.isNullOrBlank()) append(" (${item.partOfSpeech})")
-                                            },
-                                            style = MaterialTheme.typography.titleLarge
-                                        )
-                                        // 發音
-                                        if (!item.pronunciation.isNullOrBlank()) {
+                                Column(Modifier.fillMaxWidth().padding(12.dp)) {
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Row(
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                        ) {
+                                            // 單字標題
                                             Text(
-                                                text = item.pronunciation!!,
-                                                style = MaterialTheme.typography.labelLarge
+                                                text = buildString {
+                                                    append(item.word)
+                                                    if (!item.partOfSpeech.isNullOrBlank()) append(" (${item.partOfSpeech})")
+                                                },
+                                                style = MaterialTheme.typography.titleLarge
                                             )
-                                        }
-                                        // 解釋（中英）
-                                        if (!item.definitionEnglish.isNullOrBlank() || !item.definitionChinese.isNullOrBlank()) {
-                                            Text(
-                                                text = buildAnnotatedString {
-                                                    withStyle(SpanStyle(fontWeight = FontWeight.SemiBold)) {
-                                                        append(
-                                                            "解釋："
+                                            IconButton(
+                                                onClick = {
+                                                    if (isWordPlaying) {
+                                                        onStopAudio()
+                                                    } else if (isTtsSupported) {
+                                                        onPlayAudio(
+                                                            item.word,
+                                                            wordPlayId,
+                                                            DEFAULT_LANGUAGE_TAG
                                                         )
                                                     }
                                                 },
-                                                style = MaterialTheme.typography.labelLarge.copy(
-                                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                                )
-                                            )
-                                            if (!item.definitionEnglish.isNullOrBlank()) {
-                                                Text(
-                                                    text = item.definitionEnglish,
-                                                    style = MaterialTheme.typography.bodyLarge
-                                                )
-                                            }
-                                            if (!item.definitionChinese.isNullOrBlank()) {
-                                                Text(
-                                                    text = item.definitionChinese,
-                                                    style = MaterialTheme.typography.bodyMedium
+                                                enabled = isTtsSupported
+                                            ) {
+                                                Icon(
+                                                    imageVector = if (isWordPlaying) Icons.Filled.Pause else Icons.Filled.PlayArrow,
+                                                    contentDescription = "播放單字",
+                                                    tint = if (isWordPlaying) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
                                                 )
                                             }
                                         }
-                                        // 例句（中英）
-                                        if (!item.exampleEnglish.isNullOrBlank() || !item.exampleChinese.isNullOrBlank()) {
-                                            Spacer(modifier = Modifier.height(6.dp))
-                                            Text(
-                                                text = buildAnnotatedString {
-                                                    withStyle(SpanStyle(fontWeight = FontWeight.SemiBold)) {
-                                                        append(
-                                                            "例句："
-                                                        )
-                                                    }
-                                                },
-                                                style = MaterialTheme.typography.labelLarge.copy(
-                                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                                )
-                                            )
-                                            if (!item.exampleEnglish.isNullOrBlank()) {
-                                                Text(
-                                                    text = item.exampleEnglish,
-                                                    style = MaterialTheme.typography.bodyLarge
-                                                )
-                                            }
-                                            if (!item.exampleChinese.isNullOrBlank()) {
-                                                Text(
-                                                    text = item.exampleChinese,
-                                                    style = MaterialTheme.typography.bodyMedium
-                                                )
+                                        Row(verticalAlignment = Alignment.CenterVertically) {
+                                            if (!isSaved) {
+                                                IconButton(
+                                                    onClick = { onAddWordToWordBank(normalizedWord) }
+                                                ) {
+                                                    Icon(
+                                                        imageVector = Icons.Filled.BookmarkAdd,
+                                                        contentDescription = "加入單字庫",
+                                                        tint = MaterialTheme.colorScheme.primary
+                                                    )
+                                                }
                                             }
                                         }
                                     }
-                                    Row(Modifier.align(Alignment.TopEnd)) {
-                                        if (!isSaved) {
-                                            IconButton(
-                                                onClick = { onAddWordToWordBank(normalizedWord) }
+                                    // 發音
+                                    if (!item.pronunciation.isNullOrBlank()) {
+                                        Text(
+                                            text = item.pronunciation!!,
+                                            style = MaterialTheme.typography.labelLarge
+                                        )
+                                    }
+                                    // 解釋（中英）
+                                    if (!item.definitionEnglish.isNullOrBlank() || !item.definitionChinese.isNullOrBlank()) {
+                                        Text(
+                                            text = buildAnnotatedString {
+                                                withStyle(SpanStyle(fontWeight = FontWeight.SemiBold)) {
+                                                    append(
+                                                        "解釋："
+                                                    )
+                                                }
+                                            },
+                                            style = MaterialTheme.typography.labelLarge.copy(
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                            )
+                                        )
+                                        if (!item.definitionEnglish.isNullOrBlank()) {
+                                            Text(
+                                                text = item.definitionEnglish,
+                                                style = MaterialTheme.typography.bodyLarge
+                                            )
+                                        }
+                                        if (!item.definitionChinese.isNullOrBlank()) {
+                                            Text(
+                                                text = item.definitionChinese,
+                                                style = MaterialTheme.typography.bodyMedium
+                                            )
+                                        }
+                                    }
+                                    // 例句（中英）
+                                    if (!item.exampleEnglish.isNullOrBlank() || !item.exampleChinese.isNullOrBlank()) {
+                                        Spacer(modifier = Modifier.height(6.dp))
+                                        Text(
+                                            text = buildAnnotatedString {
+                                                withStyle(SpanStyle(fontWeight = FontWeight.SemiBold)) {
+                                                    append(
+                                                        "例句："
+                                                    )
+                                                }
+                                            },
+                                            style = MaterialTheme.typography.labelLarge.copy(
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                            )
+                                        )
+                                        exampleToSpeak?.let { speakable ->
+                                            Row(
+                                                modifier = Modifier.fillMaxWidth(),
+                                                verticalAlignment = Alignment.CenterVertically
                                             ) {
-                                                Icon(
-                                                    imageVector = Icons.Filled.BookmarkAdd,
-                                                    contentDescription = "加入單字庫",
-                                                    tint = MaterialTheme.colorScheme.primary
+                                                Text(
+                                                    text = speakable,
+                                                    style = MaterialTheme.typography.bodyLarge,
+                                                    modifier = Modifier.weight(1f)
                                                 )
+                                                IconButton(
+                                                    onClick = {
+                                                        if (isExamplePlaying) {
+                                                            onStopAudio()
+                                                        } else if (isTtsSupported) {
+                                                            onPlayAudio(
+                                                                speakable,
+                                                                examplePlayId,
+                                                                exampleLanguageTag
+                                                            )
+                                                        }
+                                                    },
+                                                    enabled = isTtsSupported
+                                                ) {
+                                                    Icon(
+                                                        imageVector = if (isExamplePlaying) Icons.Filled.Pause else Icons.Filled.PlayArrow,
+                                                        contentDescription = "播放例句",
+                                                        tint = if (isExamplePlaying) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                                                    )
+                                                }
                                             }
                                         }
-                                        IconButton(onClick = { /* TODO: 播放發音 */ }) {
-                                            Icon(
-                                                Icons.Filled.VolumeUp,
-                                                contentDescription = "播放發音",
-                                                tint = MaterialTheme.colorScheme.primary
+                                        if (!item.exampleChinese.isNullOrBlank() && item.exampleChinese != exampleToSpeak) {
+                                            Text(
+                                                text = item.exampleChinese,
+                                                style = MaterialTheme.typography.bodyMedium
                                             )
                                         }
                                     }

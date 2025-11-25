@@ -90,6 +90,10 @@ fun QuizPanel(
     savedWords: Set<String> = emptySet(),
     onAddWordToWordBank: (String) -> Unit = {},
     ensureAuthenticated: () -> Boolean = { true },
+    playingAudioId: String? = null,
+    onPlayAudio: (text: String, id: String, languageTag: String?) -> Unit = { _, _, _ -> },
+    onStopAudio: () -> Unit = {},
+    isTtsSupported: Boolean = false,
     modifier: Modifier = Modifier
 ) {
     // 狀態：學習輔助 bottom sheet 展開、tab切換
@@ -133,7 +137,11 @@ fun QuizPanel(
                 sentencePatterns = sentencePatterns,
                 phrases = phrases,
                 savedWords = savedWords,
-                onAddWordToWordBank = onAddWordToWordBank
+                onAddWordToWordBank = onAddWordToWordBank,
+                playingAudioId = playingAudioId,
+                onPlayAudio = onPlayAudio,
+                onStopAudio = onStopAudio,
+                isTtsSupported = isTtsSupported
             )
             // 展開的測驗內容
             AnimatedVisibility(

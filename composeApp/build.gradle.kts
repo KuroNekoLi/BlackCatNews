@@ -56,6 +56,9 @@ kotlin {
             version = "~> 12.0.0"
             linkOnly = true
         }
+        pod("FirebaseCore") {
+            version = "~> 12.0.0"
+        }
     }
 
     sourceSets {

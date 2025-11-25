@@ -332,6 +332,15 @@ Firebase.crashlytics.setUserId(userId)
 
 ---
 
+## Text-to-Speech 朗讀
+
+- Android 與 iOS 以平台內建 TTS（Android TextToSpeech、iOS AVSpeechSynthesizer）搭配
+  `TextToSpeechManager` 封裝，於 `commonMain` 暴露統一接口。
+- `rememberTextToSpeechManager()` 於未支援的目標（如桌面）會回傳 `null`，UI 仍顯示播放按鈕但不會觸發朗讀。
+- 語言以 IETF 語言代碼設定，預設為 `en-US`，必要時可由呼叫端覆寫。
+
+---
+
 ## 版本資訊
 
 - Kotlin: 2.1.0
