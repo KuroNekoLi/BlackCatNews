@@ -99,66 +99,53 @@ jobs:
         run: pod --version || sudo gem install cocoapods --no-document
 
 
-      # 依 ref 決定要不要部署（main=release、develop=beta、feature/bugfix=build only、tag 亦可部署）
-      - name: Decide lane and flags by ref
+      # 依 ref 決定是否要上傳 TestFlight（不送審）
+      - name: Decide lane and flags
         id: decide
         shell: bash
         run: |
           REF='${{ github.ref_name }}'
           if [[ '${{ github.event_name }}' == 'push' && '${{ github.ref_type }}' == 'branch' ]]; then
             BRANCH="${{ github.ref_name }}"
-            if [[ "$BRANCH" == 'main' ]]; then
-              LANE='release_oneclick'; SUBMIT=true;  AUTO_RELEASE=false; DEPLOY=true; USE_PROJECT_VERSION=true; TARGET_VERSION=''
-            elif [[ "$BRANCH" == 'develop' ]]; then
-              LANE='beta';    SUBMIT=false; AUTO_RELEASE=false; DEPLOY=true; USE_PROJECT_VERSION=false; TARGET_VERSION=''
+            if [[ "$BRANCH" == 'main' || "$BRANCH" == 'develop' ]]; then
+              LANE='beta'; DEPLOY=true; USE_PROJECT_VERSION=false; TARGET_VERSION=''
             else
-              LANE='beta';    SUBMIT=false; AUTO_RELEASE=false; DEPLOY=false; USE_PROJECT_VERSION=false; TARGET_VERSION=''
+              LANE='build_only'; DEPLOY=false; USE_PROJECT_VERSION=false; TARGET_VERSION=''
             fi
-          elif [[ '${{ github.ref_type }}' == 'tag' && "$REF" == ios-v* ]]; then
-            LANE='release_oneclick'; SUBMIT=true;  AUTO_RELEASE=false; DEPLOY=true; USE_PROJECT_VERSION=false
-            TARGET_VERSION="${REF#ios-v}"
-          elif [[ '${{ github.ref_type }}' == 'tag' && "$REF" == ios-beta-v* ]]; then
-            LANE='beta';    SUBMIT=false; AUTO_RELEASE=false; DEPLOY=true; USE_PROJECT_VERSION=false; TARGET_VERSION=''
-          elif [[ '${{ github.ref_type }}' == 'tag' && "$REF" == ios-alpha-v* ]]; then
-            LANE='beta';    SUBMIT=false; AUTO_RELEASE=false; DEPLOY=true; USE_PROJECT_VERSION=false; TARGET_VERSION=''
+          elif [[ '${{ github.ref_type }}' == 'tag' && "$REF" == ios-* ]]; then
+            LANE='beta'; DEPLOY=true; USE_PROJECT_VERSION=false; TARGET_VERSION="${REF#ios-}"
           elif [[ '${{ github.event_name }}' == 'pull_request' ]]; then
-            LANE='beta';    SUBMIT=false; AUTO_RELEASE=false; DEPLOY=false; USE_PROJECT_VERSION=false; TARGET_VERSION=''
+            LANE='build_only'; DEPLOY=false; USE_PROJECT_VERSION=false; TARGET_VERSION=''
           else
             LANE='${{ github.event.inputs.lane || 'beta' }}'
-            SUBMIT=false; AUTO_RELEASE=false; DEPLOY=true; USE_PROJECT_VERSION=false; TARGET_VERSION=''
+            DEPLOY=true; USE_PROJECT_VERSION=false; TARGET_VERSION=''
           fi
           echo "lane=$LANE"   >> $GITHUB_OUTPUT
-          echo "submit=$SUBMIT" >> $GITHUB_OUTPUT
-          echo "auto=$AUTO_RELEASE" >> $GITHUB_OUTPUT
           echo "deploy=$DEPLOY" >> $GITHUB_OUTPUT
           echo "use_project_version=$USE_PROJECT_VERSION" >> $GITHUB_OUTPUT
           echo "target_version=$TARGET_VERSION" >> $GITHUB_OUTPUT
-          echo "📦 Lane: $LANE, Submit: $SUBMIT, Deploy: $DEPLOY"
+          echo "📦 Lane: $LANE Deploy: $DEPLOY Target: $TARGET_VERSION"
 
 
 
-      # 真的要部署（main/develop 或 tag）
       - name: Build and upload via Fastlane
         if: steps.decide.outputs.deploy == 'true'
         working-directory: iosApp
         env:
-          SUBMIT_FOR_REVIEW: ${{ steps.decide.outputs.submit }}
-          AUTOMATIC_RELEASE: ${{ steps.decide.outputs.auto }}
           TARGET_VERSION: ${{ steps.decide.outputs.target_version }}
           USE_PROJECT_VERSION: ${{ steps.decide.outputs.use_project_version }}
         run: |
-          echo "lane=${{ steps.decide.outputs.lane }} submit=${{ env.SUBMIT_FOR_REVIEW }} auto=${{ env.AUTOMATIC_RELEASE }}"
+          echo "lane=${{ steps.decide.outputs.lane }} (TestFlight upload enabled)"
           BUNDLE_GEMFILE=fastlane/Gemfile bundle exec fastlane ${{ steps.decide.outputs.lane }}
 
-      # 只建置不部署（feature/bugfix、PR）
-      - name: Build only (no deploy)
+      - name: Build only (no upload)
         if: steps.decide.outputs.deploy == 'false'
         working-directory: iosApp
         env:
           TARGET_VERSION: ${{ steps.decide.outputs.target_version }}
           USE_PROJECT_VERSION: ${{ steps.decide.outputs.use_project_version }}
         run: |
-          echo "🔨 Building only (no deployment)"
+          echo "🔨 Building only (no TestFlight upload)"
           BUNDLE_GEMFILE=fastlane/Gemfile bundle exec fastlane build_only
 
       - name: Upload ipa artifact
