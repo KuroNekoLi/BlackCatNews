@@ -1,5 +1,8 @@
 package com.linli.blackcatnews.tts
 
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
@@ -10,6 +13,9 @@ private class FakeTextToSpeechManager : TextToSpeechManager {
     var stopCount = 0
     var lastLanguageTag: String? = null
     private var completion: (() -> Unit)? = null
+
+    override val highlightState: StateFlow<TextHighlightRange?> =
+        MutableStateFlow(null).asStateFlow()
 
     override fun speak(
         text: String,

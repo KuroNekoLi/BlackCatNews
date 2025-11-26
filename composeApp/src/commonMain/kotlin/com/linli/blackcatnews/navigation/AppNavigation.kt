@@ -1,5 +1,6 @@
 package com.linli.blackcatnews.navigation
 
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Search
@@ -12,6 +13,9 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.navigation.NavDestination
 import androidx.navigation.NavDestination.Companion.hasRoute
@@ -86,6 +90,9 @@ fun AppNavigation() {
     // 創建全局的 RatingViewModel，用於處理評分邏輯
     val ratingViewModel: RatingViewModel = koinViewModel()
 
+    // State for dynamic top bar actions
+    var topBarActions by remember { mutableStateOf<(@Composable RowScope.() -> Unit)?>(null) }
+
     Scaffold(
         topBar = {
             // 根據當前路由顯示不同的頂部欄
@@ -112,7 +119,8 @@ fun AppNavigation() {
                                 ratingViewModel.onArticleRead()
                             }
                             navController.navigateUp()
-                        }
+                        },
+                        actions = topBarActions
                     )
                 }
             }
@@ -224,7 +232,8 @@ fun AppNavigation() {
                         navController.navigate(SignInRoute()) {
                             launchSingleTop = true
                         }
-                    }
+                    },
+                    onSetTopBarActions = { topBarActions = it }
                 )
             }
 
@@ -318,7 +327,8 @@ private fun AppTopBar(
     onNotificationClick: () -> Unit,
     showActions: Boolean,
     showBackButton: Boolean = false,
-    onBackClick: () -> Unit = {}
+    onBackClick: () -> Unit = {},
+    actions: (@Composable RowScope.() -> Unit)? = null
 ) {
     TopAppBar(
         title = { Text(title) },
@@ -336,6 +346,7 @@ private fun AppTopBar(
                 //     Text("🔔", style = MaterialTheme.typography.titleLarge)
                 // }
             }
+            actions?.invoke(this)
         },
 //        colors = TopAppBarDefaults.topAppBarColors(
 //            containerColor = MaterialTheme.colorScheme.primaryContainer,

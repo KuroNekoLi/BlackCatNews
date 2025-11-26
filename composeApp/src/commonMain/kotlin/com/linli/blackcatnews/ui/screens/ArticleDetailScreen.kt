@@ -3,6 +3,7 @@ package com.linli.blackcatnews.ui.screens
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
@@ -13,16 +14,18 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.linli.blackcatnews.domain.model.BilingualParagraphType
@@ -50,6 +53,7 @@ fun ArticleDetailScreen(
     onBackClick: () -> Unit,
     onRequireSignIn: () -> Boolean,
     onNavigateToSignIn: () -> Unit,
+    onSetTopBarActions: (@Composable RowScope.() -> Unit) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val dictionaryViewModel: DictionaryViewModel = koinViewModel<DictionaryViewModel>()
@@ -66,7 +70,6 @@ fun ArticleDetailScreen(
     val highlightState by ttsViewModel.highlightState.collectAsState()
 
     var readingMode by remember { mutableStateOf(ReadingMode.ENGLISH_ONLY) }
-    var isQuizExpanded by remember { mutableStateOf(false) }
     val userAnswers = remember { mutableStateMapOf<Int, Int>() }
     var isQuizSubmitted by remember { mutableStateOf(false) }
     var showLoginDialog by remember { mutableStateOf(false) }
@@ -80,13 +83,34 @@ fun ArticleDetailScreen(
         }
     }
 
+    LaunchedEffect(isFullTextPlaying, article) {
+        onSetTopBarActions {
+            IconButton(onClick = {
+                if (isFullTextPlaying) {
+                    ttsViewModel.stopFullTextPlayback()
+                } else {
+                    ttsViewModel.startFullTextPlayback(article)
+                }
+            }) {
+                Icon(
+                    imageVector = if (isFullTextPlaying) Icons.Filled.Pause else Icons.Filled.PlayArrow,
+                    contentDescription = if (isFullTextPlaying) "Stop Reading" else "Read Aloud"
+                )
+            }
+        }
+    }
+
+    DisposableEffect(Unit) {
+        onDispose { onSetTopBarActions {} }
+    }
+
     val scrollState = rememberScrollState()
     Box(modifier = modifier.fillMaxSize()) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .verticalScroll(scrollState)
-                .padding(bottom = if (isQuizExpanded) 400.dp else 80.dp)
+                .padding(bottom = 32.dp)
         ) {
             ArticleHeader(
                 title = article.title,
@@ -125,64 +149,44 @@ fun ArticleDetailScreen(
                 }
             }
 
-
             Spacer(modifier = Modifier.height(32.dp))
-        }
+            HorizontalDivider()
 
-        FloatingActionButton(
-            onClick = {
-                if (isFullTextPlaying) {
-                    ttsViewModel.stopFullTextPlayback()
-                } else {
-                    ttsViewModel.startFullTextPlayback(article)
-                }
-            },
-            modifier = Modifier
-                .align(Alignment.BottomStart)
-                .padding(16.dp)
-                .padding(bottom = if (isQuizExpanded) 320.dp else 0.dp)
-        ) {
-            Icon(
-                imageVector = if (isFullTextPlaying) Icons.Filled.Pause else Icons.Filled.PlayArrow,
-                contentDescription = if (isFullTextPlaying) "Stop Reading" else "Read Aloud"
+            QuizPanel(
+                isExpanded = false,
+                onExpandChange = { },
+                quiz = article.quiz?.questions ?: listOf(),
+                userAnswers = userAnswers,
+                isSubmitted = isQuizSubmitted,
+                onSubmit = { isQuizSubmitted = true },
+                onReset = {
+                    userAnswers.clear()
+                    isQuizSubmitted = false
+                },
+                glossary = article.glossary,
+                grammarPoints = article.grammarPoints,
+                sentencePatterns = article.sentencePatterns,
+                phrases = article.phrases,
+                savedWords = wordBankState.savedWords.map { it.word.lowercase() }.toSet(),
+                onAddWordToWordBank = { word ->
+                    val normalizedWord = word.trim()
+                    if (normalizedWord.isNotEmpty()) {
+                        wordBankViewModel.addWord(normalizedWord)
+                    }
+                },
+                ensureAuthenticated = ensureAuthenticated,
+                playingAudioId = playbackController.playingItemId,
+                onPlayAudio = { text, id, languageTag ->
+                    ttsViewModel.playSingle(
+                        text = text,
+                        id = id,
+                        languageTag = languageTag ?: "en-US"
+                    )
+                },
+                onStopAudio = { ttsViewModel.stop() },
+                isTtsSupported = true
             )
         }
-
-        QuizPanel(
-            isExpanded = isQuizExpanded,
-            onExpandChange = { isQuizExpanded = it },
-            quiz = article.quiz?.questions ?: listOf(),
-            userAnswers = userAnswers,
-            isSubmitted = isQuizSubmitted,
-            onSubmit = { isQuizSubmitted = true },
-            onReset = {
-                userAnswers.clear()
-                isQuizSubmitted = false
-            },
-            glossary = article.glossary,
-            grammarPoints = article.grammarPoints,
-            sentencePatterns = article.sentencePatterns,
-            phrases = article.phrases,
-            savedWords = wordBankState.savedWords.map { it.word.lowercase() }.toSet(),
-            onAddWordToWordBank = { word ->
-                val normalizedWord = word.trim()
-                if (normalizedWord.isNotEmpty()) {
-                    wordBankViewModel.addWord(normalizedWord)
-                }
-            },
-            ensureAuthenticated = ensureAuthenticated,
-            playingAudioId = playbackController.playingItemId,
-            onPlayAudio = { text, id, languageTag ->
-                ttsViewModel.playSingle(
-                    text = text,
-                    id = id,
-                    languageTag = languageTag ?: "en-US"
-                )
-            },
-            onStopAudio = { ttsViewModel.stop() },
-            isTtsSupported = true,
-            modifier = Modifier.align(Alignment.BottomEnd)
-        )
     }
 
     if (showLoginDialog) {
