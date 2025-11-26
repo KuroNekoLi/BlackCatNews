@@ -12,7 +12,7 @@ import kotlinx.coroutines.flow.StateFlow
 import java.util.Locale
 import java.util.UUID
 
-private class AndroidTextToSpeechManager(
+class AndroidTextToSpeechManager(
     context: Context
 ) : TextToSpeechManager {
     private var textToSpeech: TextToSpeech? = null

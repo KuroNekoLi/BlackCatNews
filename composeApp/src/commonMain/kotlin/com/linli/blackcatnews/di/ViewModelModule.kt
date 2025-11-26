@@ -9,6 +9,7 @@ import com.linli.blackcatnews.presentation.viewmodel.HomeViewModel
 import com.linli.blackcatnews.presentation.viewmodel.RatingViewModel
 import com.linli.blackcatnews.presentation.viewmodel.SearchViewModel
 import com.linli.blackcatnews.presentation.viewmodel.SettingsViewModel
+import com.linli.blackcatnews.presentation.viewmodel.TtsViewModel
 import com.linli.blackcatnews.rating.NoOpRatingRequester
 import com.linli.blackcatnews.rating.RatingRequester
 import com.linli.dictionary.presentation.wordbank.WordBankViewModel
@@ -45,4 +46,5 @@ val viewModelModule = module {
         )
     }
     viewModel { WordReviewViewModel(get(), get()) }
+    viewModel { TtsViewModel(get()) }
 }

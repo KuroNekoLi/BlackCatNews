@@ -5,6 +5,8 @@ import com.linli.authentication.platformAuthProvidersModule
 import com.linli.authentication.presentation.platformLoginModule
 import com.linli.blackcatnews.data.local.database.NewsDatabase
 import com.linli.blackcatnews.data.local.database.getDatabaseBuilder
+import com.linli.blackcatnews.tts.IOSTextToSpeechManager
+import com.linli.blackcatnews.tts.TextToSpeechManager
 import com.linli.dictionary.di.iosDictionaryModule
 import org.koin.core.context.startKoin
 import org.koin.core.context.stopKoin
@@ -18,6 +20,9 @@ val iosPlatformModule = module {
     // 資料庫
     single<RoomDatabase.Builder<NewsDatabase>>(named("newsDatabaseBuilder")) {
         getDatabaseBuilder()
+    }
+    factory<TextToSpeechManager> {
+        IOSTextToSpeechManager()
     }
 }
 

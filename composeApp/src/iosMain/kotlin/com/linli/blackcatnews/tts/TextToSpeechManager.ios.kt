@@ -21,7 +21,7 @@ import platform.Foundation.currentLocale
 import platform.Foundation.languageCode
 import platform.darwin.NSObject
 
-private class IOSTextToSpeechManager : TextToSpeechManager {
+class IOSTextToSpeechManager : TextToSpeechManager {
     private val synthesizer = AVSpeechSynthesizer()
     private val delegate = TtsDelegate()
     private var currentCompletion: (() -> Unit)? = null

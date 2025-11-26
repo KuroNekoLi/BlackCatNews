@@ -13,9 +13,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ExtendedFloatingActionButton
+import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -29,9 +28,7 @@ import androidx.compose.ui.unit.dp
 import com.linli.blackcatnews.domain.model.BilingualParagraphType
 import com.linli.blackcatnews.domain.model.ReadingMode
 import com.linli.blackcatnews.presentation.viewmodel.ArticleDetailViewModel
-import com.linli.blackcatnews.tts.DEFAULT_LANGUAGE_TAG
-import com.linli.blackcatnews.tts.rememberTextToSpeechManager
-import com.linli.blackcatnews.tts.rememberTtsPlaybackController
+import com.linli.blackcatnews.presentation.viewmodel.TtsViewModel
 import com.linli.blackcatnews.ui.common.LoginRequiredDialog
 import com.linli.blackcatnews.ui.components.ArticleHeader
 import com.linli.blackcatnews.ui.components.ArticleWithWordTooltip
@@ -57,11 +54,17 @@ fun ArticleDetailScreen(
 ) {
     val dictionaryViewModel: DictionaryViewModel = koinViewModel<DictionaryViewModel>()
     val wordBankViewModel: WordBankViewModel = koinViewModel()
+    val ttsViewModel: TtsViewModel = koinViewModel()
+
     val uiState by viewModel.uiState.collectAsState()
     val wordBankState by wordBankViewModel.uiState.collectAsState()
     val article = uiState.article ?: return
-    val textToSpeechManager = rememberTextToSpeechManager()
-    val ttsPlaybackController = rememberTtsPlaybackController(textToSpeechManager)
+
+    val playbackController = ttsViewModel.playbackController
+    val playingParagraphIndex by ttsViewModel.playingParagraphIndex.collectAsState()
+    val isFullTextPlaying by ttsViewModel.isFullTextPlaying.collectAsState()
+    val highlightState by ttsViewModel.highlightState.collectAsState()
+
     var readingMode by remember { mutableStateOf(ReadingMode.ENGLISH_ONLY) }
     var isQuizExpanded by remember { mutableStateOf(false) }
     val userAnswers = remember { mutableStateMapOf<Int, Int>() }
@@ -78,63 +81,6 @@ fun ArticleDetailScreen(
     }
 
     val scrollState = rememberScrollState()
-    val highlightState by textToSpeechManager?.highlightState?.collectAsState()
-        ?: remember { mutableStateOf(null) }
-
-    var playingParagraphIndex by remember { mutableStateOf(-1) }
-    var isFullTextPlaying by remember { mutableStateOf(false) }
-
-    fun playNextParagraph(startIndex: Int) {
-        if (startIndex >= article.content.paragraphs.size) {
-            playingParagraphIndex = -1
-            isFullTextPlaying = false
-            return
-        }
-
-        val paragraph = article.content.paragraphs[startIndex]
-        if (paragraph.type == BilingualParagraphType.TEXT && !paragraph.english.isNullOrEmpty()) {
-            playingParagraphIndex = startIndex
-            ttsPlaybackController.play(
-                text = paragraph.english,
-                id = "paragraph_$startIndex",
-                languageTag = "en-US"
-            )
-        } else {
-            playNextParagraph(startIndex + 1)
-        }
-    }
-
-    fun startFullTextPlayback() {
-        isFullTextPlaying = true
-        fun play(index: Int) {
-            if (!isFullTextPlaying) return
-            if (index >= article.content.paragraphs.size) {
-                isFullTextPlaying = false
-                playingParagraphIndex = -1
-                return
-            }
-            val p = article.content.paragraphs[index]
-            if (p.type == BilingualParagraphType.TEXT && !p.english.isNullOrEmpty()) {
-                playingParagraphIndex = index
-                textToSpeechManager?.speak(
-                    text = p.english,
-                    onComplete = {
-                        play(index + 1)
-                    }
-                )
-            } else {
-                play(index + 1)
-            }
-        }
-        play(0)
-    }
-
-    fun stopFullTextPlayback() {
-        isFullTextPlaying = false
-        playingParagraphIndex = -1
-        textToSpeechManager?.stop()
-    }
-
     Box(modifier = modifier.fillMaxSize()) {
         Column(
             modifier = Modifier
@@ -183,26 +129,22 @@ fun ArticleDetailScreen(
             Spacer(modifier = Modifier.height(32.dp))
         }
 
-        if (textToSpeechManager != null) {
-            ExtendedFloatingActionButton(
-                onClick = {
-                    if (isFullTextPlaying) {
-                        stopFullTextPlayback()
-                    } else {
-                        startFullTextPlayback()
-                    }
-                },
-                icon = {
-                    Icon(
-                        imageVector = if (isFullTextPlaying) Icons.Filled.Pause else Icons.Filled.PlayArrow,
-                        contentDescription = if (isFullTextPlaying) "Stop Reading" else "Read Aloud"
-                    )
-                },
-                text = { Text(if (isFullTextPlaying) "Stop" else "Read Aloud") },
-                modifier = Modifier
-                    .align(Alignment.BottomStart)
-                    .padding(16.dp)
-                    .padding(bottom = if (isQuizExpanded) 320.dp else 0.dp)
+        FloatingActionButton(
+            onClick = {
+                if (isFullTextPlaying) {
+                    ttsViewModel.stopFullTextPlayback()
+                } else {
+                    ttsViewModel.startFullTextPlayback(article)
+                }
+            },
+            modifier = Modifier
+                .align(Alignment.BottomStart)
+                .padding(16.dp)
+                .padding(bottom = if (isQuizExpanded) 320.dp else 0.dp)
+        ) {
+            Icon(
+                imageVector = if (isFullTextPlaying) Icons.Filled.Pause else Icons.Filled.PlayArrow,
+                contentDescription = if (isFullTextPlaying) "Stop Reading" else "Read Aloud"
             )
         }
 
@@ -229,16 +171,16 @@ fun ArticleDetailScreen(
                 }
             },
             ensureAuthenticated = ensureAuthenticated,
-            playingAudioId = ttsPlaybackController.playingItemId,
+            playingAudioId = playbackController.playingItemId,
             onPlayAudio = { text, id, languageTag ->
-                ttsPlaybackController.play(
+                ttsViewModel.playSingle(
                     text = text,
                     id = id,
-                    languageTag = languageTag ?: DEFAULT_LANGUAGE_TAG
+                    languageTag = languageTag ?: "en-US"
                 )
             },
-            onStopAudio = { ttsPlaybackController.stop() },
-            isTtsSupported = textToSpeechManager != null,
+            onStopAudio = { ttsViewModel.stop() },
+            isTtsSupported = true,
             modifier = Modifier.align(Alignment.BottomEnd)
         )
     }

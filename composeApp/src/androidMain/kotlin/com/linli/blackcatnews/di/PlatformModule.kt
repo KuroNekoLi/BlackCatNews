@@ -3,6 +3,7 @@ package com.linli.blackcatnews.di
 import android.app.Application
 import android.content.Context
 import androidx.room.RoomDatabase
+import com.google.android.play.core.review.ReviewManagerFactory
 import com.linli.authentication.platformAuthProvidersModule
 import com.linli.authentication.presentation.platformLoginModule
 import com.linli.blackcatnews.data.local.database.NewsDatabase
@@ -11,7 +12,8 @@ import com.linli.blackcatnews.rating.AndroidPlayStoreRatingRequester
 import com.linli.blackcatnews.rating.CurrentActivityProvider
 import com.linli.blackcatnews.rating.LifecycleAwareActivityProvider
 import com.linli.blackcatnews.rating.RatingRequester
-import com.google.android.play.core.review.ReviewManagerFactory
+import com.linli.blackcatnews.tts.AndroidTextToSpeechManager
+import com.linli.blackcatnews.tts.TextToSpeechManager
 import org.koin.android.ext.koin.androidContext
 import org.koin.core.context.startKoin
 import org.koin.core.context.stopKoin
@@ -38,6 +40,9 @@ val androidPlatformModule = module {
             reviewManager = ReviewManagerFactory.create(androidContext()),
             activityProvider = get()
         )
+    }
+    factory<TextToSpeechManager> {
+        AndroidTextToSpeechManager(androidContext())
     }
 }
 
