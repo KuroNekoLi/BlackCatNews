@@ -37,6 +37,8 @@ import androidx.compose.ui.unit.sp
 import com.linli.blackcatnews.domain.model.BilingualParagraph
 import com.linli.blackcatnews.domain.model.BilingualParagraphType
 import com.linli.blackcatnews.domain.model.ReadingMode
+import com.linli.blackcatnews.tts.rememberTextToSpeechManager
+import com.linli.blackcatnews.tts.rememberTtsPlaybackController
 import com.linli.dictionary.presentation.DictionaryViewModel
 import com.linli.dictionary.presentation.wordbank.WordBankViewModel
 import org.koin.compose.viewmodel.koinViewModel
@@ -92,6 +94,10 @@ fun ArticleWithWordTooltip(
     // Tooltip visibility and position
     var showTooltip by remember { mutableStateOf(false) }
     var tooltipOffset by remember { mutableStateOf(IntOffset(0, 0)) }
+
+    // TTS Manager and Controller
+    val ttsManager = rememberTextToSpeechManager()
+    val ttsController = rememberTtsPlaybackController(ttsManager)
 
     // Main container
     Box(
@@ -364,7 +370,26 @@ fun ArticleWithWordTooltip(
                         isWordSaved = true
                     }
                 },
-                isWordSaved = isWordSaved
+                isWordSaved = isWordSaved,
+                onPronounceClick = { type ->
+                    val (locale, suffix) = when (type.lowercase()) {
+                        "uk" -> "en-GB" to "uk"
+                        "us" -> "en-US" to "us"
+                        else -> "en-US" to "us"
+                    }
+                    ttsController.play(
+                        text = selectedWord,
+                        id = "word_${selectedWord}_$suffix",
+                        languageTag = locale
+                    )
+                },
+                onPlayExample = { example ->
+                    ttsController.play(
+                        text = example,
+                        id = "example_${example.hashCode()}",
+                        languageTag = "en-US"
+                    )
+                }
             )
         }
     }

@@ -1,5 +1,6 @@
 package com.linli.blackcatnews.ui.screens
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -8,9 +9,13 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.VolumeUp
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -35,6 +40,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
+import com.linli.blackcatnews.tts.rememberTextToSpeechManager
+import com.linli.blackcatnews.tts.rememberTtsPlaybackController
 import com.linli.dictionary.domain.model.ReviewCard
 import com.linli.dictionary.domain.model.ReviewMetadata
 import com.linli.dictionary.domain.model.ReviewState
@@ -64,6 +71,9 @@ fun WordBankScreen(
     val uiState by viewModel.uiState.collectAsState()
     val reviewUiState by reviewViewModel.uiState.collectAsState()
 
+    val ttsManager = rememberTextToSpeechManager()
+    val ttsController = rememberTtsPlaybackController(ttsManager)
+
     LaunchedEffect(uiState.wordCount) {
         reviewViewModel.refreshQueue()
     }
@@ -85,6 +95,9 @@ fun WordBankScreen(
         onResetProgress = viewModel::resetWordProgress,
         onNavigateToReview = onNavigateToReview,
         onRefreshReview = reviewViewModel::refreshQueue,
+        onPlayAudio = { text, id ->
+            ttsController.play(text, id, "en-US")
+        },
         modifier = modifier
     )
 }
@@ -98,6 +111,7 @@ fun WordBankScreen(
  * @param onResetProgress 使用者重置學習進度時的回呼
  * @param onNavigateToReview 開始複習的回呼
  * @param onRefreshReview 重新載入複習列表的回呼
+ * @param onPlayAudio 播放音訊的回呼
  * @param modifier 外部傳入的修飾器
  */
 @Composable
@@ -108,6 +122,7 @@ fun WordBankContentScreen(
     onResetProgress: (String) -> Unit,
     onNavigateToReview: () -> Unit,
     onRefreshReview: () -> Unit,
+    onPlayAudio: (String, String) -> Unit = { _, _ -> },
     modifier: Modifier = Modifier
 ) {
     val errorMessage = uiState.error
@@ -163,7 +178,8 @@ fun WordBankContentScreen(
                     WordBankCard(
                         word = word,
                         onRemoveWord = { onRemoveWord(word.word) },
-                        onResetProgress = { onResetProgress(word.word) }
+                        onResetProgress = { onResetProgress(word.word) },
+                        onPlayAudio = onPlayAudio
                     )
                 }
             }
@@ -227,23 +243,38 @@ private fun WordBankCard(
     word: Word,
     onRemoveWord: (String) -> Unit,
     onResetProgress: (String) -> Unit,
+    onPlayAudio: (String, String) -> Unit = { _, _ -> },
     modifier: Modifier = Modifier
 ) {
     val firstEntry = word.entries.firstOrNull()
     val firstDefinition = firstEntry?.definitions?.firstOrNull()
     var showMenu by remember { mutableStateOf(false) }
+    var isExpanded by remember { mutableStateOf(false) }
 
     Card(modifier = modifier.fillMaxWidth()) {
-        Column(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable { isExpanded = !isExpanded }
+                .padding(16.dp)
+        ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(
-                    text = word.word,
-                    style = MaterialTheme.typography.titleLarge
-                )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        text = word.word,
+                        style = MaterialTheme.typography.titleLarge
+                    )
+                    IconButton(onClick = { onPlayAudio(word.word, word.word) }) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.VolumeUp,
+                            contentDescription = "播放音訊"
+                        )
+                    }
+                }
 
                 Box {
                     IconButton(onClick = { showMenu = true }) {
@@ -281,8 +312,73 @@ private fun WordBankCard(
                     text = firstDefinition.zhDefinition,
                     style = MaterialTheme.typography.bodyMedium,
                     modifier = Modifier.padding(top = 4.dp),
-                    maxLines = 2,
+                    maxLines = if (isExpanded) Int.MAX_VALUE else 2,
                     overflow = TextOverflow.Ellipsis
+                )
+            }
+
+            androidx.compose.animation.AnimatedVisibility(visible = isExpanded) {
+                Column(modifier = Modifier.padding(top = 8.dp)) {
+                    word.entries.forEach { entry ->
+                        Text(
+                            text = entry.partOfSpeech,
+                            style = MaterialTheme.typography.titleSmall,
+                            color = MaterialTheme.colorScheme.secondary,
+                            modifier = Modifier.padding(vertical = 4.dp)
+                        )
+                        entry.definitions.forEach { definition ->
+                            Text(
+                                text = "• ${definition.enDefinition}",
+                                style = MaterialTheme.typography.bodyMedium,
+                                modifier = Modifier.padding(bottom = 2.dp)
+                            )
+                            Text(
+                                text = definition.zhDefinition,
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.padding(bottom = 4.dp)
+                            )
+                            definition.examples.forEach { example ->
+                                Row(
+                                    verticalAlignment = Alignment.Top,
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(bottom = 2.dp)
+                                ) {
+                                    Text(
+                                        text = "  Example: $example",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        fontStyle = androidx.compose.ui.text.font.FontStyle.Italic,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        modifier = Modifier.weight(1f)
+                                    )
+                                    Icon(
+                                        imageVector = Icons.AutoMirrored.Filled.VolumeUp,
+                                        contentDescription = "朗讀例句",
+                                        tint = MaterialTheme.colorScheme.primary,
+                                        modifier = Modifier
+                                            .padding(start = 8.dp)
+                                            .size(16.dp)
+                                            .clickable {
+                                                onPlayAudio(
+                                                    example,
+                                                    "example_${example.hashCode()}"
+                                                )
+                                            }
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Arrow icon to indicate expandability
+            Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+                Icon(
+                    imageVector = if (isExpanded) Icons.Filled.KeyboardArrowUp else Icons.Filled.KeyboardArrowDown,
+                    contentDescription = if (isExpanded) "收起" else "展開",
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
         }
@@ -306,7 +402,8 @@ fun WordBankContentScreenPreview() {
         onRemoveWord = {},
         onResetProgress = {},
         onNavigateToReview = {},
-        onRefreshReview = {}
+        onRefreshReview = {},
+        onPlayAudio = { _, _ -> }
     )
 }
 

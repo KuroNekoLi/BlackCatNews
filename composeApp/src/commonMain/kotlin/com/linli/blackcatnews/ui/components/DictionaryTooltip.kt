@@ -21,6 +21,7 @@ import org.jetbrains.compose.ui.tooling.preview.Preview
  * @param onSaveWord 儲存單字的回調
  * @param isWordSaved 當前選中單字是否已存在於單字庫中
  * @param onPronounceClick 點擊發音按鈕的回調
+ * @param onPlayExample 點擊播放例句按鈕的回調
  */
 @Composable
 fun DictionaryTooltip(
@@ -30,7 +31,8 @@ fun DictionaryTooltip(
     onDismiss: () -> Unit,
     onSaveWord: () -> Unit,
     isWordSaved: Boolean = false,
-    onPronounceClick: (String) -> Unit = {}
+    onPronounceClick: (String) -> Unit = {},
+    onPlayExample: (String) -> Unit = {}
 ) {
     Popup(
         offset = offset,
@@ -64,7 +66,8 @@ fun DictionaryTooltip(
                             onDismiss = onDismiss,
                             onSaveWord = onSaveWord,
                             isSaved = isWordSaved,
-                            onPronounceClick = onPronounceClick
+                            onPronounceClick = onPronounceClick,
+                            onPlayExample = onPlayExample
                         )
                     } else {
                         LoadingTooltipContent(word = selectedWord, onDismiss = onDismiss)
@@ -93,7 +96,8 @@ fun PreviewDictionaryTooltipLoading() {
             selectedWord = "loading",
             offset = IntOffset(0, 0),
             onDismiss = {},
-            onSaveWord = {}
+            onSaveWord = {},
+            onPlayExample = {}
         )
     }
 }
@@ -112,7 +116,8 @@ fun PreviewDictionaryTooltipError() {
             selectedWord = "error",
             offset = IntOffset(0, 0),
             onDismiss = {},
-            onSaveWord = {}
+            onSaveWord = {},
+            onPlayExample = {}
         )
     }
 }
@@ -151,7 +156,8 @@ fun PreviewDictionaryTooltipSuccess() {
             selectedWord = "success",
             offset = IntOffset(0, 0),
             onDismiss = {},
-            onSaveWord = {}
+            onSaveWord = {},
+            onPlayExample = {}
         )
     }
 }
