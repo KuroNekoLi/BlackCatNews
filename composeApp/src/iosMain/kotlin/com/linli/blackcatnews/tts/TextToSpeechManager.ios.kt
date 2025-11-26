@@ -3,7 +3,12 @@ package com.linli.blackcatnews.tts
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.remember
+import kotlinx.cinterop.CValue
 import kotlinx.cinterop.ObjCSignatureOverride
+import kotlinx.cinterop.useContents
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import platform.AVFAudio.AVSpeechBoundary
 import platform.AVFAudio.AVSpeechSynthesisVoice
 import platform.AVFAudio.AVSpeechSynthesizer
@@ -11,6 +16,7 @@ import platform.AVFAudio.AVSpeechSynthesizerDelegateProtocol
 import platform.AVFAudio.AVSpeechUtterance
 import platform.AVFAudio.AVSpeechUtteranceDefaultSpeechRate
 import platform.Foundation.NSLocale
+import platform.Foundation.NSRange
 import platform.Foundation.currentLocale
 import platform.Foundation.languageCode
 import platform.darwin.NSObject
@@ -20,14 +26,22 @@ private class IOSTextToSpeechManager : TextToSpeechManager {
     private val delegate = TtsDelegate()
     private var currentCompletion: (() -> Unit)? = null
 
+    private val _highlightState = MutableStateFlow<TextHighlightRange?>(null)
+    override val highlightState: StateFlow<TextHighlightRange?> = _highlightState.asStateFlow()
+
     init {
         synthesizer.delegate = delegate
         delegate.onFinish = {
             currentCompletion?.invoke()
             currentCompletion = null
+            _highlightState.value = null
         }
         delegate.onCancel = {
             currentCompletion = null
+            _highlightState.value = null
+        }
+        delegate.onRangeStart = { start, end ->
+            _highlightState.value = TextHighlightRange(start, end)
         }
     }
 
@@ -53,17 +67,20 @@ private class IOSTextToSpeechManager : TextToSpeechManager {
     override fun stop() {
         synthesizer.stopSpeakingAtBoundary(AVSpeechBoundary.AVSpeechBoundaryImmediate)
         currentCompletion = null
+        _highlightState.value = null
     }
 
     override fun release() {
         stop()
         synthesizer.delegate = null
+        _highlightState.value = null
     }
 }
 
 private class TtsDelegate : NSObject(), AVSpeechSynthesizerDelegateProtocol {
     var onFinish: (() -> Unit)? = null
     var onCancel: (() -> Unit)? = null
+    var onRangeStart: ((Int, Int) -> Unit)? = null
 
     @ObjCSignatureOverride
     override fun speechSynthesizer(
@@ -79,6 +96,20 @@ private class TtsDelegate : NSObject(), AVSpeechSynthesizerDelegateProtocol {
         didCancelSpeechUtterance: AVSpeechUtterance
     ) {
         onCancel?.invoke()
+    }
+
+    @OptIn(kotlinx.cinterop.ExperimentalForeignApi::class)
+    @ObjCSignatureOverride
+    override fun speechSynthesizer(
+        synthesizer: AVSpeechSynthesizer,
+        willSpeakRangeOfSpeechString: CValue<NSRange>,
+        utterance: AVSpeechUtterance
+    ) {
+        willSpeakRangeOfSpeechString.useContents {
+            val start = location.toInt()
+            val end = (location + length).toInt()
+            onRangeStart?.invoke(start, end)
+        }
     }
 }
 

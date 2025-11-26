@@ -7,6 +7,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalContext
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import java.util.Locale
 import java.util.UUID
 
@@ -16,6 +18,9 @@ private class AndroidTextToSpeechManager(
     private var textToSpeech: TextToSpeech? = null
     private var initialized = false
     private var currentCompletion: (() -> Unit)? = null
+
+    private val _highlightState = MutableStateFlow<TextHighlightRange?>(null)
+    override val highlightState: StateFlow<TextHighlightRange?> = _highlightState
 
     init {
         textToSpeech = TextToSpeech(context.applicationContext) { status ->
@@ -33,6 +38,7 @@ private class AndroidTextToSpeechManager(
         val engine = textToSpeech ?: return
         if (!initialized) return
         engine.stop()
+        _highlightState.value = null
         currentCompletion = onComplete
         val locale = languageTag?.let { Locale.forLanguageTag(it) } ?: engine.language ?: Locale.US
         engine.language = locale
@@ -46,13 +52,20 @@ private class AndroidTextToSpeechManager(
                 if (utteranceId == doneUtteranceId) {
                     currentCompletion?.invoke()
                     currentCompletion = null
+                    _highlightState.value = null
                 }
             }
 
             override fun onError(errorUtteranceId: String?) {
                 if (utteranceId == errorUtteranceId) {
                     currentCompletion = null
+                    _highlightState.value = null
                 }
+            }
+
+            override fun onRangeStart(utteranceId: String?, start: Int, end: Int, frame: Int) {
+                super.onRangeStart(utteranceId, start, end, frame)
+                _highlightState.value = TextHighlightRange(start, end)
             }
         })
         engine.speak(text, TextToSpeech.QUEUE_FLUSH, null, utteranceId)
@@ -61,12 +74,14 @@ private class AndroidTextToSpeechManager(
     override fun stop() {
         textToSpeech?.stop()
         currentCompletion = null
+        _highlightState.value = null
     }
 
     override fun release() {
         textToSpeech?.shutdown()
         textToSpeech = null
         currentCompletion = null
+        _highlightState.value = null
     }
 }
 

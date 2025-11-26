@@ -9,7 +9,13 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Pause
+import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExtendedFloatingActionButton
+import androidx.compose.material3.Icon
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -72,15 +78,70 @@ fun ArticleDetailScreen(
     }
 
     val scrollState = rememberScrollState()
+    val highlightState by textToSpeechManager?.highlightState?.collectAsState()
+        ?: remember { mutableStateOf(null) }
+
+    var playingParagraphIndex by remember { mutableStateOf(-1) }
+    var isFullTextPlaying by remember { mutableStateOf(false) }
+
+    fun playNextParagraph(startIndex: Int) {
+        if (startIndex >= article.content.paragraphs.size) {
+            playingParagraphIndex = -1
+            isFullTextPlaying = false
+            return
+        }
+
+        val paragraph = article.content.paragraphs[startIndex]
+        if (paragraph.type == BilingualParagraphType.TEXT && !paragraph.english.isNullOrEmpty()) {
+            playingParagraphIndex = startIndex
+            ttsPlaybackController.play(
+                text = paragraph.english,
+                id = "paragraph_$startIndex",
+                languageTag = "en-US"
+            )
+        } else {
+            playNextParagraph(startIndex + 1)
+        }
+    }
+
+    fun startFullTextPlayback() {
+        isFullTextPlaying = true
+        fun play(index: Int) {
+            if (!isFullTextPlaying) return
+            if (index >= article.content.paragraphs.size) {
+                isFullTextPlaying = false
+                playingParagraphIndex = -1
+                return
+            }
+            val p = article.content.paragraphs[index]
+            if (p.type == BilingualParagraphType.TEXT && !p.english.isNullOrEmpty()) {
+                playingParagraphIndex = index
+                textToSpeechManager?.speak(
+                    text = p.english,
+                    onComplete = {
+                        play(index + 1)
+                    }
+                )
+            } else {
+                play(index + 1)
+            }
+        }
+        play(0)
+    }
+
+    fun stopFullTextPlayback() {
+        isFullTextPlaying = false
+        playingParagraphIndex = -1
+        textToSpeechManager?.stop()
+    }
+
     Box(modifier = modifier.fillMaxSize()) {
-        // 主內容區域
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .verticalScroll(scrollState)
-                .padding(bottom = if (isQuizExpanded) 400.dp else 80.dp) // 為測驗面板留出空間
+                .padding(bottom = if (isQuizExpanded) 400.dp else 80.dp)
         ) {
-            // 文章標題區域
             ArticleHeader(
                 title = article.title,
                 source = article.source,
@@ -100,12 +161,14 @@ fun ArticleDetailScreen(
                 modifier = Modifier.padding(horizontal = 16.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                article.content.paragraphs.forEach { paragraph ->
+                article.content.paragraphs.forEachIndexed { index, paragraph ->
                     when (paragraph.type) {
                         BilingualParagraphType.TEXT -> ArticleWithWordTooltip(
                             paragraph = paragraph,
                             readingMode = readingMode,
-                            viewModel = dictionaryViewModel
+                            viewModel = dictionaryViewModel,
+                            highlightRange = if (index == playingParagraphIndex) highlightState else null,
+                            isPlaying = index == playingParagraphIndex
                         )
 
                         else -> BilingualTextView(
@@ -120,7 +183,29 @@ fun ArticleDetailScreen(
             Spacer(modifier = Modifier.height(32.dp))
         }
 
-        // 右下角測驗按鈕和展開面板
+        if (textToSpeechManager != null) {
+            ExtendedFloatingActionButton(
+                onClick = {
+                    if (isFullTextPlaying) {
+                        stopFullTextPlayback()
+                    } else {
+                        startFullTextPlayback()
+                    }
+                },
+                icon = {
+                    Icon(
+                        imageVector = if (isFullTextPlaying) Icons.Filled.Pause else Icons.Filled.PlayArrow,
+                        contentDescription = if (isFullTextPlaying) "Stop Reading" else "Read Aloud"
+                    )
+                },
+                text = { Text(if (isFullTextPlaying) "Stop" else "Read Aloud") },
+                modifier = Modifier
+                    .align(Alignment.BottomStart)
+                    .padding(16.dp)
+                    .padding(bottom = if (isQuizExpanded) 320.dp else 0.dp)
+            )
+        }
+
         QuizPanel(
             isExpanded = isQuizExpanded,
             onExpandChange = { isQuizExpanded = it },

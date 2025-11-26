@@ -29,14 +29,19 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.LayoutCoordinates
 import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextLayoutResult
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.linli.blackcatnews.domain.model.BilingualParagraph
 import com.linli.blackcatnews.domain.model.BilingualParagraphType
 import com.linli.blackcatnews.domain.model.ReadingMode
+import com.linli.blackcatnews.tts.TextHighlightRange
 import com.linli.blackcatnews.tts.rememberTextToSpeechManager
 import com.linli.blackcatnews.tts.rememberTtsPlaybackController
 import com.linli.dictionary.presentation.DictionaryViewModel
@@ -55,6 +60,8 @@ import kotlin.math.roundToInt
  * @param viewModel 字典視圖模型，用於查詢單字
  * @param wordBankViewModel 生字本視圖模型，用於儲存單字
  * @param modifier 組件修飾用
+ * @param highlightRange 文字高亮範圍
+ * @param isPlaying 是否正在播放
  */
 @OptIn(ExperimentalComposeUiApi::class)
 @Composable
@@ -63,7 +70,9 @@ fun ArticleWithWordTooltip(
     readingMode: ReadingMode,
     viewModel: DictionaryViewModel,
     wordBankViewModel: WordBankViewModel = koinViewModel(),
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    highlightRange: TextHighlightRange? = null,
+    isPlaying: Boolean = false
 ) {
     // Only apply tooltip functionality to text paragraphs
     if (paragraph.type != BilingualParagraphType.TEXT) {
@@ -139,8 +148,34 @@ fun ArticleWithWordTooltip(
                                 )
                             }
                     ) {
+                        val text = paragraph.english ?: ""
+                        val annotatedString = if (isPlaying && highlightRange != null) {
+                            buildAnnotatedString {
+                                if (highlightRange.start > 0) {
+                                    append(text.substring(0, highlightRange.start))
+                                }
+                                withStyle(style = SpanStyle(background = MaterialTheme.colorScheme.primaryContainer)) {
+                                    if (highlightRange.end > text.length) {
+                                        append(text.substring(highlightRange.start))
+                                    } else {
+                                        append(
+                                            text.substring(
+                                                highlightRange.start,
+                                                highlightRange.end
+                                            )
+                                        )
+                                    }
+                                }
+                                if (highlightRange.end < text.length) {
+                                    append(text.substring(highlightRange.end))
+                                }
+                            }
+                        } else {
+                            AnnotatedString(text)
+                        }
+
                         Text(
-                            text = paragraph.english ?: "",
+                            text = annotatedString,
                             style = MaterialTheme.typography.bodyLarge,
                             onTextLayout = { textLayoutResult = it },
                             modifier = Modifier.onGloballyPositioned { coords ->
@@ -215,8 +250,34 @@ fun ArticleWithWordTooltip(
                                         )
                                     }
                             ) {
+                                val text = paragraph.english ?: ""
+                                val annotatedString = if (isPlaying && highlightRange != null) {
+                                    buildAnnotatedString {
+                                        if (highlightRange.start > 0) {
+                                            append(text.substring(0, highlightRange.start))
+                                        }
+                                        withStyle(style = SpanStyle(background = MaterialTheme.colorScheme.primaryContainer)) {
+                                            if (highlightRange.end > text.length) {
+                                                append(text.substring(highlightRange.start))
+                                            } else {
+                                                append(
+                                                    text.substring(
+                                                        highlightRange.start,
+                                                        highlightRange.end
+                                                    )
+                                                )
+                                            }
+                                        }
+                                        if (highlightRange.end < text.length) {
+                                            append(text.substring(highlightRange.end))
+                                        }
+                                    }
+                                } else {
+                                    AnnotatedString(text)
+                                }
+
                                 Text(
-                                    text = paragraph.english ?: "",
+                                    text = annotatedString,
                                     style = MaterialTheme.typography.bodyLarge,
                                     onTextLayout = { textLayoutResult = it },
                                     modifier = Modifier.onGloballyPositioned { coords ->
@@ -307,8 +368,34 @@ fun ArticleWithWordTooltip(
                                             )
                                         }
                                 ) {
+                                    val text = paragraph.english ?: ""
+                                    val annotatedString = if (isPlaying && highlightRange != null) {
+                                        buildAnnotatedString {
+                                            if (highlightRange.start > 0) {
+                                                append(text.substring(0, highlightRange.start))
+                                            }
+                                            withStyle(style = SpanStyle(background = MaterialTheme.colorScheme.primaryContainer)) {
+                                                if (highlightRange.end > text.length) {
+                                                    append(text.substring(highlightRange.start))
+                                                } else {
+                                                    append(
+                                                        text.substring(
+                                                            highlightRange.start,
+                                                            highlightRange.end
+                                                        )
+                                                    )
+                                                }
+                                            }
+                                            if (highlightRange.end < text.length) {
+                                                append(text.substring(highlightRange.end))
+                                            }
+                                        }
+                                    } else {
+                                        AnnotatedString(text)
+                                    }
+
                                     Text(
-                                        text = paragraph.english ?: "",
+                                        text = annotatedString,
                                         style = MaterialTheme.typography.bodyMedium,
                                         fontSize = 16.sp,
                                         onTextLayout = { textLayoutResult = it },

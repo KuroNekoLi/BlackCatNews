@@ -5,6 +5,7 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import kotlinx.coroutines.flow.StateFlow
 
 /**
  * 跨平台語音朗讀管理介面，封裝平台端 TTS 實作並提供統一 API。
@@ -36,7 +37,20 @@ interface TextToSpeechManager {
      * 釋放平台資源，Composable 銷毀時必須呼叫以避免資源洩漏。
      */
     fun release()
+
+    /**
+     * 目前朗讀的高亮範圍（相對於當前 speak 的文字）。
+     * 當沒有朗讀或平台不支援時，值為 null。
+     */
+    val highlightState: StateFlow<TextHighlightRange?>
 }
+
+/**
+ * 代表文字中被高亮的範圍。
+ * @param start 起始索引（包含）
+ * @param end 結束索引（不包含）
+ */
+data class TextHighlightRange(val start: Int, val end: Int)
 
 /**
  * 提供與 Compose 生命週期綁定的 TTS 管理器，若平台不支援則回傳 null。
