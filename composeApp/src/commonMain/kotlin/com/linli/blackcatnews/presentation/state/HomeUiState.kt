@@ -1,7 +1,7 @@
 package com.linli.blackcatnews.presentation.state
 
-import com.linli.blackcatnews.domain.model.NewsItem
 import com.linli.blackcatnews.domain.model.NewsCategory
+import com.linli.blackcatnews.domain.model.NewsItem
 
 /**
  * 首頁畫面狀態
@@ -11,7 +11,9 @@ data class HomeUiState(
     val articles: List<NewsItem> = emptyList(),
     val errorMessage: String? = null,
     val selectedCategory: NewsCategory = NewsCategory.LATEST,
-    val prefersChinese: Boolean = false
+    val prefersChinese: Boolean = false,
+    val dailyStreak: Int = 0,
+    val isStreakActive: Boolean = false
 )
 
 sealed interface HomeUiEvent {

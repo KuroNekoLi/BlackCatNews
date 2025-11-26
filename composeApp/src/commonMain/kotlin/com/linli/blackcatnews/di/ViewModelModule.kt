@@ -18,7 +18,7 @@ import org.koin.core.module.dsl.viewModel
 import org.koin.dsl.module
 
 val viewModelModule = module {
-    single { UserPreferencesRepository() }
+    single { UserPreferencesRepository(get()) }
     single<RatingRequester> { NoOpRatingRequester }
     viewModel { HomeViewModel(get(), get(), get()) }
     viewModel { (articleId: String) -> ArticleDetailViewModel(articleId, get()) }

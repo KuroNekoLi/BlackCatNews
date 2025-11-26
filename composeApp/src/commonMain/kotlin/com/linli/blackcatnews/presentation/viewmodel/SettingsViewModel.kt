@@ -10,6 +10,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 enum class SessionStatus {
@@ -55,8 +56,8 @@ class SettingsViewModel(
 
     private fun observePreferences() {
         viewModelScope.launch {
-            preferencesRepository.prefersChinese().collect { prefersChinese ->
-                _uiState.value = _uiState.value.copy(prefersChinese = prefersChinese)
+            preferencesRepository.prefersChinese.collect { prefersChinese ->
+                _uiState.update { it.copy(prefersChinese = prefersChinese) }
             }
         }
     }

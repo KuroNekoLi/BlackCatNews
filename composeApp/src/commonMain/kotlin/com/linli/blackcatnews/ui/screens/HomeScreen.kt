@@ -1,5 +1,6 @@
 package com.linli.blackcatnews.ui.screens
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -7,21 +8,32 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Button
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.LocalFireDepartment
+import androidx.compose.material.icons.outlined.Translate
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.AssistChipDefaults
+import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
+import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -36,7 +48,6 @@ import com.linli.blackcatnews.presentation.viewmodel.HomeViewModel
 import com.linli.blackcatnews.ui.components.CategoryChip
 import com.linli.blackcatnews.ui.components.DebugBadge
 import com.linli.blackcatnews.ui.components.NewsCard
-import androidx.compose.material3.ExperimentalMaterial3Api
 
 /**
  * 首頁屏幕
@@ -54,6 +65,8 @@ fun HomeScreen(
     val selectedCategory = uiState.selectedCategory
     val articles = uiState.articles
     val prefersChinese = uiState.prefersChinese
+    val dailyStreak = uiState.dailyStreak
+    val isStreakActive = uiState.isStreakActive
     val shouldShowUnsupportedCategoryMessage =
         !uiState.isRefreshing && articles.isEmpty() && selectedCategory !in supportedCategories
 
@@ -72,86 +85,215 @@ fun HomeScreen(
         Column(
             modifier = Modifier.fillMaxSize()
         ) {
-        // 分類 Chips
-        CategoryChipsRow(
-            categories = NewsCategory.entries,
-            selectedCategory = selectedCategory,
-            onCategorySelected = {
-                viewModel.onEvent(HomeUiEvent.SelectCategory(it))
-            },
-            modifier = Modifier.fillMaxWidth()
-        )
+            // 1. 分類 Chips (Fixed at top)
+            CategoryChipsRow(
+                categories = NewsCategory.entries,
+                selectedCategory = selectedCategory,
+                onCategorySelected = {
+                    viewModel.onEvent(HomeUiEvent.SelectCategory(it))
+                },
+                modifier = Modifier.fillMaxWidth()
+            )
 
-        // 語言切換
-        LanguageToggleRow(
-            useChinese = prefersChinese,
-            onToggle = { viewModel.onEvent(HomeUiEvent.ToggleLanguage(it)) },
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 8.dp)
-        )
-
-        // 新聞列表
-        Box(modifier = Modifier.weight(1f)) {
-            LazyColumn(
-                modifier = Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                items(articles, key = { it.id }) { newsItem ->
-                    NewsCard(
-                        newsItem = newsItem,
-                        onClick = { onNewsItemClick(newsItem) },
-                        prefersChinese = prefersChinese
-                    )
-                }
-            }
-
-            if (shouldShowUnsupportedCategoryMessage) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize(),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = "此分類尚未提供內容",
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = MaterialTheme.colorScheme.onBackground,
-                        textAlign = TextAlign.Center
-                    )
-                }
-            } else if (showErrorState) {
-                ErrorState(
-                    message = uiState.errorMessage.orEmpty(),
-                    onRetry = { viewModel.onEvent(HomeUiEvent.Refresh) },
-                    modifier = Modifier.align(Alignment.Center)
-                )
-            } else if (showEmptyState) {
-                EmptyArticlesState(
-                    onRetry = { viewModel.onEvent(HomeUiEvent.Refresh) },
-                    modifier = Modifier.align(Alignment.Center)
-                )
-            }
-
-            if (uiState.isRefreshing && articles.isEmpty()) {
-                Box(
+            // 2. Scrollable Content
+            Box(modifier = Modifier.weight(1f)) {
+                LazyColumn(
                     modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center
+                    contentPadding = PaddingValues(bottom = 16.dp),
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
-                    CircularProgressIndicator()
-                }
-            }
+                    // Dashboard Section (Streak + Language)
+                    item {
+                        DashboardCard(
+                            streak = dailyStreak,
+                            isActive = isStreakActive,
+                            useChinese = prefersChinese,
+                            onLanguageToggle = { viewModel.onEvent(HomeUiEvent.ToggleLanguage(it)) },
+                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                        )
+                    }
 
-            // Add debug badge in the bottom-right corner when in debug mode
-            if (isDebug) {
-                DebugBadge(
-                    modifier = Modifier
-                        .align(Alignment.BottomEnd)
-                        .padding(16.dp)
-                )
+                    // News Items
+                    items(articles, key = { it.id }) { newsItem ->
+                        NewsCard(
+                            newsItem = newsItem,
+                            onClick = { onNewsItemClick(newsItem) },
+                            prefersChinese = prefersChinese,
+                            modifier = Modifier.padding(horizontal = 16.dp)
+                        )
+                    }
+                }
+
+                if (shouldShowUnsupportedCategoryMessage) {
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = "此分類尚未提供內容",
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = MaterialTheme.colorScheme.onBackground,
+                            textAlign = TextAlign.Center
+                        )
+                    }
+                } else if (showErrorState) {
+                    ErrorState(
+                        message = uiState.errorMessage.orEmpty(),
+                        onRetry = { viewModel.onEvent(HomeUiEvent.Refresh) },
+                        modifier = Modifier.align(Alignment.Center)
+                    )
+                } else if (showEmptyState) {
+                    EmptyArticlesState(
+                        onRetry = { viewModel.onEvent(HomeUiEvent.Refresh) },
+                        modifier = Modifier.align(Alignment.Center)
+                    )
+                }
+
+                if (uiState.isRefreshing && articles.isEmpty()) {
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        CircularProgressIndicator()
+                    }
+                }
+
+                if (isDebug) {
+                    DebugBadge(
+                        modifier = Modifier
+                            .align(Alignment.BottomEnd)
+                            .padding(16.dp)
+                    )
+                }
             }
         }
     }
+}
+
+/**
+ * 整合型儀表板：包含連勝資訊與語言設定
+ */
+@Composable
+private fun DashboardCard(
+    streak: Int,
+    isActive: Boolean,
+    useChinese: Boolean,
+    onLanguageToggle: (Boolean) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Surface(
+        modifier = modifier,
+        shape = RoundedCornerShape(16.dp),
+        color = MaterialTheme.colorScheme.surface,
+        tonalElevation = 2.dp,
+        shadowElevation = 4.dp
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            // Row 1: Streak Info
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        if (isActive) {
+                            Surface(
+                                modifier = Modifier.size(40.dp),
+                                shape = androidx.compose.foundation.shape.CircleShape,
+                                color = MaterialTheme.colorScheme.error.copy(alpha = 0.1f)
+                            ) {}
+                        }
+                        Icon(
+                            imageVector = Icons.Filled.LocalFireDepartment,
+                            contentDescription = "Streak",
+                            tint = if (isActive) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.outline,
+                            modifier = Modifier.size(24.dp)
+                        )
+                    }
+
+                    Column {
+                        Text(
+                            text = if (isActive) "連勝中！" else "開始你的連勝",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = androidx.compose.ui.text.font.FontWeight.Bold
+                        )
+                        Text(
+                            text = "已連續學習 $streak 天",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+
+                if (isActive) {
+                    AssistChip(
+                        onClick = {},
+                        label = { Text("Great!", style = MaterialTheme.typography.labelSmall) },
+                        colors = AssistChipDefaults.assistChipColors(
+                            containerColor = MaterialTheme.colorScheme.primaryContainer,
+                            labelColor = MaterialTheme.colorScheme.onPrimaryContainer
+                        ),
+                        border = null,
+                        modifier = Modifier.height(24.dp)
+                    )
+                }
+            }
+
+            HorizontalDivider(
+                modifier = Modifier.height(1.dp),
+                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+            )
+
+            // Row 2: Language Preferences
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        imageVector = Icons.Outlined.Translate,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(20.dp)
+                    )
+                    androidx.compose.foundation.layout.Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = "新聞顯示語言",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                }
+
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    FilterChip(
+                        selected = !useChinese,
+                        onClick = { onLanguageToggle(false) },
+                        label = { Text("English") },
+                        colors = FilterChipDefaults.filterChipColors(
+                            selectedContainerColor = MaterialTheme.colorScheme.secondaryContainer,
+                            selectedLabelColor = MaterialTheme.colorScheme.onSecondaryContainer
+                        )
+                    )
+                    FilterChip(
+                        selected = useChinese,
+                        onClick = { onLanguageToggle(true) },
+                        label = { Text("中文") },
+                        colors = FilterChipDefaults.filterChipColors(
+                            selectedContainerColor = MaterialTheme.colorScheme.secondaryContainer,
+                            selectedLabelColor = MaterialTheme.colorScheme.onSecondaryContainer
+                        )
+                    )
+                }
+            }
+        }
     }
 }
 
@@ -168,23 +310,18 @@ private fun CategoryChipsRow(
     // 只顯示已實作的分類
     val visibleCategories = categories.filter { it in supportedCategories }
 
-    Surface(
-        modifier = modifier,
-        color = MaterialTheme.colorScheme.surface,
-        tonalElevation = 1.dp
+    // Remove heavy Surface, use simple background
+    LazyRow(
+        modifier = modifier.background(MaterialTheme.colorScheme.surface),
+        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        LazyRow(
-            modifier = Modifier.fillMaxWidth(),
-            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            items(visibleCategories) { category ->
-                CategoryChip(
-                    category = category,
-                    isSelected = category == selectedCategory,
-                    onClick = { onCategorySelected(category) }
-                )
-            }
+        items(visibleCategories) { category ->
+            CategoryChip(
+                category = category,
+                isSelected = category == selectedCategory,
+                onClick = { onCategorySelected(category) }
+            )
         }
     }
 }
@@ -199,53 +336,6 @@ private val supportedCategories = setOf(
     NewsCategory.WORLD,
     NewsCategory.TECH
 )
-
-@Composable
-private fun LanguageToggleRow(
-    useChinese: Boolean,
-    onToggle: (Boolean) -> Unit,
-    modifier: Modifier = Modifier
-) {
-    Surface(
-        modifier = modifier,
-        shape = RoundedCornerShape(16.dp),
-        tonalElevation = 2.dp,
-        color = MaterialTheme.colorScheme.surfaceVariant
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 12.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                Text(
-                    text = "內容顯示語言",
-                    style = MaterialTheme.typography.labelLarge,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-                Text(
-                    text = if (useChinese) "目前顯示：中文" else "Currently showing: English",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                LanguageChip(
-                    text = "English",
-                    selected = !useChinese,
-                    onClick = { onToggle(false) }
-                )
-                LanguageChip(
-                    text = "中文",
-                    selected = useChinese,
-                    onClick = { onToggle(true) }
-                )
-            }
-        }
-    }
-}
 
 @Composable
 private fun EmptyArticlesState(
@@ -290,33 +380,4 @@ private fun ErrorState(
             Text(text = "重試")
         }
     }
-}
-
-@Composable
-private fun LanguageChip(
-    text: String,
-    selected: Boolean,
-    onClick: () -> Unit
-) {
-    AssistChip(
-        onClick = onClick,
-        label = {
-            Text(
-                text = text,
-                style = MaterialTheme.typography.labelMedium
-            )
-        },
-        colors = AssistChipDefaults.assistChipColors(
-            containerColor = if (selected) {
-                MaterialTheme.colorScheme.primaryContainer
-            } else {
-                MaterialTheme.colorScheme.surface
-            },
-            labelColor = if (selected) {
-                MaterialTheme.colorScheme.onPrimaryContainer
-            } else {
-                MaterialTheme.colorScheme.onSurface
-            }
-        )
-    )
 }

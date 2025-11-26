@@ -2,6 +2,10 @@ package com.linli.blackcatnews.di
 
 import android.app.Application
 import android.content.Context
+import androidx.datastore.core.DataStore
+import androidx.datastore.preferences.core.PreferenceDataStoreFactory
+import androidx.datastore.preferences.core.Preferences
+import androidx.datastore.preferences.preferencesDataStoreFile
 import androidx.room.RoomDatabase
 import com.google.android.play.core.review.ReviewManagerFactory
 import com.linli.authentication.platformAuthProvidersModule
@@ -28,6 +32,11 @@ val androidPlatformModule = module {
     single<RoomDatabase.Builder<NewsDatabase>>(named("newsDatabaseBuilder")) {
         val context: Context = androidContext()
         getDatabaseBuilder(context)
+    }
+    single<DataStore<Preferences>> {
+        PreferenceDataStoreFactory.create(
+            produceFile = { androidContext().preferencesDataStoreFile("user_preferences") }
+        )
     }
     single { androidContext().resources }
     single<CurrentActivityProvider> {

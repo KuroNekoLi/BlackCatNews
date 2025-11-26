@@ -68,7 +68,6 @@ kotlin {
             implementation(libs.ktor.client.okhttp)
             implementation(libs.koin.android)
             implementation(libs.google.play.review)
-            implementation(libs.androidx.datastore.preferences)
 
             // Android 專用：Firebase Android SDK（與 GitLive 相容）
             implementation(project.dependencies.platform(libs.firebase.bom))
@@ -110,6 +109,7 @@ kotlin {
             implementation(libs.koin.compose)
             implementation(libs.room.runtime)
             implementation(libs.sqlite.bundled)
+            implementation(libs.androidx.datastore.preferences)
             // GitLive Firebase Kotlin SDK - 只使用需要的功能
             implementation(libs.gitlive.firebase.app)        // 核心依赖，必须包含
             implementation(libs.gitlive.firebase.auth)       // 用户认证
@@ -118,6 +118,7 @@ kotlin {
         }
         commonTest.dependencies {
             implementation(libs.kotlin.test)
+            implementation(libs.koin.test)
         }
     }
 }
