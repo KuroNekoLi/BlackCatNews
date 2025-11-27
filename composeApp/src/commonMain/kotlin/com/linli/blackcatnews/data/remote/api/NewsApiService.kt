@@ -18,7 +18,7 @@ import io.ktor.client.request.parameter
  */
 class NewsApiService(
     private val httpClient: HttpClient
-) {
+) : INewsApiService {
 
     companion object {
 //        private const val BASE_URL = "https://linlinews.zeabur.app"
@@ -39,10 +39,10 @@ class NewsApiService(
      *
      * @see AiArticleDto
      */
-    suspend fun getRandomArticles(
-        count: Int = 10,
-        section: String? = null,
-        source: String? = null
+    override suspend fun getRandomArticles(
+        count: Int,
+        section: String?,
+        source: String?
     ): List<AiArticleDto> {
         val response: AiArticlesResponseDto = httpClient.get("$BASE_URL$RANDOM_ARTICLES_ENDPOINT") {
             parameter("count", count)
@@ -60,7 +60,7 @@ class NewsApiService(
      *
      * 在不再需要時調用，釋放資源
      */
-    fun close() {
+    override fun close() {
         httpClient.close()
     }
 }

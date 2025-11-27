@@ -3,7 +3,7 @@ package com.linli.blackcatnews.data.repository
 import com.linli.blackcatnews.data.local.dao.ArticleDao
 import com.linli.blackcatnews.data.local.entity.ArticleEntity
 import com.linli.blackcatnews.data.mapper.ArticleMapper
-import com.linli.blackcatnews.data.remote.api.NewsApiService
+import com.linli.blackcatnews.data.remote.api.INewsApiService
 import com.linli.blackcatnews.domain.model.ArticleDetail
 import com.linli.blackcatnews.domain.model.ArticleSection
 import com.linli.blackcatnews.domain.model.NewsItem
@@ -32,7 +32,7 @@ import kotlin.time.ExperimentalTime
  * @property ioDispatcher 用於資料操作的協程派發器
  */
 class ArticleRepositoryImpl(
-    private val newsApiService: NewsApiService,
+    private val newsApiService: INewsApiService,
     private val articleDao: ArticleDao,
     private val ioDispatcher: CoroutineDispatcher = Dispatchers.Default
 ) : ArticleRepository {
@@ -204,7 +204,8 @@ class ArticleRepositoryImpl(
                 val fetchCount = count.normalize()
                 val dtoList = newsApiService.getRandomArticles(
                     count = fetchCount,
-                    section = section?.value
+                    section = section?.value,
+                    source = null
                 )
 
                 if (dtoList.isEmpty()) {
