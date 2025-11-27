@@ -1,5 +1,8 @@
 package com.linli.blackcatnews.ui.screens
 
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -26,6 +29,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.linli.dictionary.domain.model.ReviewCard
@@ -100,67 +104,112 @@ private fun ReviewCardContent(
     // Reset showDefinition when card changes
     var showDefinition by remember(card.word.word) { mutableStateOf(false) }
 
+    // Flip animation state
+    val rotation by animateFloatAsState(
+        targetValue = if (showDefinition) 180f else 0f,
+        animationSpec = tween(durationMillis = 400)
+    )
+
     Column(
         modifier = Modifier.fillMaxSize(),
         verticalArrangement = Arrangement.SpaceBetween,
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         // Card Area
-        Card(
+        Box(
             modifier = Modifier
                 .weight(1f)
-                .fillMaxWidth(),
-            elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
-        ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(24.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Center
-            ) {
-                // Front of card
-                Text(
-                    text = card.word.word,
-                    style = MaterialTheme.typography.displayMedium,
-                    textAlign = TextAlign.Center
-                )
-
-                val firstEntry = card.word.entries.firstOrNull()
-                if (firstEntry != null) {
-                    Text(
-                        text = firstEntry.partOfSpeech,
-                        style = MaterialTheme.typography.titleMedium,
-                        color = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.padding(top = 8.dp)
-                    )
+                .fillMaxWidth()
+                .graphicsLayer {
+                    rotationY = rotation
+                    cameraDistance = 12f * density
                 }
-
-                // Back of card (Answer)
-                if (showDefinition) {
-                    Spacer(modifier = Modifier.height(24.dp))
-
-                    val definition = firstEntry?.definitions?.firstOrNull()
-                    if (definition != null) {
+                .clickable { showDefinition = !showDefinition }
+        ) {
+            if (rotation <= 90f) {
+                // Front of card
+                Card(
+                    modifier = Modifier.fillMaxSize(),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(24.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Center
+                    ) {
                         Text(
-                            text = definition.zhDefinition,
-                            style = MaterialTheme.typography.headlineSmall,
+                            text = card.word.word,
+                            style = MaterialTheme.typography.displayMedium,
                             textAlign = TextAlign.Center
                         )
+                        val firstEntry = card.word.entries.firstOrNull()
+                        if (firstEntry != null) {
+                            Text(
+                                text = firstEntry.partOfSpeech,
+                                style = MaterialTheme.typography.titleMedium,
+                                color = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.padding(top = 8.dp)
+                            )
+                        }
+                        Spacer(modifier = Modifier.height(32.dp))
+                        Text(
+                            text = "點擊翻轉查看答案",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+            } else {
+                // Back of card (Answer)
+                Card(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .graphicsLayer {
+                            rotationY = 180f
+                        },
+                    elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(24.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Center
+                    ) {
+                        Text(
+                            text = card.word.word,
+                            style = MaterialTheme.typography.headlineMedium,
+                            textAlign = TextAlign.Center,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                        Spacer(modifier = Modifier.height(16.dp))
 
-                        if (definition.examples.isNotEmpty()) {
-                            Spacer(modifier = Modifier.height(16.dp))
+                        val firstEntry = card.word.entries.firstOrNull()
+                        val definition = firstEntry?.definitions?.firstOrNull()
+
+                        if (definition != null) {
                             Text(
-                                text = "例句:",
-                                style = MaterialTheme.typography.labelLarge,
-                                color = MaterialTheme.colorScheme.secondary
+                                text = definition.zhDefinition,
+                                style = MaterialTheme.typography.headlineSmall,
+                                textAlign = TextAlign.Center
                             )
-                            Text(
-                                text = definition.examples.first(),
-                                style = MaterialTheme.typography.bodyLarge,
-                                textAlign = TextAlign.Center,
-                                modifier = Modifier.padding(top = 4.dp)
-                            )
+
+                            if (definition.examples.isNotEmpty()) {
+                                Spacer(modifier = Modifier.height(24.dp))
+                                Text(
+                                    text = "例句:",
+                                    style = MaterialTheme.typography.labelLarge,
+                                    color = MaterialTheme.colorScheme.secondary
+                                )
+                                Text(
+                                    text = definition.examples.first(),
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    textAlign = TextAlign.Center,
+                                    modifier = Modifier.padding(top = 4.dp)
+                                )
+                            }
                         }
                     }
                 }
