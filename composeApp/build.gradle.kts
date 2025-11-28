@@ -1,3 +1,4 @@
+import com.codingfeline.buildkonfig.compiler.FieldSpec
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import java.util.Base64
 import java.util.Properties
@@ -10,6 +11,7 @@ plugins {
     alias(libs.plugins.kotlinx.serialization)
     alias(libs.plugins.ksp)
     alias(libs.plugins.kotlinCocoapods)
+    alias(libs.plugins.buildkonfig)
     // Google Play Publisher plugin（用於自動化上傳至 Play Console）
     alias(libs.plugins.gpp)
     // Google Services plugin（处理 google-services.json 文件和 Firebase 配置）
@@ -18,6 +20,16 @@ plugins {
     alias(libs.plugins.firebaseCrashlytics)
 }
 // 暫時移除 Room plugin，等確認版本相容性
+
+val appVersionName = System.getenv("VERSION_NAME") ?: "2.0.2"
+
+buildkonfig {
+    packageName = "com.linli.blackcatnews"
+
+    defaultConfigs {
+        buildConfigField(FieldSpec.Type.STRING, "VERSION_NAME", "\"$appVersionName\"")
+    }
+}
 
 kotlin {
     androidTarget {
@@ -189,7 +201,7 @@ android {
         minSdk = libs.versions.android.minSdk.get().toInt()
         targetSdk = libs.versions.android.targetSdk.get().toInt()
         versionCode = System.getenv("VERSION_CODE")?.toIntOrNull() ?: 2
-        versionName = System.getenv("VERSION_NAME") ?: "1.0"
+        versionName = appVersionName
     }
 
     packaging {
