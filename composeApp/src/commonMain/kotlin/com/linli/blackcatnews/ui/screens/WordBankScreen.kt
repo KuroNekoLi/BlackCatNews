@@ -6,27 +6,36 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.VolumeUp
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Headphones
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.MoreVert
-import androidx.compose.material3.Button
+import androidx.compose.material.icons.filled.School
+import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.VolumeUp
 import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -36,6 +45,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
@@ -125,25 +135,98 @@ fun WordBankContentScreen(
     onPlayAudio: (String, String) -> Unit = { _, _ -> },
     modifier: Modifier = Modifier
 ) {
-    val errorMessage = uiState.error
+    // Mock Stats (Replace with ViewModel data)
+    val stats = LearningStats(
+        totalWords = uiState.wordCount,
+        newWords = uiState.wordCount / 2, // Mock
+        learningWords = uiState.wordCount / 3, // Mock
+        masteredWords = uiState.wordCount - (uiState.wordCount / 2) - (uiState.wordCount / 3), // Mock
+        dueReviewCount = reviewUiState.dueCount
+    )
+
     LazyColumn(
         modifier = modifier.fillMaxSize(),
-        contentPadding = PaddingValues(16.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
+        contentPadding = PaddingValues(bottom = 16.dp), // Handle bottom nav padding externally or here
+        verticalArrangement = Arrangement.spacedBy(24.dp)
     ) {
+        // 1. Header Dashboard
         item {
-            ReviewSummaryCard(
-                reviewState = reviewUiState,
-                onNavigateToReview = onNavigateToReview,
-                onRefreshReview = onRefreshReview
-            )
+            WordBankHeader(stats)
+        }
+
+        // 2. Training Modes
+        item {
+            Column(modifier = Modifier.padding(horizontal = 16.dp)) {
+                Text(
+                    text = "訓練模式",
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    modifier = Modifier.padding(bottom = 12.dp)
+                )
+                LazyRow(
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    item {
+                        TrainingModeCard(
+                            title = "閃卡特訓",
+                            subtitle = "${stats.dueReviewCount} 待複習",
+                            icon = Icons.Filled.School,
+                            color = MaterialTheme.colorScheme.primaryContainer,
+                            onClick = onNavigateToReview,
+                            enabled = stats.dueReviewCount > 0
+                        )
+                    }
+                    item {
+                        TrainingModeCard(
+                            title = "聽力挑戰",
+                            subtitle = "即將推出",
+                            icon = Icons.Filled.Headphones,
+                            color = MaterialTheme.colorScheme.secondaryContainer,
+                            onClick = {},
+                            enabled = false
+                        )
+                    }
+                    item {
+                        TrainingModeCard(
+                            title = "拼寫練習",
+                            subtitle = "即將推出",
+                            icon = Icons.Filled.Edit,
+                            color = MaterialTheme.colorScheme.tertiaryContainer,
+                            onClick = {},
+                            enabled = false
+                        )
+                    }
+                }
+            }
+        }
+
+        // 3. Word List Section
+        item {
+            Column(modifier = Modifier.padding(horizontal = 16.dp)) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "所有單字 (${stats.totalWords})",
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    TextButton(onClick = { /* TODO: Sort/Filter */ }) {
+                        Text("排序")
+                    }
+                }
+                androidx.compose.material3.HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+            }
         }
 
         when {
             uiState.isLoading && uiState.savedWords.isEmpty() -> {
                 item {
                     Box(
-                        modifier = Modifier.fillMaxWidth(),
+                        modifier = Modifier.fillMaxWidth().padding(16.dp),
                         contentAlignment = Alignment.Center
                     ) {
                         CircularProgressIndicator()
@@ -151,24 +234,31 @@ fun WordBankContentScreen(
                 }
             }
 
-            errorMessage != null && uiState.savedWords.isEmpty() -> {
-                item {
-                    Box(
-                        modifier = Modifier.fillMaxWidth(),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(text = errorMessage, style = MaterialTheme.typography.bodyLarge)
-                    }
-                }
-            }
-
             uiState.savedWords.isEmpty() -> {
                 item {
                     Box(
-                        modifier = Modifier.fillMaxWidth(),
+                        modifier = Modifier.fillMaxWidth().padding(32.dp),
                         contentAlignment = Alignment.Center
                     ) {
-                        Text(text = "還沒有儲存的單字", style = MaterialTheme.typography.bodyLarge)
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Icon(
+                                imageVector = Icons.Filled.Search,
+                                contentDescription = null,
+                                modifier = Modifier.size(48.dp),
+                                tint = MaterialTheme.colorScheme.surfaceVariant
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text(
+                                text = "還沒有儲存的單字",
+                                style = MaterialTheme.typography.bodyLarge,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            Text(
+                                text = "在閱讀時點擊單字即可加入",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
                     }
                 }
             }
@@ -179,7 +269,8 @@ fun WordBankContentScreen(
                         word = word,
                         onRemoveWord = { onRemoveWord(word.word) },
                         onResetProgress = { onResetProgress(word.word) },
-                        onPlayAudio = onPlayAudio
+                        onPlayAudio = onPlayAudio,
+                        modifier = Modifier.padding(horizontal = 16.dp)
                     )
                 }
             }
@@ -188,50 +279,133 @@ fun WordBankContentScreen(
 }
 
 @Composable
-private fun ReviewSummaryCard(
-    reviewState: WordReviewViewModel.ReviewUiState,
-    onNavigateToReview: () -> Unit,
-    onRefreshReview: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    Card(modifier = modifier.fillMaxWidth()) {
+private fun WordBankHeader(stats: LearningStats) {
+    Surface(
+        color = MaterialTheme.colorScheme.surface,
+        tonalElevation = 2.dp,
+        shadowElevation = 2.dp,
+        shape = androidx.compose.foundation.shape.RoundedCornerShape(
+            bottomStart = 24.dp,
+            bottomEnd = 24.dp
+        )
+    ) {
         Column(
-            modifier = Modifier.fillMaxWidth().padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(24.dp)
         ) {
+            Text(
+                text = "學習概況",
+                style = MaterialTheme.typography.titleLarge,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+            Spacer(modifier = Modifier.height(16.dp))
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
+                horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                Column {
-                    Text(text = "FSRS 複習", style = MaterialTheme.typography.titleMedium)
-                    Text(
-                        text = "到期卡片：${reviewState.dueCount}",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                StatItem(
+                    count = stats.totalWords,
+                    label = "總單字量",
+                    modifier = Modifier.weight(1f)
+                )
+                StatItem(
+                    count = stats.masteredWords,
+                    label = "已熟練",
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.weight(1f)
+                )
+                StatItem(
+                    count = stats.newWords,
+                    label = "新單字",
+                    color = MaterialTheme.colorScheme.secondary,
+                    modifier = Modifier.weight(1f)
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun StatItem(
+    count: Int,
+    label: String,
+    modifier: Modifier = Modifier,
+    color: androidx.compose.ui.graphics.Color = MaterialTheme.colorScheme.onSurface
+) {
+    Column(
+        modifier = modifier,
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Text(
+            text = count.toString(),
+            style = MaterialTheme.typography.headlineMedium,
+            fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
+            color = color
+        )
+        Text(
+            text = label,
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+    }
+}
+
+@Composable
+private fun TrainingModeCard(
+    title: String,
+    subtitle: String,
+    icon: ImageVector,
+    color: androidx.compose.ui.graphics.Color,
+    onClick: () -> Unit,
+    enabled: Boolean,
+    modifier: Modifier = Modifier
+) {
+    Card(
+        modifier = modifier
+            .width(160.dp)
+            .height(140.dp)
+            .then(if (enabled) Modifier.clickable(onClick = onClick) else Modifier),
+        colors = CardDefaults.cardColors(containerColor = color.copy(alpha = if (enabled) 0.3f else 0.1f)),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(16.dp),
+            verticalArrangement = Arrangement.SpaceBetween
+        ) {
+            Surface(
+                color = MaterialTheme.colorScheme.surface.copy(alpha = 0.5f),
+                shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp),
+                modifier = Modifier.size(40.dp)
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Icon(
+                        imageVector = icon,
+                        contentDescription = null,
+                        tint = if (enabled) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurface.copy(
+                            alpha = 0.4f
+                        )
                     )
                 }
             }
 
-            if (reviewState.isLoading) {
-                LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
-            } else {
-                Button(
-                    onClick = onNavigateToReview,
-                    enabled = reviewState.dueCount > 0,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Text(text = if (reviewState.dueCount > 0) "開始複習" else "目前沒有需要複習的單字")
-                }
-            }
-
-            val currentError = reviewState.error
-            if (currentError != null) {
+            Column {
                 Text(
-                    text = currentError,
-                    color = MaterialTheme.colorScheme.error,
-                    style = MaterialTheme.typography.bodySmall
+                    text = title,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
+                    color = if (enabled) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurface.copy(
+                        alpha = 0.4f
+                    )
+                )
+                Text(
+                    text = subtitle,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = if (enabled) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurfaceVariant.copy(
+                        alpha = 0.4f
+                    )
                 )
             }
         }
@@ -270,7 +444,7 @@ private fun WordBankCard(
                     )
                     IconButton(onClick = { onPlayAudio(word.word, word.word) }) {
                         Icon(
-                            imageVector = Icons.AutoMirrored.Filled.VolumeUp,
+                            imageVector = Icons.Filled.VolumeUp,
                             contentDescription = "播放音訊"
                         )
                     }
@@ -353,7 +527,7 @@ private fun WordBankCard(
                                         modifier = Modifier.weight(1f)
                                     )
                                     Icon(
-                                        imageVector = Icons.AutoMirrored.Filled.VolumeUp,
+                                        imageVector = Icons.Filled.VolumeUp,
                                         contentDescription = "朗讀例句",
                                         tint = MaterialTheme.colorScheme.primary,
                                         modifier = Modifier
@@ -384,6 +558,14 @@ private fun WordBankCard(
         }
     }
 }
+
+private data class LearningStats(
+    val totalWords: Int,
+    val newWords: Int,
+    val learningWords: Int,
+    val masteredWords: Int,
+    val dueReviewCount: Int
+)
 
 /**
  * 單字庫內容的預覽，示範數筆假資料與移除按鈕的外觀。

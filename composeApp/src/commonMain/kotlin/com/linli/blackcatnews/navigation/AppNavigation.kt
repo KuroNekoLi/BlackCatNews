@@ -48,6 +48,7 @@ import com.linli.blackcatnews.ui.screens.ArticleDetailScreen
 import com.linli.blackcatnews.ui.screens.CategoriesScreen
 import com.linli.blackcatnews.ui.screens.FavoritesScreen
 import com.linli.blackcatnews.ui.screens.HomeScreen
+import com.linli.blackcatnews.ui.screens.LearningHubScreen
 import com.linli.blackcatnews.ui.screens.RegisterScreen
 import com.linli.blackcatnews.ui.screens.SearchScreen
 import com.linli.blackcatnews.ui.screens.SettingsScreen
@@ -97,6 +98,10 @@ fun AppNavigation() {
         topBar = {
             // 根據當前路由顯示不同的頂部欄
             when {
+                // 首頁使用自定義 Header，不顯示 AppTopBar
+                isHomeDestination(currentDestination) -> {
+                    // No TopAppBar for Home, handled internally
+                }
                 shouldShowTopBar(currentDestination) -> {
                     AppTopBar(
                         title = getTopBarTitle(currentDestination),
@@ -111,7 +116,7 @@ fun AppNavigation() {
                             //     launchSingleTop = true
                             // }
                         },
-                        showActions = isHomeDestination(currentDestination),
+                        showActions = false, // Remove default actions for non-home screens
                         showBackButton = isDetailDestination(currentDestination),
                         onBackClick = {
                             // 如果是文章詳情頁，觸發評分
@@ -205,12 +210,42 @@ fun AppNavigation() {
                     viewModel = viewModel,
                     onNewsItemClick = { newsItem ->
                         navController.navigate(
-                            ArticleDetailRoute(
+                            LearningHubRoute(
                                 articleId = newsItem.id,
                                 title = newsItem.title
                             )
                         )
+                    },
+                    onNavigateToSettings = {
+                        navController.navigate(SettingsRoute) {
+                            launchSingleTop = true
+                        }
+                    },
+                    onNavigateToSearch = {
+                        navController.navigate(SearchRoute) {
+                            launchSingleTop = true
+                        }
                     }
+                )
+            }
+
+            // 學習總覽頁
+            composable<LearningHubRoute> { backStackEntry ->
+                val route = backStackEntry.toRoute<LearningHubRoute>()
+                LearningHubScreen(
+                    articleId = route.articleId,
+                    onNavigateToArticle = {
+                        navController.navigate(
+                            ArticleDetailRoute(
+                                articleId = route.articleId,
+                                title = route.title
+                            )
+                        )
+                    },
+                    onBackClick = {
+                        navController.navigateUp()
+                    },
+                    onSetTopBarActions = { topBarActions = it }
                 )
             }
 
@@ -288,7 +323,8 @@ fun AppNavigation() {
                         navController.navigate(SignInRoute(returnToSettings = true)) {
                             launchSingleTop = true
                         }
-                    }
+                    },
+                    onBackClick = { navController.navigateUp() } // Pass back click handler
                 )
             }
 
@@ -367,7 +403,8 @@ private fun shouldShowTopBar(destination: NavDestination?): Boolean {
                 it.hasRoute<WordReviewRoute>() ||
                 it.hasRoute<SettingsRoute>() ||
                 it.hasRoute<SearchRoute>() ||
-                it.hasRoute<ArticleDetailRoute>()
+                it.hasRoute<ArticleDetailRoute>() ||
+                it.hasRoute<LearningHubRoute>()
     } == true
 }
 
@@ -379,8 +416,7 @@ private fun shouldShowBottomBar(destination: NavDestination?): Boolean {
         it.hasRoute<HomeRoute>() ||
                 it.hasRoute<CategoriesRoute>() ||
                 it.hasRoute<FavoritesRoute>() ||
-                it.hasRoute<WordBankRoute>() ||
-                it.hasRoute<SettingsRoute>()
+                it.hasRoute<WordBankRoute>()
     } == true
 }
 
@@ -398,7 +434,8 @@ private fun isDetailDestination(destination: NavDestination?): Boolean {
     return destination?.hierarchy?.any {
         it.hasRoute<ArticleDetailRoute>() ||
                 it.hasRoute<SearchRoute>() ||
-                it.hasRoute<WordReviewRoute>()
+                it.hasRoute<WordReviewRoute>() ||
+                it.hasRoute<LearningHubRoute>()
     } == true
 }
 
@@ -408,7 +445,6 @@ private fun isDetailDestination(destination: NavDestination?): Boolean {
 @Composable
 private fun getTopBarTitle(destination: NavDestination?): String {
     return when {
-        destination?.hierarchy?.any { it.hasRoute<HomeRoute>() } == true -> stringResource(Res.string.title_home)
         destination?.hierarchy?.any { it.hasRoute<CategoriesRoute>() } == true -> stringResource(Res.string.title_categories)
         destination?.hierarchy?.any { it.hasRoute<FavoritesRoute>() } == true -> stringResource(Res.string.title_favorites)
         destination?.hierarchy?.any { it.hasRoute<WordBankRoute>() } == true -> stringResource(Res.string.title_word_bank)
@@ -416,6 +452,9 @@ private fun getTopBarTitle(destination: NavDestination?): String {
         destination?.hierarchy?.any { it.hasRoute<SettingsRoute>() } == true -> stringResource(Res.string.title_settings)
         destination?.hierarchy?.any { it.hasRoute<SearchRoute>() } == true -> stringResource(Res.string.title_search)
         destination?.hierarchy?.any { it.hasRoute<ArticleDetailRoute>() } == true -> stringResource(
+            Res.string.title_article_detail
+        )
+        destination?.hierarchy?.any { it.hasRoute<LearningHubRoute>() } == true -> stringResource(
             Res.string.title_article_detail
         )
 
