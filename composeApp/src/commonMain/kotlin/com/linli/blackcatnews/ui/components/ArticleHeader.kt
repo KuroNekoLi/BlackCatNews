@@ -1,5 +1,6 @@
 package com.linli.blackcatnews.ui.components
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -14,7 +15,9 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import com.linli.blackcatnews.domain.model.BilingualText
 import com.linli.blackcatnews.domain.model.ReadingMode
@@ -29,6 +32,7 @@ import org.jetbrains.compose.ui.tooling.preview.Preview
 fun ArticleHeader(
     title: BilingualText,
     source: String,
+    url: String,
     publishTime: String,
     imageUrl: String?,
     readingMode: ReadingMode,
@@ -109,6 +113,20 @@ fun ArticleHeader(
             )
         }
 
+        if (url.isNotBlank()) {
+            Spacer(modifier = Modifier.height(8.dp))
+            val uriHandler = LocalUriHandler.current
+            Text(
+                text = "本文改寫自 $source，點此查看原始文章",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.primary,
+                textDecoration = TextDecoration.Underline,
+                modifier = Modifier.clickable {
+                    uriHandler.openUri(url)
+                }
+            )
+        }
+
         HorizontalDivider(
             Modifier.padding(vertical = 16.dp),
             DividerDefaults.Thickness, MaterialTheme.colorScheme.outlineVariant
@@ -124,6 +142,7 @@ private fun ArticleHeaderEnglishPreview() {
         ArticleHeader(
             title = getSampleTitle(),
             source = "BBC News",
+            url = "https://www.bbc.com",
             publishTime = "2024年1月15日",
             imageUrl = null,
             readingMode = ReadingMode.ENGLISH_ONLY,
@@ -139,6 +158,7 @@ private fun ArticleHeaderChinesePreview() {
         ArticleHeader(
             title = getSampleTitle(),
             source = "BBC News",
+            url = "https://www.bbc.com",
             publishTime = "2024年1月15日",
             imageUrl = null,
             readingMode = ReadingMode.CHINESE_ONLY,
@@ -154,6 +174,7 @@ private fun ArticleHeaderBilingualStackPreview() {
         ArticleHeader(
             title = getSampleTitle(),
             source = "CNN",
+            url = "https://www.cnn.com",
             publishTime = "2024年1月15日",
             imageUrl = null,
             readingMode = ReadingMode.STACKED,
@@ -169,6 +190,7 @@ private fun ArticleHeaderSideBySidePreview() {
         ArticleHeader(
             title = getSampleTitle(),
             source = "Reuters",
+            url = "https://www.reuters.com",
             publishTime = "2024年1月15日",
             imageUrl = null,
             readingMode = ReadingMode.SIDE_BY_SIDE,

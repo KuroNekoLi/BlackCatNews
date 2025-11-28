@@ -14,6 +14,7 @@ data class ArticleDetail(
     val content: BilingualContent,
     val imageUrl: String?,
     val source: String,
+    val url: String,
     val publishTime: String,
     val category: NewsCategory,
     // 學習輔助功能

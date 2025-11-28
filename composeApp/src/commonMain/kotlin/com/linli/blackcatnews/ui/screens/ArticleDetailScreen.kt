@@ -115,6 +115,7 @@ fun ArticleDetailScreen(
             ArticleHeader(
                 title = article.title,
                 source = article.source,
+                url = article.url,
                 publishTime = article.publishTime,
                 imageUrl = article.imageUrl,
                 readingMode = readingMode,

@@ -8,8 +8,8 @@ import com.linli.blackcatnews.data.local.entity.SentencePatternEntity
 import com.linli.blackcatnews.data.local.entity.VocabularyItemEntity
 import com.linli.blackcatnews.data.remote.dto.AiArticleDto
 import com.linli.blackcatnews.data.remote.dto.ComprehensionQuestionDto
-import com.linli.blackcatnews.data.remote.dto.McqOptionDto
 import com.linli.blackcatnews.data.remote.dto.GrammarItemDto
+import com.linli.blackcatnews.data.remote.dto.McqOptionDto
 import com.linli.blackcatnews.data.remote.dto.PhraseIdiomDto
 import com.linli.blackcatnews.data.remote.dto.SentencePatternDto
 import com.linli.blackcatnews.data.remote.dto.VocabularyItemDto
@@ -148,6 +148,7 @@ object ArticleMapper {
             ),
             imageUrl = entity.imageUrl,
             source = entity.sourceName,
+            url = entity.url,
             publishTime = entity.publishTime,
             category = mapSectionToCategory(entity.section),
             glossary = entity.learningVocabulary.map { it.toDomain() },
