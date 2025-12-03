@@ -149,6 +149,23 @@ interface ArticleDao {
     suspend fun articleExists(id: String): Boolean
 
     /**
+     * 獲取最後一次更新時間
+     *
+     * @return 最後更新的時間戳
+     */
+    @Query("SELECT MAX(updatedAt) FROM articles")
+    suspend fun getLastUpdatedTime(): Long?
+
+    /**
+     * 根據分類獲取最後一次更新時間
+     *
+     * @param section 新聞分類
+     * @return 最後更新的時間戳
+     */
+    @Query("SELECT MAX(updatedAt) FROM articles WHERE section = :section")
+    suspend fun getLastUpdatedTimeBySection(section: String): Long?
+
+    /**
      * 獲取最舊的文章（用於緩存管理）
      *
      * @param limit 返回數量

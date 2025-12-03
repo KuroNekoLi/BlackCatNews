@@ -61,7 +61,8 @@ class ArticleRepositoryImpl(
             }
             .onStart {
                 emit(Result.Loading)
-                val shouldRefresh = forceRefresh || !hasLocalArticles(section)
+                val shouldRefresh =
+                    forceRefresh || !hasLocalArticles(section) || isDataStale(section)
                 if (shouldRefresh) {
                     when (val refreshResult = performRefresh(section, normalizedCount)) {
                         is Result.Error -> emit(
@@ -196,6 +197,25 @@ class ArticleRepositoryImpl(
     }
 
     /**
+     * 檢查資料是否過期
+     */
+    @OptIn(ExperimentalTime::class)
+    private suspend fun isDataStale(section: ArticleSection?): Boolean {
+        return withContext(ioDispatcher) {
+            val lastUpdated = if (section == null) {
+                articleDao.getLastUpdatedTime()
+            } else {
+                articleDao.getLastUpdatedTimeBySection(section.value)
+            }
+
+            if (lastUpdated == null) return@withContext true
+
+            val currentTime = kotlin.time.Clock.System.now().toEpochMilliseconds()
+            (currentTime - lastUpdated) > CACHE_TTL_MS
+        }
+    }
+
+    /**
      * 執行遠端同步並更新本地資料庫
      */
     private suspend fun performRefresh(section: ArticleSection?, count: Int): Result<Unit> {
@@ -233,5 +253,8 @@ class ArticleRepositoryImpl(
 
     companion object {
         private const val DEFAULT_FETCH_COUNT: Int = 10
+
+        // 緩存有效期：1 天
+        private const val CACHE_TTL_MS: Long = 60 * 60 * 24 * 1000
     }
 }
