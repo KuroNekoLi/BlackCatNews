@@ -20,6 +20,15 @@ import kotlin.time.ExperimentalTime
  * @property entriesJson 詞性與定義列表的 JSON 字符串
  * @property isInWordBank 表示該單字是否加入用戶的單字庫
  * @property timestamp 上次更新時間的時間戳
+ * @property reviewDifficulty FSRS 難度分數，範圍 1~10，預設 5
+ * @property reviewStability FSRS 穩定度（天數），用於計算下次複習間隔
+ * @property reviewReps 已複習次數
+ * @property reviewLapses 遺忘次數
+ * @property reviewState 當前複習狀態（新卡、學習中、複習中）
+ * @property reviewDueAt 下次應複習的時間戳
+ * @property reviewLastReviewedAt 上一次複習的時間戳
+ * @property reviewScheduledDays 上一次排程的天數間隔
+ * @property reviewElapsedDays 上一次複習距前一次的經過天數
  */
 @Serializable
 @Entity(tableName = "words")
@@ -31,7 +40,16 @@ data class WordEntity @OptIn(ExperimentalTime::class) constructor(
     val usPronunciation: String,
     val entriesJson: String,
     val isInWordBank: Boolean = false,
-    val timestamp: Long = Clock.System.now().toEpochMilliseconds()
+    val timestamp: Long = Clock.System.now().toEpochMilliseconds(),
+    val reviewDifficulty: Double = 5.0,
+    val reviewStability: Double = 0.5,
+    val reviewReps: Int = 0,
+    val reviewLapses: Int = 0,
+    val reviewState: ReviewState = ReviewState.NEW,
+    val reviewDueAt: Long = Clock.System.now().toEpochMilliseconds(),
+    val reviewLastReviewedAt: Long? = null,
+    val reviewScheduledDays: Int = 0,
+    val reviewElapsedDays: Int = 0
 )
 
 /**
@@ -61,6 +79,16 @@ data class DefinitionEntity(
 )
 
 /**
+ * 單字複習狀態
+ */
+@Serializable
+enum class ReviewState {
+    NEW,
+    LEARNING,
+    REVIEW
+}
+
+/**
  * 提供實體類與 JSON 之間的類型轉換
  */
 class WordConverters {
@@ -86,5 +114,21 @@ class WordConverters {
     @TypeConverter
     fun fromStringToEntries(entriesJson: String): List<EntryEntity> {
         return json.decodeFromString<List<EntryEntity>>(entriesJson)
+    }
+
+    /**
+     * 將複習狀態轉換為資料庫可儲存的字串
+     */
+    @TypeConverter
+    fun fromReviewState(state: ReviewState): String {
+        return state.name
+    }
+
+    /**
+     * 將字串還原為複習狀態 enum
+     */
+    @TypeConverter
+    fun toReviewState(value: String): ReviewState {
+        return ReviewState.valueOf(value)
     }
 }

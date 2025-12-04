@@ -1,5 +1,6 @@
 package com.linli.blackcatnews.navigation
 
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Search
@@ -12,6 +13,9 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.navigation.NavDestination
 import androidx.navigation.NavDestination.Companion.hasRoute
@@ -49,6 +53,7 @@ import com.linli.blackcatnews.ui.screens.SearchScreen
 import com.linli.blackcatnews.ui.screens.SettingsScreen
 import com.linli.blackcatnews.ui.screens.SignInScreen
 import com.linli.blackcatnews.ui.screens.WordBankScreen
+import com.linli.blackcatnews.ui.screens.WordReviewScreen
 import com.linli.dictionary.presentation.wordbank.WordBankViewModel
 import kotlinx.serialization.Serializable
 import org.jetbrains.compose.resources.stringResource
@@ -85,6 +90,9 @@ fun AppNavigation() {
     // 創建全局的 RatingViewModel，用於處理評分邏輯
     val ratingViewModel: RatingViewModel = koinViewModel()
 
+    // State for dynamic top bar actions
+    var topBarActions by remember { mutableStateOf<(@Composable RowScope.() -> Unit)?>(null) }
+
     Scaffold(
         topBar = {
             // 根據當前路由顯示不同的頂部欄
@@ -111,7 +119,8 @@ fun AppNavigation() {
                                 ratingViewModel.onArticleRead()
                             }
                             navController.navigateUp()
-                        }
+                        },
+                        actions = topBarActions
                     )
                 }
             }
@@ -223,7 +232,8 @@ fun AppNavigation() {
                         navController.navigate(SignInRoute()) {
                             launchSingleTop = true
                         }
-                    }
+                    },
+                    onSetTopBarActions = { topBarActions = it }
                 )
             }
 
@@ -251,7 +261,23 @@ fun AppNavigation() {
             // 單字庫頁面
             composable<WordBankRoute> {
                 val viewModel: WordBankViewModel = koinViewModel()
-                WordBankScreen(viewModel = viewModel)
+                WordBankScreen(
+                    viewModel = viewModel,
+                    onNavigateToReview = {
+                        navController.navigate(WordReviewRoute) {
+                            launchSingleTop = true
+                        }
+                    }
+                )
+            }
+
+            // 單字複習頁面
+            composable<WordReviewRoute> {
+                WordReviewScreen(
+                    onBackClick = {
+                        navController.navigateUp()
+                    }
+                )
             }
 
             // 設定頁面
@@ -301,7 +327,8 @@ private fun AppTopBar(
     onNotificationClick: () -> Unit,
     showActions: Boolean,
     showBackButton: Boolean = false,
-    onBackClick: () -> Unit = {}
+    onBackClick: () -> Unit = {},
+    actions: (@Composable RowScope.() -> Unit)? = null
 ) {
     TopAppBar(
         title = { Text(title) },
@@ -319,6 +346,7 @@ private fun AppTopBar(
                 //     Text("🔔", style = MaterialTheme.typography.titleLarge)
                 // }
             }
+            actions?.invoke(this)
         },
 //        colors = TopAppBarDefaults.topAppBarColors(
 //            containerColor = MaterialTheme.colorScheme.primaryContainer,
@@ -336,6 +364,7 @@ private fun shouldShowTopBar(destination: NavDestination?): Boolean {
                 it.hasRoute<CategoriesRoute>() ||
                 it.hasRoute<FavoritesRoute>() ||
                 it.hasRoute<WordBankRoute>() ||
+                it.hasRoute<WordReviewRoute>() ||
                 it.hasRoute<SettingsRoute>() ||
                 it.hasRoute<SearchRoute>() ||
                 it.hasRoute<ArticleDetailRoute>()
@@ -368,7 +397,8 @@ private fun isHomeDestination(destination: NavDestination?): Boolean {
 private fun isDetailDestination(destination: NavDestination?): Boolean {
     return destination?.hierarchy?.any {
         it.hasRoute<ArticleDetailRoute>() ||
-                it.hasRoute<SearchRoute>()
+                it.hasRoute<SearchRoute>() ||
+                it.hasRoute<WordReviewRoute>()
     } == true
 }
 
@@ -382,6 +412,7 @@ private fun getTopBarTitle(destination: NavDestination?): String {
         destination?.hierarchy?.any { it.hasRoute<CategoriesRoute>() } == true -> stringResource(Res.string.title_categories)
         destination?.hierarchy?.any { it.hasRoute<FavoritesRoute>() } == true -> stringResource(Res.string.title_favorites)
         destination?.hierarchy?.any { it.hasRoute<WordBankRoute>() } == true -> stringResource(Res.string.title_word_bank)
+        destination?.hierarchy?.any { it.hasRoute<WordReviewRoute>() } == true -> "複習" // TODO: Add to resources
         destination?.hierarchy?.any { it.hasRoute<SettingsRoute>() } == true -> stringResource(Res.string.title_settings)
         destination?.hierarchy?.any { it.hasRoute<SearchRoute>() } == true -> stringResource(Res.string.title_search)
         destination?.hierarchy?.any { it.hasRoute<ArticleDetailRoute>() } == true -> stringResource(

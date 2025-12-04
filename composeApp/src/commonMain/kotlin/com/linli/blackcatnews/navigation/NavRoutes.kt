@@ -29,6 +29,9 @@ object FavoritesRoute
 object WordBankRoute
 
 @Serializable
+object WordReviewRoute
+
+@Serializable
 object SettingsRoute
 
 // 搜尋和通知路由

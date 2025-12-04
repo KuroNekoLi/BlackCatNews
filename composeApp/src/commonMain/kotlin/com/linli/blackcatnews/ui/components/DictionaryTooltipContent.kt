@@ -14,9 +14,9 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.VolumeUp
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.VolumeUp
 import androidx.compose.material3.Divider
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.Icon
@@ -40,6 +40,7 @@ import org.jetbrains.compose.ui.tooling.preview.Preview
  * @param onSaveWord 儲存單字的回調
  * @param isSaved 該單字是否已存在於單字庫中，若為 true 則不再顯示加入按鈕
  * @param onPronounceClick 點擊發音按鈕的回調
+ * @param onPlayExample 點擊例句朗讀按鈕的回調
  */
 @Composable
 fun DictionaryTooltipContent(
@@ -47,7 +48,8 @@ fun DictionaryTooltipContent(
     onDismiss: () -> Unit,
     onSaveWord: () -> Unit,
     isSaved: Boolean = false,
-    onPronounceClick: (String) -> Unit = {}
+    onPronounceClick: (String) -> Unit = {},
+    onPlayExample: (String) -> Unit = {}
 ) {
     ElevatedCard(
         modifier = Modifier.width(320.dp)
@@ -98,7 +100,7 @@ fun DictionaryTooltipContent(
                             fontStyle = FontStyle.Italic
                         )
                         Icon(
-                            imageVector = Icons.Default.VolumeUp,
+                            imageVector = Icons.AutoMirrored.Filled.VolumeUp,
                             contentDescription = "英式發音",
                             tint = MaterialTheme.colorScheme.primary,
                             modifier = Modifier
@@ -119,7 +121,7 @@ fun DictionaryTooltipContent(
                             fontStyle = FontStyle.Italic
                         )
                         Icon(
-                            imageVector = Icons.Default.VolumeUp,
+                            imageVector = Icons.AutoMirrored.Filled.VolumeUp,
                             contentDescription = "美式發音",
                             tint = MaterialTheme.colorScheme.primary,
                             modifier = Modifier
@@ -191,13 +193,29 @@ fun DictionaryTooltipContent(
                         if (!examples.isNullOrEmpty()) {
                             Spacer(modifier = Modifier.height(4.dp))
                             for (example in examples) {
-                                Text(
-                                    text = "• $example",
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    fontStyle = FontStyle.Italic,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    modifier = Modifier.padding(start = 8.dp)
-                                )
+                                Row(
+                                    verticalAlignment = Alignment.Top,
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(start = 8.dp, bottom = 4.dp)
+                                ) {
+                                    Text(
+                                        text = "• $example",
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        fontStyle = FontStyle.Italic,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        modifier = Modifier.weight(1f)
+                                    )
+                                    Icon(
+                                        imageVector = Icons.AutoMirrored.Filled.VolumeUp,
+                                        contentDescription = "朗讀例句",
+                                        tint = MaterialTheme.colorScheme.primary,
+                                        modifier = Modifier
+                                            .padding(start = 8.dp)
+                                            .size(18.dp)
+                                            .clickable { onPlayExample(example) }
+                                    )
+                                }
                             }
                         }
                     }
@@ -233,7 +251,8 @@ fun PreviewDictionaryTooltipContent() {
     DictionaryTooltipContent(
         word = word,
         onDismiss = {},
-        onSaveWord = {}
+        onSaveWord = {},
+        onPlayExample = {}
     )
 }
 
@@ -275,6 +294,7 @@ fun PreviewDictionaryTooltipContentWithMultipleEntries() {
     DictionaryTooltipContent(
         word = word,
         onDismiss = {},
-        onSaveWord = {}
+        onSaveWord = {},
+        onPlayExample = {}
     )
 }

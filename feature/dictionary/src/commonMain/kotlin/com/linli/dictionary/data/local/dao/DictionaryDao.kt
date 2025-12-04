@@ -75,6 +75,15 @@ interface DictionaryDao {
     suspend fun getWordsInWordBank(): List<WordEntity>
 
     /**
+     * 取得到期需要複習的單字
+     *
+     * @param now 目前時間戳
+     * @return 符合到期條件的單字
+     */
+    @Query("SELECT * FROM words WHERE isInWordBank = 1 AND reviewDueAt <= :now")
+    suspend fun getDueReviewWords(now: Long): List<WordEntity>
+
+    /**
      * 將單字加入到單字庫
      *
      * 更新單字的 isInWordBank 字段為 true

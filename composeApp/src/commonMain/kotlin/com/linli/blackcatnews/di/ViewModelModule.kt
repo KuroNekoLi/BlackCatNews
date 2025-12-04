@@ -9,14 +9,16 @@ import com.linli.blackcatnews.presentation.viewmodel.HomeViewModel
 import com.linli.blackcatnews.presentation.viewmodel.RatingViewModel
 import com.linli.blackcatnews.presentation.viewmodel.SearchViewModel
 import com.linli.blackcatnews.presentation.viewmodel.SettingsViewModel
+import com.linli.blackcatnews.presentation.viewmodel.TtsViewModel
 import com.linli.blackcatnews.rating.NoOpRatingRequester
 import com.linli.blackcatnews.rating.RatingRequester
 import com.linli.dictionary.presentation.wordbank.WordBankViewModel
+import com.linli.dictionary.presentation.wordbank.WordReviewViewModel
 import org.koin.core.module.dsl.viewModel
 import org.koin.dsl.module
 
 val viewModelModule = module {
-    single { UserPreferencesRepository() }
+    single { UserPreferencesRepository(get()) }
     single<RatingRequester> { NoOpRatingRequester }
     viewModel { HomeViewModel(get(), get(), get()) }
     viewModel { (articleId: String) -> ArticleDetailViewModel(articleId, get()) }
@@ -39,7 +41,10 @@ val viewModelModule = module {
             get(),
             get(),
             get(),
+            get(),
             get()
         )
     }
+    viewModel { WordReviewViewModel(get(), get()) }
+    viewModel { TtsViewModel(get()) }
 }

@@ -8,9 +8,12 @@ import com.linli.dictionary.domain.usecase.GetSavedWordsUseCase
 import com.linli.dictionary.domain.usecase.GetWordBankCountUseCase
 import com.linli.dictionary.domain.usecase.IsWordInWordBankUseCase
 import com.linli.dictionary.domain.usecase.RemoveWordFromWordBankUseCase
+import com.linli.dictionary.domain.usecase.ResetWordProgressUseCase
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
@@ -25,7 +28,8 @@ class WordBankViewModel(
     private val addWordToWordBankUseCase: AddWordToWordBankUseCase,
     private val removeWordFromWordBankUseCase: RemoveWordFromWordBankUseCase,
     private val isWordInWordBankUseCase: IsWordInWordBankUseCase,
-    private val getWordBankCountUseCase: GetWordBankCountUseCase
+    private val getWordBankCountUseCase: GetWordBankCountUseCase,
+    private val resetWordProgressUseCase: ResetWordProgressUseCase
 ) : ViewModel() {
 
     /**
@@ -40,6 +44,9 @@ class WordBankViewModel(
 
     private val _uiState = MutableStateFlow(WordBankState())
     val uiState: StateFlow<WordBankState> = _uiState.asStateFlow()
+
+    private val _refreshReviewEvent = Channel<Unit>()
+    val refreshReviewEvent = _refreshReviewEvent.receiveAsFlow()
 
     /**
      * 初始化 ViewModel 時加載已儲存的單字
@@ -124,6 +131,34 @@ class WordBankViewModel(
                     _uiState.update {
                         it.copy(
                             error = e.message ?: "無法刪除單字",
+                            isLoading = false
+                        )
+                    }
+                }
+        }
+    }
+
+    /**
+     * 重置單字的學習進度
+     *
+     * @param word 要重置的單字
+     */
+    fun resetWordProgress(word: String) {
+        viewModelScope.launch {
+            _uiState.update { it.copy(isLoading = true, error = null) }
+            resetWordProgressUseCase(word)
+                .onSuccess {
+                    // 重新載入以確保任何狀態顯示更新（雖然列表可能不顯示進度，但保持同步）
+                    loadSavedWords()
+                    // 同時重新載入單字庫數量，這會觸發 UI 的 LaunchedEffect 去刷新複習隊列
+                    loadWordCount()
+                    // 通知外部需要刷新複習列表
+                    _refreshReviewEvent.send(Unit)
+                }
+                .onFailure { e ->
+                    _uiState.update {
+                        it.copy(
+                            error = e.message ?: "無法重置單字進度",
                             isLoading = false
                         )
                     }

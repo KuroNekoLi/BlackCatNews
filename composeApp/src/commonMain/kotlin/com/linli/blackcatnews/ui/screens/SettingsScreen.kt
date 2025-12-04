@@ -14,15 +14,14 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Switch
-import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -35,6 +34,8 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import com.linli.blackcatnews.BuildKonfig
+import com.linli.blackcatnews.getPlatform
 import com.linli.blackcatnews.presentation.viewmodel.SessionStatus
 import com.linli.blackcatnews.presentation.viewmodel.SettingsEffect
 import com.linli.blackcatnews.presentation.viewmodel.SettingsViewModel
@@ -121,9 +122,8 @@ fun SettingsScreen(
 
             Spacer(Modifier.weight(1f))
             // App version display at the bottom
-            val versionName = "1.0"
-            val displayVersion = "1.0"
-            val platform = "ios"
+            val versionName = BuildKonfig.VERSION_NAME
+            val platform = getPlatform().name
             Column(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalAlignment = Alignment.CenterHorizontally,
@@ -133,12 +133,6 @@ fun SettingsScreen(
                     text = "版本號：$versionName",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    textAlign = TextAlign.Center
-                )
-                Text(
-                    text = displayVersion,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
                     textAlign = TextAlign.Center
                 )
                 Text(
@@ -175,10 +169,6 @@ private fun RowSettingItem(
         Switch(
             checked = isChecked,
             onCheckedChange = onToggle,
-            colors = SwitchDefaults.colors(
-                checkedThumbColor = MaterialTheme.colorScheme.primary,
-                uncheckedThumbColor = MaterialTheme.colorScheme.outlineVariant
-            )
         )
     }
 }

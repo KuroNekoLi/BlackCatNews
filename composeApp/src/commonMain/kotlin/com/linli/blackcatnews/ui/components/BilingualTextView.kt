@@ -48,11 +48,13 @@ fun BilingualTextView(
 
         BilingualParagraphType.HEADING -> HeadingParagraphView(
             paragraph = paragraph,
+            readingMode = readingMode,
             modifier = modifier
         )
 
         BilingualParagraphType.IMAGE -> ImageParagraphView(
             paragraph = paragraph,
+            readingMode = readingMode,
             modifier = modifier
         )
 
@@ -261,6 +263,7 @@ private fun StackedText(
 @Composable
 private fun HeadingParagraphView(
     paragraph: BilingualParagraph,
+    readingMode: ReadingMode,
     modifier: Modifier
 ) {
     val headingLevel = paragraph.headingLevel ?: 1
@@ -271,20 +274,66 @@ private fun HeadingParagraphView(
         else -> MaterialTheme.typography.titleLarge
     }
 
-    Column(modifier = modifier.fillMaxWidth()) {
-        Text(
-            text = paragraph.english.orEmpty(),
-            style = typography,
-            modifier = Modifier.padding(vertical = 8.dp)
-        )
+    val englishText = paragraph.english.orEmpty()
+    val chineseText = paragraph.chinese.orEmpty()
 
-        paragraph.chinese?.takeIf { it.isNotBlank() }?.let { chineseText ->
-            Text(
-                text = chineseText,
-                style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(bottom = 4.dp)
-            )
+    Column(modifier = modifier.fillMaxWidth()) {
+        when (readingMode) {
+            ReadingMode.ENGLISH_ONLY -> {
+                // 只顯示英文
+                Text(
+                    text = englishText,
+                    style = typography,
+                    modifier = Modifier.padding(vertical = 8.dp)
+                )
+            }
+
+            ReadingMode.CHINESE_ONLY -> {
+                // 只顯示中文
+                Text(
+                    text = chineseText,
+                    style = typography,
+                    modifier = Modifier.padding(vertical = 8.dp)
+                )
+            }
+
+            ReadingMode.STACKED -> {
+                // 堆疊顯示：先英文後中文
+                Text(
+                    text = englishText,
+                    style = typography,
+                    modifier = Modifier.padding(vertical = 8.dp)
+                )
+                if (chineseText.isNotBlank()) {
+                    Text(
+                        text = chineseText,
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(bottom = 4.dp)
+                    )
+                }
+            }
+
+            ReadingMode.SIDE_BY_SIDE -> {
+                // 並排顯示
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 8.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Text(
+                        text = englishText,
+                        style = typography,
+                        modifier = Modifier.weight(1f)
+                    )
+                    Text(
+                        text = chineseText,
+                        style = typography,
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+            }
         }
     }
 }
@@ -292,6 +341,7 @@ private fun HeadingParagraphView(
 @Composable
 private fun ImageParagraphView(
     paragraph: BilingualParagraph,
+    readingMode: ReadingMode,
     modifier: Modifier
 ) {
     Column(
@@ -327,6 +377,7 @@ private fun ImageParagraphView(
             )
         }
 
+        // 顯示圖片說明（圖片說明通常只有一個語言版本）
         paragraph.imageCaption?.takeIf { it.isNotBlank() }?.let { caption ->
             Text(
                 text = caption,

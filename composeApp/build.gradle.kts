@@ -1,3 +1,4 @@
+import com.codingfeline.buildkonfig.compiler.FieldSpec
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import java.util.Base64
 import java.util.Properties
@@ -10,6 +11,7 @@ plugins {
     alias(libs.plugins.kotlinx.serialization)
     alias(libs.plugins.ksp)
     alias(libs.plugins.kotlinCocoapods)
+    alias(libs.plugins.buildkonfig)
     // Google Play Publisher plugin（用於自動化上傳至 Play Console）
     alias(libs.plugins.gpp)
     // Google Services plugin（处理 google-services.json 文件和 Firebase 配置）
@@ -18,6 +20,16 @@ plugins {
     alias(libs.plugins.firebaseCrashlytics)
 }
 // 暫時移除 Room plugin，等確認版本相容性
+
+val appVersionName = System.getenv("VERSION_NAME") ?: "2.0.2"
+
+buildkonfig {
+    packageName = "com.linli.blackcatnews"
+
+    defaultConfigs {
+        buildConfigField(FieldSpec.Type.STRING, "VERSION_NAME", "\"$appVersionName\"")
+    }
+}
 
 kotlin {
     androidTarget {
@@ -56,6 +68,9 @@ kotlin {
             version = "~> 12.0.0"
             linkOnly = true
         }
+        pod("FirebaseCore") {
+            version = "~> 12.0.0"
+        }
     }
 
     sourceSets {
@@ -65,7 +80,6 @@ kotlin {
             implementation(libs.ktor.client.okhttp)
             implementation(libs.koin.android)
             implementation(libs.google.play.review)
-            implementation(libs.androidx.datastore.preferences)
 
             // Android 專用：Firebase Android SDK（與 GitLive 相容）
             implementation(project.dependencies.platform(libs.firebase.bom))
@@ -107,6 +121,7 @@ kotlin {
             implementation(libs.koin.compose)
             implementation(libs.room.runtime)
             implementation(libs.sqlite.bundled)
+            implementation(libs.androidx.datastore.preferences)
             // GitLive Firebase Kotlin SDK - 只使用需要的功能
             implementation(libs.gitlive.firebase.app)        // 核心依赖，必须包含
             implementation(libs.gitlive.firebase.auth)       // 用户认证
@@ -115,6 +130,7 @@ kotlin {
         }
         commonTest.dependencies {
             implementation(libs.kotlin.test)
+            implementation(libs.koin.test)
         }
     }
 }
@@ -185,7 +201,7 @@ android {
         minSdk = libs.versions.android.minSdk.get().toInt()
         targetSdk = libs.versions.android.targetSdk.get().toInt()
         versionCode = System.getenv("VERSION_CODE")?.toIntOrNull() ?: 2
-        versionName = System.getenv("VERSION_NAME") ?: "1.0"
+        versionName = appVersionName
     }
 
     packaging {
@@ -202,7 +218,12 @@ android {
         }
         release {
             signingConfig = signingConfigs.getByName("release")
-            isMinifyEnabled = false
+            isMinifyEnabled = true
+            isShrinkResources = true
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro"
+            )
         }
     }
 

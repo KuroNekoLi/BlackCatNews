@@ -18,7 +18,6 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.onCompletion
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.launch
 
@@ -41,6 +40,7 @@ class HomeViewModel(
 
     init {
         observePreferences()
+        observeStreak()
         observeArticles(
             category = NewsCategory.LATEST,
             forceRefresh = false,
@@ -96,8 +96,6 @@ class HomeViewModel(
                 count = DEFAULT_ARTICLE_COUNT,
                 forceRefresh = forceRefresh
             )
-                .onCompletion { cause ->
-                }
                 .collect { result ->
                     when (result) {
                         is Result.Loading -> Unit
@@ -174,9 +172,25 @@ class HomeViewModel(
 
     private fun observePreferences() {
         viewModelScope.launch {
-            preferencesRepository.prefersChinese().collect { prefersChinese ->
+            preferencesRepository.prefersChinese.collect { prefersChinese ->
                 _uiState.value = _uiState.value.copy(prefersChinese = prefersChinese)
             }
+        }
+    }
+
+    private fun observeStreak() {
+        viewModelScope.launch {
+            preferencesRepository.dailyStreak.collect { streak ->
+                _uiState.value = _uiState.value.copy(
+                    dailyStreak = streak,
+                    isStreakActive = true // Mock active state
+                )
+            }
+        }
+
+        viewModelScope.launch {
+            // Update streak on app start/view model init
+            preferencesRepository.updateStreak()
         }
     }
 
