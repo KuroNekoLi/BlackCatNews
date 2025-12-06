@@ -3,6 +3,7 @@ package com.linli.blackcatnews.ui.components
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -136,85 +137,92 @@ fun DictionaryTooltipContent(
             Spacer(modifier = Modifier.height(8.dp))
 
             // 顯示多個詞性及定義（內容可能較長，因此限制高度並可捲動）
-            VerticalDivider(thickness = 8.dp)
+            Row(modifier = Modifier.height(IntrinsicSize.Min)) {
+                VerticalDivider(
+                    thickness = 8.dp
+                )
 
-            val entries = word.entries
-            Column(
-                modifier = Modifier
-                    .heightIn(max = 260.dp)
-                    .verticalScroll(rememberScrollState())
-            ) {
-                for ((index, entry) in entries.withIndex()) {
-                    if (index > 0) {
-                        VerticalDivider(thickness = 8.dp)
-                    }
+                Spacer(modifier = Modifier.width(8.dp))
 
-                    // 詞性
-                    val partOfSpeech = entry.partOfSpeech
-                    if (partOfSpeech.isNotEmpty()) {
-                        Text(
-                            text = partOfSpeech,
-                            style = MaterialTheme.typography.bodyMedium,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.primary
-                        )
-
-                        Spacer(modifier = Modifier.height(4.dp))
-                    }
-
-                    // 定義列表
-                    val definitions = entry.definitions
-                    for ((defIndex, definition) in definitions.withIndex()) {
-                        if (defIndex > 0) {
+                val entries = word.entries
+                Column(
+                    modifier = Modifier
+                        .weight(1f)
+                        .heightIn(max = 260.dp)
+                        .verticalScroll(rememberScrollState())
+                ) {
+                    for ((index, entry) in entries.withIndex()) {
+                        if (index > 0) {
                             Spacer(modifier = Modifier.height(8.dp))
                         }
 
-                        // 英文定義
-                        val enDef = definition.enDefinition
-                        if (enDef.isNotEmpty()) {
+                        // 詞性
+                        val partOfSpeech = entry.partOfSpeech
+                        if (partOfSpeech.isNotEmpty()) {
                             Text(
-                                text = enDef,
-                                style = MaterialTheme.typography.bodyMedium
-                            )
-                        }
-
-                        // 中文定義
-                        val zhDef = definition.zhDefinition
-                        if (zhDef.isNotEmpty()) {
-                            Text(
-                                text = zhDef,
+                                text = partOfSpeech,
                                 style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.primary
                             )
+
+                            Spacer(modifier = Modifier.height(4.dp))
                         }
 
-                        // 顯示例句（如有）
-                        val examples = definition.examples
-                        if (examples.isNotEmpty()) {
-                            Spacer(modifier = Modifier.height(4.dp))
-                            for (example in examples) {
-                                Row(
-                                    verticalAlignment = Alignment.Top,
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(start = 8.dp, bottom = 4.dp)
-                                ) {
-                                    Text(
-                                        text = "• $example",
-                                        style = MaterialTheme.typography.bodyMedium,
-                                        fontStyle = FontStyle.Italic,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                        modifier = Modifier.weight(1f)
-                                    )
-                                    Icon(
-                                        imageVector = Icons.AutoMirrored.Filled.VolumeUp,
-                                        contentDescription = "朗讀例句",
-                                        tint = MaterialTheme.colorScheme.primary,
+                        // 定義列表
+                        val definitions = entry.definitions
+                        for ((defIndex, definition) in definitions.withIndex()) {
+                            if (defIndex > 0) {
+                                Spacer(modifier = Modifier.height(8.dp))
+                            }
+
+                            // 英文定義
+                            val enDef = definition.enDefinition
+                            if (enDef.isNotEmpty()) {
+                                Text(
+                                    text = enDef,
+                                    style = MaterialTheme.typography.bodyMedium
+                                )
+                            }
+
+                            // 中文定義
+                            val zhDef = definition.zhDefinition
+                            if (zhDef.isNotEmpty()) {
+                                Text(
+                                    text = zhDef,
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+
+                            // 顯示例句（如有）
+                            val examples = definition.examples
+                            if (examples.isNotEmpty()) {
+                                Spacer(modifier = Modifier.height(4.dp))
+                                for (example in examples) {
+                                    Row(
+                                        verticalAlignment = Alignment.Top,
                                         modifier = Modifier
-                                            .padding(start = 8.dp)
-                                            .size(18.dp)
-                                            .clickable { onPlayExample(example) }
-                                    )
+                                            .fillMaxWidth()
+                                            .padding(start = 8.dp, bottom = 4.dp)
+                                    ) {
+                                        Text(
+                                            text = "• $example",
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            fontStyle = FontStyle.Italic,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            modifier = Modifier.weight(1f)
+                                        )
+                                        Icon(
+                                            imageVector = Icons.AutoMirrored.Filled.VolumeUp,
+                                            contentDescription = "朗讀例句",
+                                            tint = MaterialTheme.colorScheme.primary,
+                                            modifier = Modifier
+                                                .padding(start = 8.dp)
+                                                .size(18.dp)
+                                                .clickable { onPlayExample(example) }
+                                        )
+                                    }
                                 }
                             }
                         }
