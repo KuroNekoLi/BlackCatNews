@@ -1,7 +1,9 @@
 package com.linli.blackcatnews.navigation
 
 import androidx.compose.foundation.layout.RowScope
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -94,6 +96,7 @@ fun AppNavigation() {
     var topBarActions by remember { mutableStateOf<(@Composable RowScope.() -> Unit)?>(null) }
 
     Scaffold(
+        contentWindowInsets = WindowInsets.safeDrawing,
         topBar = {
             // 根據當前路由顯示不同的頂部欄
             when {

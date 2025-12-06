@@ -17,12 +17,12 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.VolumeUp
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material3.Divider
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.VerticalDivider
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -136,7 +136,7 @@ fun DictionaryTooltipContent(
             Spacer(modifier = Modifier.height(8.dp))
 
             // 顯示多個詞性及定義（內容可能較長，因此限制高度並可捲動）
-            Divider(modifier = Modifier.padding(vertical = 8.dp))
+            VerticalDivider(thickness = 8.dp)
 
             val entries = word.entries
             Column(
@@ -146,7 +146,7 @@ fun DictionaryTooltipContent(
             ) {
                 for ((index, entry) in entries.withIndex()) {
                     if (index > 0) {
-                        Divider(modifier = Modifier.padding(vertical = 8.dp))
+                        VerticalDivider(thickness = 8.dp)
                     }
 
                     // 詞性
@@ -190,7 +190,7 @@ fun DictionaryTooltipContent(
 
                         // 顯示例句（如有）
                         val examples = definition.examples
-                        if (!examples.isNullOrEmpty()) {
+                        if (examples.isNotEmpty()) {
                             Spacer(modifier = Modifier.height(4.dp))
                             for (example in examples) {
                                 Row(

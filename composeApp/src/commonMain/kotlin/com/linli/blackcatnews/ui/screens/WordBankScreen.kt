@@ -49,10 +49,10 @@ import com.linli.dictionary.domain.model.Word
 import com.linli.dictionary.presentation.wordbank.WordBankViewModel
 import com.linli.dictionary.presentation.wordbank.WordBankViewModel.WordBankState
 import com.linli.dictionary.presentation.wordbank.WordReviewViewModel
-import kotlinx.datetime.Instant
 import org.jetbrains.compose.ui.tooling.preview.Preview
 import org.koin.compose.viewmodel.koinViewModel
 import kotlin.time.ExperimentalTime
+import kotlin.time.Instant
 
 /**
  * 單字庫主畫面，負責從 [WordBankViewModel] 取得狀態並渲染內容。
