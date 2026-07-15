@@ -57,6 +57,7 @@ import com.linli.dictionary.domain.model.ReviewMetadata
 import com.linli.dictionary.domain.model.ReviewState
 import com.linli.dictionary.domain.model.Word
 import com.linli.dictionary.presentation.wordbank.WordBankViewModel
+import com.linli.dictionary.presentation.wordbank.WordBankViewModel.SortOption
 import com.linli.dictionary.presentation.wordbank.WordBankViewModel.WordBankState
 import com.linli.dictionary.presentation.wordbank.WordReviewViewModel
 import kotlinx.datetime.Instant
@@ -103,6 +104,8 @@ fun WordBankScreen(
         reviewUiState = reviewUiState,
         onRemoveWord = viewModel::removeWord,
         onResetProgress = viewModel::resetWordProgress,
+        onUpdateSortOption = viewModel::updateSortOption,
+        onUpdatePartOfSpeechFilter = viewModel::updatePartOfSpeechFilter,
         onNavigateToReview = onNavigateToReview,
         onRefreshReview = reviewViewModel::refreshQueue,
         onPlayAudio = { text, id ->
@@ -119,6 +122,8 @@ fun WordBankScreen(
  * @param reviewUiState 複習區域狀態
  * @param onRemoveWord 使用者點擊移除時的回呼
  * @param onResetProgress 使用者重置學習進度時的回呼
+ * @param onUpdateSortOption 使用者變更排序方式時的回呼
+ * @param onUpdatePartOfSpeechFilter 使用者變更詞性篩選時的回呼
  * @param onNavigateToReview 開始複習的回呼
  * @param onRefreshReview 重新載入複習列表的回呼
  * @param onPlayAudio 播放音訊的回呼
@@ -130,6 +135,8 @@ fun WordBankContentScreen(
     reviewUiState: WordReviewViewModel.ReviewUiState,
     onRemoveWord: (String) -> Unit,
     onResetProgress: (String) -> Unit,
+    onUpdateSortOption: (SortOption) -> Unit,
+    onUpdatePartOfSpeechFilter: (String?) -> Unit,
     onNavigateToReview: () -> Unit,
     onRefreshReview: () -> Unit,
     onPlayAudio: (String, String) -> Unit = { _, _ -> },
@@ -214,9 +221,11 @@ fun WordBankContentScreen(
                         style = MaterialTheme.typography.titleMedium,
                         color = MaterialTheme.colorScheme.onSurface
                     )
-                    TextButton(onClick = { /* TODO: Sort/Filter */ }) {
-                        Text("排序")
-                    }
+                    WordBankListOptions(
+                        uiState = uiState,
+                        onUpdateSortOption = onUpdateSortOption,
+                        onUpdatePartOfSpeechFilter = onUpdatePartOfSpeechFilter
+                    )
                 }
                 androidx.compose.material3.HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
             }
@@ -249,12 +258,16 @@ fun WordBankContentScreen(
                             )
                             Spacer(modifier = Modifier.height(8.dp))
                             Text(
-                                text = "還沒有儲存的單字",
+                                text = if (uiState.wordCount == 0) "還沒有儲存的單字" else "找不到符合篩選條件的單字",
                                 style = MaterialTheme.typography.bodyLarge,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                             Text(
-                                text = "在閱讀時點擊單字即可加入",
+                                text = if (uiState.wordCount == 0) {
+                                    "在閱讀時點擊單字即可加入"
+                                } else {
+                                    "請嘗試變更篩選條件"
+                                },
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -271,6 +284,65 @@ fun WordBankContentScreen(
                         onResetProgress = { onResetProgress(word.word) },
                         onPlayAudio = onPlayAudio,
                         modifier = Modifier.padding(horizontal = 16.dp)
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun WordBankListOptions(
+    uiState: WordBankState,
+    onUpdateSortOption: (SortOption) -> Unit,
+    onUpdatePartOfSpeechFilter: (String?) -> Unit
+) {
+    var showSortMenu by remember { mutableStateOf(false) }
+    var showFilterMenu by remember { mutableStateOf(false) }
+    val partOfSpeechOptions = uiState.availablePartOfSpeech
+
+    Row {
+        Box {
+            TextButton(onClick = { showSortMenu = true }) {
+                Text("排序")
+            }
+            DropdownMenu(
+                expanded = showSortMenu,
+                onDismissRequest = { showSortMenu = false }
+            ) {
+                SortOption.entries.forEach { option ->
+                    DropdownMenuItem(
+                        text = { Text(option.displayName) },
+                        onClick = {
+                            onUpdateSortOption(option)
+                            showSortMenu = false
+                        }
+                    )
+                }
+            }
+        }
+        Box {
+            TextButton(onClick = { showFilterMenu = true }) {
+                Text(if (uiState.partOfSpeechFilter == null) "篩選" else "篩選：${uiState.partOfSpeechFilter}")
+            }
+            DropdownMenu(
+                expanded = showFilterMenu,
+                onDismissRequest = { showFilterMenu = false }
+            ) {
+                DropdownMenuItem(
+                    text = { Text("全部詞性") },
+                    onClick = {
+                        onUpdatePartOfSpeechFilter(null)
+                        showFilterMenu = false
+                    }
+                )
+                partOfSpeechOptions.forEach { partOfSpeech ->
+                    DropdownMenuItem(
+                        text = { Text(partOfSpeech) },
+                        onClick = {
+                            onUpdatePartOfSpeechFilter(partOfSpeech)
+                            showFilterMenu = false
+                        }
                     )
                 }
             }
@@ -583,6 +655,8 @@ fun WordBankContentScreenPreview() {
         reviewUiState = previewReviewState,
         onRemoveWord = {},
         onResetProgress = {},
+        onUpdateSortOption = {},
+        onUpdatePartOfSpeechFilter = {},
         onNavigateToReview = {},
         onRefreshReview = {},
         onPlayAudio = { _, _ -> }
