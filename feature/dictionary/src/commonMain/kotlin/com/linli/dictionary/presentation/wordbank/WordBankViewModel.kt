@@ -39,9 +39,21 @@ class WordBankViewModel(
         val savedWords: List<Word> = emptyList(),
         val isLoading: Boolean = false,
         val error: String? = null,
-        val wordCount: Int = 0
+        val wordCount: Int = 0,
+        val sortOption: SortOption = SortOption.ALPHABETICAL_ASCENDING,
+        val partOfSpeechFilter: String? = null,
+        val availablePartOfSpeech: List<String> = emptyList()
     )
 
+    /**
+     * 單字庫列表的排序方式。
+     */
+    enum class SortOption(val displayName: String) {
+        ALPHABETICAL_ASCENDING("字母 A → Z"),
+        ALPHABETICAL_DESCENDING("字母 Z → A")
+    }
+
+    private var allSavedWords: List<Word> = emptyList()
     private val _uiState = MutableStateFlow(WordBankState())
     val uiState: StateFlow<WordBankState> = _uiState.asStateFlow()
 
@@ -63,8 +75,21 @@ class WordBankViewModel(
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, error = null) }
             try {
-                val words = getSavedWordsUseCase()
-                _uiState.update { it.copy(savedWords = words, isLoading = false) }
+                allSavedWords = getSavedWordsUseCase()
+                _uiState.update { state ->
+                    state.copy(
+                        savedWords = applyListOptions(
+                            words = allSavedWords,
+                            sortOption = state.sortOption,
+                            partOfSpeechFilter = state.partOfSpeechFilter
+                        ),
+                        availablePartOfSpeech = allSavedWords
+                            .flatMap { word -> word.entries.map { it.partOfSpeech } }
+                            .distinct()
+                            .sorted(),
+                        isLoading = false
+                    )
+                }
             } catch (e: Exception) {
                 _uiState.update {
                     it.copy(
@@ -73,6 +98,57 @@ class WordBankViewModel(
                     )
                 }
             }
+        }
+    }
+
+    /**
+     * 更新單字列表的排序方式。
+     *
+     * @param sortOption 使用者選擇的排序方式
+     */
+    fun updateSortOption(sortOption: SortOption) {
+        _uiState.update { state ->
+            state.copy(
+                sortOption = sortOption,
+                savedWords = applyListOptions(
+                    words = allSavedWords,
+                    sortOption = sortOption,
+                    partOfSpeechFilter = state.partOfSpeechFilter
+                )
+            )
+        }
+    }
+
+    /**
+     * 依詞性篩選單字列表；傳入 null 時顯示所有單字。
+     *
+     * @param partOfSpeech 要顯示的詞性，null 表示不篩選
+     */
+    fun updatePartOfSpeechFilter(partOfSpeech: String?) {
+        _uiState.update { state ->
+            state.copy(
+                partOfSpeechFilter = partOfSpeech,
+                savedWords = applyListOptions(
+                    words = allSavedWords,
+                    sortOption = state.sortOption,
+                    partOfSpeechFilter = partOfSpeech
+                )
+            )
+        }
+    }
+
+    private fun applyListOptions(
+        words: List<Word>,
+        sortOption: SortOption,
+        partOfSpeechFilter: String?
+    ): List<Word> {
+        val filteredWords = partOfSpeechFilter?.let { filter ->
+            words.filter { word -> word.entries.any { it.partOfSpeech == filter } }
+        } ?: words
+
+        return when (sortOption) {
+            SortOption.ALPHABETICAL_ASCENDING -> filteredWords.sortedBy { it.word.lowercase() }
+            SortOption.ALPHABETICAL_DESCENDING -> filteredWords.sortedByDescending { it.word.lowercase() }
         }
     }
 

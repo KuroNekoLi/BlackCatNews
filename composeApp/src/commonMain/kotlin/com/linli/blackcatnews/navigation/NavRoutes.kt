@@ -48,6 +48,13 @@ data class ArticleDetailRoute(
     val title: String = ""
 )
 
+// 學習總覽頁路由
+@Serializable
+data class LearningHubRoute(
+    val articleId: String,
+    val title: String = ""
+)
+
 // 雙語學習文章詳情頁路由
 @Serializable
 data class BilingualArticleDetailRoute(

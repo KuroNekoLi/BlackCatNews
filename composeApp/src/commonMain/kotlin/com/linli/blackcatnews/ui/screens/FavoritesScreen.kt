@@ -15,23 +15,31 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.BookmarkBorder
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.ErrorOutline
+import androidx.compose.material.icons.filled.History
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.SwipeToDismissBox
 import androidx.compose.material3.SwipeToDismissBoxValue
+import androidx.compose.material3.Tab
+import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -41,8 +49,6 @@ import com.linli.blackcatnews.domain.model.NewsItem
 import com.linli.blackcatnews.presentation.viewmodel.FavoritesUiEffect
 import com.linli.blackcatnews.presentation.viewmodel.FavoritesUiEvent
 import com.linli.blackcatnews.presentation.viewmodel.FavoritesViewModel
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Delete
 
 /**
  * 收藏屏幕
@@ -57,6 +63,10 @@ fun FavoritesScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
+
+    // Tab State
+    var selectedTabIndex by remember { mutableStateOf(0) }
+    val tabs = listOf("已收藏", "閱讀紀錄", "錯題本")
 
     // Handle UI effects
     LaunchedEffect(Unit) {
@@ -74,23 +84,34 @@ fun FavoritesScreen(
     }
 
     Box(modifier = modifier.fillMaxSize()) {
-        when {
-            uiState.isLoading && uiState.favorites.isEmpty() -> {
-                LoadingState()
+        Column(modifier = Modifier.fillMaxSize()) {
+            // Tabs
+            TabRow(selectedTabIndex = selectedTabIndex) {
+                tabs.forEachIndexed { index, title ->
+                    Tab(
+                        selected = selectedTabIndex == index,
+                        onClick = { selectedTabIndex = index },
+                        text = { Text(title) },
+                        icon = {
+                            Icon(
+                                imageVector = when (index) {
+                                    0 -> Icons.Default.BookmarkBorder
+                                    1 -> Icons.Default.History
+                                    2 -> Icons.Default.ErrorOutline
+                                    else -> Icons.Default.BookmarkBorder
+                                },
+                                contentDescription = null
+                            )
+                        }
+                    )
+                }
             }
 
-            uiState.favorites.isEmpty() && !uiState.isLoading -> {
-                EmptyState()
-            }
-
-            else -> {
-                FavoritesList(
-                    favorites = uiState.favorites,
-                    onItemClick = onNewsItemClick,
-                    onRemove = { articleId ->
-                        viewModel.onEvent(FavoritesUiEvent.RemoveFavorite(articleId))
-                    }
-                )
+            // Content Area
+            when (selectedTabIndex) {
+                0 -> SavedTabContent(uiState, onNewsItemClick, viewModel)
+                1 -> HistoryTabContent()
+                2 -> MistakesTabContent()
             }
         }
 
@@ -113,7 +134,11 @@ private fun LoadingState() {
 }
 
 @Composable
-private fun EmptyState() {
+private fun EmptyState(
+    icon: String = "📚",
+    title: String = "尚無內容",
+    subtitle: String = "這裡空空如也"
+) {
     Box(
         modifier = Modifier.fillMaxSize(),
         contentAlignment = Alignment.Center
@@ -123,18 +148,18 @@ private fun EmptyState() {
             verticalArrangement = Arrangement.Center
         ) {
             Text(
-                text = "📚",
+                text = icon,
                 style = MaterialTheme.typography.displayLarge
             )
             Spacer(modifier = Modifier.height(16.dp))
             Text(
-                text = "尚無收藏的文章",
+                text = title,
                 style = MaterialTheme.typography.titleMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
             Spacer(modifier = Modifier.height(8.dp))
             Text(
-                text = "瀏覽新聞時點擊愛心圖示即可收藏",
+                text = subtitle,
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -268,6 +293,146 @@ private fun FavoriteNewsCard(
                         text = newsItem.publishTime,
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+        }
+    }
+}
+
+// Mock Data Models
+data class HistoryItem(val id: String, val title: String, val time: String, val progress: Float)
+data class MistakeItem(val id: String, val question: String, val answer: String, val count: Int)
+
+@Composable
+private fun SavedTabContent(
+    uiState: com.linli.blackcatnews.presentation.viewmodel.FavoritesUiState,
+    onNewsItemClick: (NewsItem) -> Unit,
+    viewModel: FavoritesViewModel
+) {
+    Box(modifier = Modifier.fillMaxSize()) {
+        when {
+            uiState.isLoading && uiState.favorites.isEmpty() -> {
+                LoadingState()
+            }
+
+            uiState.favorites.isEmpty() && !uiState.isLoading -> {
+                EmptyState(
+                    icon = "📚",
+                    title = "尚無收藏的文章",
+                    subtitle = "瀏覽新聞時點擊愛心圖示即可收藏"
+                )
+            }
+
+            else -> {
+                FavoritesList(
+                    favorites = uiState.favorites,
+                    onItemClick = onNewsItemClick,
+                    onRemove = { articleId ->
+                        viewModel.onEvent(FavoritesUiEvent.RemoveFavorite(articleId))
+                    }
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun HistoryTabContent() {
+    // Mock Data
+    val history = listOf(
+        HistoryItem("1", "AI Giants Report Q3 Earnings", "2 小時前", 0.8f),
+        HistoryItem("2", "Global Warming Effects", "昨天", 0.3f),
+        HistoryItem("3", "New Space Race Begins", "3 天前", 1.0f)
+    )
+
+    LazyColumn(
+        contentPadding = PaddingValues(16.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        items(history) { item ->
+            Card(elevation = CardDefaults.cardElevation(2.dp)) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Text(item.title, style = MaterialTheme.typography.titleMedium)
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text(
+                            item.time,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Text(
+                            if (item.progress >= 1f) "已讀完" else "進度 ${(item.progress * 100).toInt()}%",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = if (item.progress >= 1f) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.secondary
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun MistakesTabContent() {
+    // Mock Data
+    val mistakes = listOf(
+        MistakeItem("1", "What does 'ephemeral' mean?", "Lasting for a very short time", 3),
+        MistakeItem("2", "Choose the correct preposition: Interested ___ music", "in", 2)
+    )
+
+    LazyColumn(
+        contentPadding = PaddingValues(16.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        item {
+            Card(
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.errorContainer.copy(
+                        alpha = 0.1f
+                    )
+                ),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Row(
+                    modifier = Modifier.padding(16.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        Icons.Default.ErrorOutline,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.error
+                    )
+                    Spacer(modifier = Modifier.width(16.dp))
+                    Column {
+                        Text("錯題本 (TODO)", style = MaterialTheme.typography.titleSmall)
+                        Text(
+                            "這裡將彙整你在測驗中答錯的題目，幫助你針對弱點複習。",
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                    }
+                }
+            }
+        }
+        items(mistakes) { item ->
+            Card(elevation = CardDefaults.cardElevation(2.dp)) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Text(item.question, style = MaterialTheme.typography.titleMedium)
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        "正確答案: ${item.answer}",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = Color(0xFF4CAF50)
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        "錯誤次數: ${item.count}",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.error
                     )
                 }
             }
