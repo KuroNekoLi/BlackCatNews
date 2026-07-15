@@ -5,14 +5,14 @@ val correctBg = Color(0xFF4CAF50).copy(alpha = 0.2f)
 val correctFg = Color(0xFF2E7D32)
 val wrongBg = Color(0xFFE53935).copy(alpha = 0.2f)
 val wrongFg = Color(0xFFC62828)
-val primaryLight = Color(0xFFA9003D)
+val primaryLight = Color(0xFFE11D48) // Rose-600
 val onPrimaryLight = Color(0xFFFFFFFF)
-val primaryContainerLight = Color(0xFFD41051)
-val onPrimaryContainerLight = Color(0xFFFFE9EB)
-val secondaryLight = Color(0xFFA5364E)
+val primaryContainerLight = Color(0xFFFFF1F2) // Rose-50
+val onPrimaryContainerLight = Color(0xFFBE123C) // Rose-700
+val secondaryLight = Color(0xFFBE123C) // Rose-700
 val onSecondaryLight = Color(0xFFFFFFFF)
-val secondaryContainerLight = Color(0xFFFD7A90)
-val onSecondaryContainerLight = Color(0xFF730E2B)
+val secondaryContainerLight = Color(0xFFFFE4E6) // Rose-100
+val onSecondaryContainerLight = Color(0xFF881337) // Rose-900
 val tertiaryLight = Color(0xFF913800)
 val onTertiaryLight = Color(0xFFFFFFFF)
 val tertiaryContainerLight = Color(0xFFB84900)
